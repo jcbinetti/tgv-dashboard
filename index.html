@@ -909,7 +909,7 @@ footer strong { color:var(--turquoise); }
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
         <label style="font-size:11px;color:#6B7280;min-width:130px">Workflow E (C3 Buchhalter):</label>
         <input id="webhook-url-input" type="text" class="cat-sel" style="flex:1;font-size:11px;padding:5px 8px"
-          placeholder="https://n8n.your-instance.com/webhook/buchhalter-c3"
+          placeholder="https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-send"
           value="">
         <button class="btn btn-n" style="font-size:11px" onclick="saveWebhookUrl()">💾 Speichern</button>
       </div>
@@ -4481,7 +4481,49 @@ async function sendBuchMail(entity) {
     ? sep + '\nDOSSIER COMPTABLE — ' + entityLabel.toUpperCase() + '\nPériode : ' + mLabel + '\nDate envoi : ' + new Date().toLocaleDateString('fr-FR') + '\n' + sep + '\n\nMadame, Monsieur,\n\nVeuillez trouver ci-dessous la liste des documents comptables de ' + entityLabel + ' pour ' + mLabel + '.\nLes fichiers sont disponibles via Google Drive (liens ci-dessous).\n\n' + sep + '\nDOCUMENTS (' + docs.length + ')\n' + sep + '\n\n' + docLines + '\n' + sumLine + '\n\n' + sep + '\n\nMerci de télécharger les documents via les liens Drive.\nEn cas de question, contactez-moi directement.\n\nCordialement,\nJean-Christophe Binetti\nConvis Consult & Marketing GmbH / Convis SARL'
     : sep + '\nBUCHHALTUNGSPAKET — ' + entityLabel.toUpperCase() + '\nZeitraum : ' + mLabel + '\nVersendet : ' + new Date().toLocaleDateString('de-DE') + '\n' + sep + '\n\nSehr geehrte Damen und Herren,\n\nanbei die Belege fuer ' + entityLabel + ' — ' + mLabel + '.\nAlle Dokumente sind ueber Google Drive abrufbar (Links unten).\n\n' + sep + '\nBELEGE (' + docs.length + ')\n' + sep + '\n\n' + docLines + '\n' + sumLine + '\n\n' + sep + '\n\nBitte laden Sie die Dokumente ueber die Drive-Links herunter.\nBei Rueckfragen stehe ich gerne zur Verfuegung.\n\nMit freundlichen Gruessen\nJean-Christophe Binetti\nConvis Consult & Marketing GmbH'
   );
-  window.open('mailto:' + toEmail + '?subject=' + subject + '&body=' + body);
+  // Vollständigkeitsprüfung: fehlende Beträge oder PDFs?
+  const docsWithIssues = docs.filter(d => !d.amount || parseFloat(d.amount) === 0 || !d.drive_file_id);
+  if (docsWithIssues.length > 0) {
+    const names = docsWithIssues.map(d => d.provider || d.sender || '#'+d.id).join(', ');
+    const proceed = confirm(
+      (isFr ? '⚠️ Attention: ' + docsWithIssues.length + ' document(s) incomplet(s):\n' + names + '\n\nEnvoyer quand même?'
+             : '⚠️ Achtung: ' + docsWithIssues.length + ' Beleg(e) unvollständig:\n' + names + '\n\nTrotzdem senden?')
+    );
+    if (!proceed) return;
+  }
+
+  // WF E Webhook aufrufen
+  const webhookUrl = localStorage.getItem('n8n_webhook_c3') || 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-send';
+  const sendBtn = document.querySelector(`[onclick*="sendBuchMail('${entity}')"]`);
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '⏳ Wird gesendet...'; }
+
+  try {
+    const r = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entity: entityFull,
+        month: month,
+        test_mode: test
+      })
+    });
+    const result = await r.json();
+    if (r.ok && result.ok) {
+      toast('✅ ' + (isFr ? 'Dossier envoyé à ' : 'Buchhalterpaket gesendet an ') + toEmail + ' (' + result.docs + ' ' + (isFr ? 'documents' : 'Belege') + ')');
+      if (result.hasMissing && result.warning) {
+        toast('⚠️ ' + result.warning, 'warn');
+      }
+      // Vorschau neu laden
+      buchClearPreview(entity);
+      loadBuchPreview(entity);
+    } else {
+      toast('❌ ' + (result.message || 'Fehler beim Senden'), 'err');
+    }
+  } catch(e) {
+    toast('❌ Verbindungsfehler: ' + e.message, 'err');
+  } finally {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '📧 Email senden'; }
+  }
 }
 
 // ========================================
