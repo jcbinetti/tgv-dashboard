@@ -1661,7 +1661,8 @@ footer strong { color:var(--turquoise); }
 // CONFIG
 // ========================================
 const N8N_SCAN_NOW_URL = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-scan-now';
-const N8N_WEBHOOK_C3 = localStorage.getItem('n8n_webhook_c3') || '';
+const N8N_WEBHOOK_C3 = localStorage.getItem('n8n_webhook_c3') || 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-send';
+// WF E v1.0 — Buchhalter Versand — aktiv seit 2026-04-06
 
 // ========================================
 // SUPABASE CONFIG
@@ -4299,7 +4300,7 @@ fetch(SUPA_URL + '/rest/v1/md_categories?select=l1,l2&l2=not.is.null&order=l1,l2
     });
   }).catch(() => {}); // Fehler still ignorieren — hardcoded L2_OPTS bleiben
 loadOverviewStats();
-const savedWebhook = localStorage.getItem('n8n_webhook_c3');
+const savedWebhook = localStorage.getItem('n8n_webhook_c3') || 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-send';
 if (savedWebhook) document.getElementById('webhook-url-input') && (document.getElementById('webhook-url-input').value = savedWebhook);
 
 // Drive Preview Modal
