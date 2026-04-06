@@ -3443,10 +3443,24 @@ async function loadKontenOverview() {
   const tbody = document.getElementById('konten-tbody');
   if (!tbody) return;
   try {
-    const [rows, accs] = await Promise.all([
+    const [rows, accs, bankAccounts] = await Promise.all([
       sbGet('txn_master?select=account_iban,booking_date,imported_at&limit=20000'),
-      sbGet('md_accounts?select=iban,account_id,balance,balance_date')
+      sbGet('md_accounts?select=iban,account_id,balance,balance_date'),
+      sbGet('bank_accounts?select=account_id,payment_account_code,account_iban,account_name,entity,bank,account_type,is_active&order=entity.asc,account_type.asc').catch(() => [])
     ]);
+
+    // Dynamische Kontoliste: bank_accounts bevorzugen, ACCOUNTS_CONFIG als Fallback
+    const dynamicAccounts = bankAccounts.length > 0
+      ? bankAccounts.filter(a => a.is_active !== false).map(a => ({
+          iban: a.account_iban || '',
+          account_id: a.account_id,
+          name: a.account_name,
+          entity: a.entity,
+          bank: a.bank,
+          typ: a.account_type,
+          payment_code: a.payment_account_code
+        }))
+      : ACCOUNTS_CONFIG;
 
     const stats = {};
     for (const r of rows) {
@@ -3470,7 +3484,7 @@ async function loadKontenOverview() {
 
     let html = '';
     let totalPrivat = 0, totalC3 = 0, totalC4 = 0;
-    for (const acc of ACCOUNTS_CONFIG) {
+    for (const acc of dynamicAccounts) {
       const s = stats[acc.iban] || { count: 0, min: null, max: null };
       const count = s.count;
       const countCell = count > 0 ? `<td style="text-align:right"><strong>${count}</strong></td>` : `<td style="text-align:right;color:#EF4444">0</td>`;
