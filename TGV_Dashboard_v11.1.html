@@ -1,0 +1,2666 @@
+<!-- TGV Dashboard v11.1 — 2026-04-18 -->
+<!-- TGV Dashboard v11.1 — 2026-04-19 -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="version" content="11.1">
+<title>TGV Dashboard v11.1 — Financial OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #001F3F;
+  --teal: #007F7F;
+  --forest: #36454F;
+  --s0: #fff;
+  --s1: #F7F8F9;
+  --s2: #EFF1F3;
+  --s3: #E3E6E9;
+  --tx0: #0D1B2A;
+  --tx1: #4A5568;
+  --tx2: #8A9BAE;
+  --red: #C62828;
+  --red-bg: #FFF0F0;
+  --red-bd: #FFCDD2;
+  --amb: #B45309;
+  --amb-bg: #FFFBEB;
+  --amb-bd: #FCD34D;
+  --grn: #166534;
+  --grn-bg: #F0FDF4;
+  --grn-bd: #BBF7D0;
+  --blu: #1D4ED8;
+  --blu-bg: #EFF6FF;
+  --blu-bd: #BFDBFE;
+  --sidebar-w: 240px;
+  --sidebar-w-col: 56px;
+  --topbar-h: 56px;
+  --filterbar-h: 44px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--s1);
+  color: var(--tx0);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ─── TOPBAR ─── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--topbar-h);
+  background: var(--navy);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 0;
+  gap: 0;
+}
+
+#sidebar-toggle {
+  width: var(--sidebar-w-col);
+  height: var(--topbar-h);
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+#sidebar-toggle:hover { color: #fff; }
+
+.topbar-brand {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.topbar-brand h1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+.topbar-brand .brand-sub {
+  font-size: 10px;
+  color: var(--teal);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.topbar-version {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 1px;
+}
+#health-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#health-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+/* ─── LAYOUT ─── */
+#layout {
+  display: flex;
+  padding-top: var(--topbar-h);
+  min-height: 100vh;
+}
+
+/* ─── SIDEBAR ─── */
+#sidebar {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--navy);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.25s ease;
+  overflow: hidden;
+}
+#sidebar.collapsed { width: var(--sidebar-w-col); }
+
+.sidebar-section-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  padding: 16px 16px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity 0.2s;
+}
+#sidebar.collapsed .sidebar-section-label { opacity: 0; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: rgba(255,255,255,0.6);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  position: relative;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.nav-item.active {
+  color: #fff;
+  background: rgba(0,127,127,0.25);
+  border-left-color: var(--teal);
+}
+.nav-item .nav-icon {
+  font-size: 16px;
+  min-width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.nav-item .nav-label {
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+#sidebar.collapsed .nav-label { opacity: 0; pointer-events: none; }
+
+.nav-badge {
+  background: var(--red);
+  color: #fff;
+  border-radius: 9999px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: auto;
+}
+#sidebar.collapsed .nav-badge { display: none; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px 16px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.2);
+  white-space: nowrap;
+  overflow: hidden;
+}
+#sidebar.collapsed .sidebar-footer { opacity: 0; }
+
+/* ─── MAIN CONTENT ─── */
+#main-content {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  transition: margin-left 0.25s ease;
+  min-width: 0;
+}
+#main-content.sidebar-collapsed { margin-left: var(--sidebar-w-col); }
+
+/* ─── FILTER BAR ─── */
+#filterbar {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 90;
+  background: var(--s0);
+  border-bottom: 1px solid var(--s3);
+  padding: 0 24px;
+  height: var(--filterbar-h);
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-right: 1px solid var(--s3);
+  padding-right: 16px;
+  margin-right: 16px;
+}
+.filter-group:last-child { border-right: none; }
+
+.filter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--tx2);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+.filter-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tx1);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn:hover { background: var(--s2); }
+.filter-btn.active {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+
+.filter-btn.entity-priv.active { background: var(--teal); border-color: var(--teal); }
+.filter-btn.entity-c3.active { background: var(--navy); border-color: var(--navy); }
+.filter-btn.entity-c4.active { background: var(--forest); border-color: var(--forest); }
+
+/* ─── PAGE WRAPPER ─── */
+.page {
+  display: none;
+  padding: 24px;
+}
+.page.active { display: block; }
+
+/* ─── CARDS / PANELS ─── */
+.card {
+  background: var(--s0);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.card-head {
+  background: var(--navy);
+  color: #fff;
+  padding: 11px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-head h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.card-body { padding: 18px; }
+.card-body.no-pad { padding: 0; }
+
+/* ─── KPI CARDS ─── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: var(--s0);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  border-left: 4px solid var(--teal);
+}
+.kpi.kpi-warn { border-left-color: var(--amb); }
+.kpi.kpi-err  { border-left-color: var(--red); }
+.kpi.kpi-ok   { border-left-color: var(--grn); }
+.kpi.kpi-blu  { border-left-color: var(--blu); }
+.kpi .kpi-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--tx2); margin-bottom: 6px; }
+.kpi .kpi-val { font-size: 28px; font-weight: 700; color: var(--navy); line-height: 1; }
+.kpi .kpi-sub { font-size: 11px; color: var(--tx2); margin-top: 4px; }
+
+/* ─── TABLES ─── */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  background: var(--navy);
+  color: #fff;
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+thead th:hover { background: #002f5f; }
+thead th .sort-ind { margin-left: 4px; opacity: 0.5; }
+tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--s2);
+  vertical-align: middle;
+}
+tbody tr:hover td { background: #f0f9f9; }
+tbody tr:last-child td { border-bottom: none; }
+.tbl-footer {
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--tx2);
+  background: var(--s1);
+  border-top: 1px solid var(--s3);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ─── BADGES ─── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-priv  { background: var(--teal); color: #fff; }
+.badge-c3    { background: var(--navy); color: #fff; }
+.badge-c4    { background: var(--forest); color: #fff; }
+.badge-other { background: var(--s3); color: var(--tx1); }
+
+/* ─── STATUS PILLS ─── */
+.pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.pill-inbox, .pill-pending, .pill-pending_review {
+  background: var(--blu-bg); color: var(--blu); border-color: var(--blu-bd);
+}
+.pill-approved { background: var(--grn-bg); color: var(--grn); border-color: var(--grn-bd); }
+.pill-archived { background: var(--s2); color: var(--tx2); border-color: var(--s3); }
+.pill-rejected, .pill-error { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
+.pill-unknown { background: var(--amb-bg); color: var(--amb); border-color: var(--amb-bd); }
+
+/* ─── SPINNER ─── */
+.spinner-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 12px;
+  color: var(--tx2);
+  font-size: 13px;
+}
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--s3);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--tx2);
+}
+.empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+/* ─── ALERTS ─── */
+.alert {
+  border-radius: 6px;
+  padding: 11px 14px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.alert-err  { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+.alert-warn { background: var(--amb-bg); color: var(--amb); border: 1px solid var(--amb-bd); }
+.alert-ok   { background: var(--grn-bg); color: var(--grn); border: 1px solid var(--grn-bd); }
+.alert-info { background: var(--blu-bg); color: var(--blu); border: 1px solid var(--blu-bd); }
+
+/* ─── SYSTEM STATUS ─── */
+.wf-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.wf-card {
+  border: 1px solid var(--s3);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.wf-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.wf-info .wf-name { font-size: 13px; font-weight: 600; color: var(--tx0); }
+.wf-info .wf-detail { font-size: 11px; color: var(--tx2); margin-top: 2px; }
+.wf-info .wf-status { font-size: 10px; font-weight: 600; margin-top: 5px; }
+.wf-status-ok  { color: var(--grn); }
+.wf-status-blu { color: var(--blu); }
+.wf-status-err { color: var(--red); }
+
+/* ─── FINANZEN TABS ─── */
+.fin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--s3);
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+.fin-tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tx1);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.fin-tab:hover { color: var(--teal); }
+.fin-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--teal);
+  font-weight: 600;
+}
+.fin-panel { display: none; }
+.fin-panel.active { display: block; }
+
+/* ─── DRILLDOWN ─── */
+.drilldown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--s3);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.drilldown-col {
+  background: var(--s0);
+  min-height: 300px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.drilldown-col-head {
+  background: var(--s1);
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--tx2);
+  border-bottom: 1px solid var(--s3);
+  position: sticky;
+  top: 0;
+}
+.drilldown-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--s2);
+  transition: background 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.drilldown-item:hover { background: var(--s1); }
+.drilldown-item.active { background: #e0f2f2; border-left: 3px solid var(--teal); }
+.drilldown-item .di-name { font-size: 12px; color: var(--tx0); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drilldown-item .di-val { font-size: 11px; font-weight: 600; color: var(--tx1); white-space: nowrap; }
+.drilldown-item .di-count { font-size: 10px; color: var(--tx2); white-space: nowrap; }
+.drilldown-bar-wrap { width: 100%; background: var(--s2); border-radius: 2px; height: 3px; margin-top: 4px; }
+.drilldown-bar { height: 3px; border-radius: 2px; background: var(--teal); }
+
+/* ─── CASHFLOW CHART ─── */
+.cf-chart-wrap {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.cf-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 160px;
+  padding: 0 4px;
+  min-width: 500px;
+}
+.cf-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+.cf-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  flex: 1;
+  width: 100%;
+}
+.cf-bar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: opacity 0.2s;
+}
+.cf-bar:hover { opacity: 0.8; }
+.cf-bar-in  { background: var(--teal); }
+.cf-bar-out { background: var(--red); opacity: 0.7; }
+.cf-month-label {
+  font-size: 10px;
+  color: var(--tx2);
+  font-weight: 500;
+  text-align: center;
+}
+
+/* ─── FILTERS ─── */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--s3);
+}
+.filter-row select,
+.filter-row input[type=text] {
+  padding: 6px 10px;
+  border: 1px solid var(--s3);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--tx0);
+  background: var(--s0);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.filter-row select:focus,
+.filter-row input[type=text]:focus {
+  border-color: var(--teal);
+}
+.filter-row input[type=text] { min-width: 180px; }
+
+/* ─── PROJECT CARDS ─── */
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.proj-card {
+  background: var(--s0);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  padding: 18px;
+  border-top: 4px solid var(--teal);
+}
+.proj-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+.proj-code {
+  background: var(--navy);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.proj-name { font-size: 14px; font-weight: 600; color: var(--tx0); margin: 6px 0 4px; }
+.proj-meta { font-size: 12px; color: var(--tx2); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ─── MIGRATION TABLE ─── */
+.mig-table { font-size: 12px; }
+.mig-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--s2);
+}
+.mig-row:last-child { border-bottom: none; }
+.mig-num { font-weight: 600; color: var(--tx2); min-width: 32px; }
+.mig-name { flex: 1; color: var(--tx0); }
+.mig-status { font-size: 11px; font-weight: 600; }
+.mig-ok  { color: var(--grn); }
+.mig-err { color: var(--red); }
+
+/* ─── PAGE HEADER ─── */
+.page-header {
+  margin-bottom: 20px;
+}
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.page-header p {
+  font-size: 13px;
+  color: var(--tx2);
+  margin-top: 3px;
+}
+
+/* ─── INBOX ITEM ─── */
+.inbox-item {
+  border: 1px solid var(--s3);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--s0);
+}
+.inbox-item:hover { border-color: var(--teal); }
+.inbox-doc-icon { font-size: 20px; flex-shrink: 0; }
+.inbox-info { flex: 1; min-width: 0; }
+.inbox-info .inbox-provider { font-size: 13px; font-weight: 600; color: var(--tx0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-info .inbox-meta { font-size: 11px; color: var(--tx2); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+.inbox-amount { font-size: 15px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.inbox-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-sm {
+  padding: 5px 11px;
+  border-radius: 4px;
+  border: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-approve { background: var(--grn-bg); color: var(--grn); border: 1px solid var(--grn-bd); }
+.btn-approve:hover { background: var(--grn); color: #fff; }
+.btn-open { background: var(--blu-bg); color: var(--blu); border: 1px solid var(--blu-bd); }
+.btn-open:hover { background: var(--blu); color: #fff; }
+.btn-reject { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+.btn-reject:hover { background: var(--red); color: #fff; }
+
+/* ─── AMOUNT ─── */
+.amt-in  { color: var(--grn); font-weight: 600; }
+.amt-out { color: var(--red); font-weight: 600; }
+.amt-neu { color: var(--tx1); }
+
+/* ─── CONTRACTS ─── */
+.deadline-urgent { color: var(--red); font-weight: 600; }
+.deadline-soon   { color: var(--amb); font-weight: 600; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--tx2); }
+
+/* ─── TOOLTIP ─── */
+[title] { cursor: help; }
+
+/* ─── INBOX TABS ─── */
+.inbox-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--s3);
+  margin-bottom: 20px;
+}
+.inbox-tab {
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--tx1);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inbox-tab:hover { color: var(--teal); }
+.inbox-tab.active { color: var(--navy); border-bottom-color: var(--teal); font-weight: 600; }
+.inbox-tab-badge {
+  background: var(--red); color: #fff; border-radius: 9999px;
+  padding: 1px 6px; font-size: 10px; font-weight: 700;
+}
+.inbox-panel { display: none; }
+.inbox-panel.active { display: block; }
+
+/* ─── CONFIDENCE BAR ─── */
+.conf-wrap { display: flex; align-items: center; gap: 6px; min-width: 110px; }
+.conf-track { flex: 1; height: 6px; background: var(--s3); border-radius: 99px; overflow: hidden; }
+.conf-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
+.conf-fill-grn { background: var(--grn); }
+.conf-fill-amb { background: var(--amb); }
+.conf-fill-red { background: var(--red); }
+.conf-num { font-size: 11px; font-weight: 600; white-space: nowrap; min-width: 34px; text-align: right; }
+.conf-num-grn { color: var(--grn); }
+.conf-num-amb { color: var(--amb); }
+.conf-num-red { color: var(--red); }
+
+/* ─── TXN REVIEW ROW ─── */
+.txn-review-row td { transition: background 0.2s; }
+.txn-review-row.approving td { background: #e8f5e9 !important; opacity: 0.6; }
+.txn-review-row.approved-row td { background: var(--grn-bg) !important; }
+
+/* ─── BULK APPROVE BAR ─── */
+.bulk-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; background: var(--grn-bg);
+  border: 1px solid var(--grn-bd); border-radius: 6px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+.bulk-bar .bulk-info { flex: 1; font-size: 13px; color: var(--grn); font-weight: 500; }
+.btn-bulk-approve {
+  padding: 8px 18px; border-radius: 4px; border: none;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  cursor: pointer; background: var(--grn); color: #fff;
+  transition: all 0.2s; white-space: nowrap;
+}
+.btn-bulk-approve:hover { background: #14532d; }
+.btn-bulk-approve:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── CONF FILTER CHIPS ─── */
+.conf-filter-chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.conf-chip {
+  padding: 3px 10px; border-radius: 9999px;
+  border: 1px solid var(--s3); background: var(--s0);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; color: var(--tx1);
+}
+.conf-chip:hover { border-color: var(--teal); color: var(--teal); }
+.conf-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.conf-chip.chip-grn.active { background: var(--grn); border-color: var(--grn); }
+.conf-chip.chip-amb.active { background: var(--amb); border-color: var(--amb); }
+.conf-chip.chip-red.active { background: var(--red); border-color: var(--red); }
+
+/* ─── RLS WARNING ─── */
+.rls-warn {
+  background: var(--amb-bg); border: 1px solid var(--amb-bd);
+  border-radius: 6px; padding: 12px 16px; font-size: 12px;
+  color: var(--amb); margin-bottom: 12px; display: none;
+  gap: 8px; align-items: flex-start; flex-wrap: wrap;
+}
+.rls-warn a { color: var(--amb); font-weight: 600; }
+
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Sidebar ein/ausblenden">☰</button>
+  <div class="topbar-brand">
+    <h1>TGV</h1>
+    <span class="brand-sub">Financial OS</span>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-version">v11.1</span>
+    <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div id="layout">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-section-label">Navigation</div>
+
+    <button class="nav-item active" onclick="showPage('uebersicht', this)">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Übersicht</span>
+    </button>
+
+    <button class="nav-item" onclick="showPage('inbox', this)">
+      <span class="nav-icon">📥</span>
+      <span class="nav-label">Inbox</span>
+      <span class="nav-badge" id="inbox-badge" style="display:none">0</span>
+    </button>
+
+    <button class="nav-item" onclick="showPage('finanzen', this)">
+      <span class="nav-icon">💶</span>
+      <span class="nav-label">Finanzen</span>
+    </button>
+
+    <button class="nav-item" onclick="showPage('vertraege', this)">
+      <span class="nav-icon">📄</span>
+      <span class="nav-label">Verträge</span>
+    </button>
+
+    <button class="nav-item" onclick="showPage('projekte', this)">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Projekte</span>
+    </button>
+
+    <button class="nav-item" onclick="showPage('system', this)">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">System</span>
+    </button>
+
+    <div class="sidebar-footer">
+      TGV Financial OS v11.1<br>
+      Jean-Chris Binetti
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main-content">
+
+    <!-- ENTITY + PERIOD FILTER BAR -->
+    <div id="filterbar">
+      <div class="filter-group">
+        <span class="filter-label">Entität</span>
+        <button class="filter-btn active" data-entity="all" onclick="setEntity('all', this)">Alle</button>
+        <button class="filter-btn entity-priv" data-entity="priv" onclick="setEntity('priv', this)">PRIV</button>
+        <button class="filter-btn entity-c3" data-entity="c3" onclick="setEntity('c3', this)">C3</button>
+        <button class="filter-btn entity-c4" data-entity="c4" onclick="setEntity('c4', this)">C4</button>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Zeitraum</span>
+        <button class="filter-btn active" data-period="all" onclick="setPeriod('all', this)">Alles</button>
+        <button class="filter-btn" data-period="2026-04" onclick="setPeriod('2026-04', this)">Apr 26</button>
+        <button class="filter-btn" data-period="2026-03" onclick="setPeriod('2026-03', this)">Mär 26</button>
+        <button class="filter-btn" data-period="2026-02" onclick="setPeriod('2026-02', this)">Feb 26</button>
+        <button class="filter-btn" data-period="2026-01" onclick="setPeriod('2026-01', this)">Jan 26</button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: ÜBERSICHT
+    ════════════════════════════════════════════════ -->
+    <div class="page active" id="page-uebersicht">
+      <div class="page-header">
+        <h1>📊 Übersicht</h1>
+        <p>Monitoring Dashboard — TGV Financial OS</p>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="spinner-wrap"><div class="spinner"></div> Lade KPIs…</div>
+      </div>
+
+      <!-- SYSTEM STATUS -->
+      <div class="card">
+        <div class="card-head"><h2>🔧 System Status — n8n Workflows</h2></div>
+        <div class="card-body">
+          <div class="wf-status-grid">
+            <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">WF A — IMAP Scanner</div>
+                <div class="wf-detail">v11.8 · Schedule 15min</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">WF B — Drive Scanner</div>
+                <div class="wf-detail">V3 · h10xxRpvo4V9BUja · aktiv seit 18.04.2026</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">WF E — Buchhalter-Versand</div>
+                <div class="wf-detail">v1.4 · 1. des Monats 08:00</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">🔵</div>
+              <div class="wf-info">
+                <div class="wf-name">WF F — Contract Agent</div>
+                <div class="wf-detail">Nächste Phase</div>
+                <div class="wf-status wf-status-blu">IN ENTWICKLUNG</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LETZTE EINGÄNGE -->
+      <div class="card">
+        <div class="card-head"><h2>📨 Letzte Eingänge</h2></div>
+        <div id="letzte-eingang-wrap">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: INBOX
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-inbox">
+      <div class="page-header">
+        <h1>📥 Inbox — Human in the Loop</h1>
+        <p>Dokumente und Transaktionen die Freigabe benötigen</p>
+      </div>
+
+      <!-- INBOX TABS -->
+      <div class="inbox-tabs">
+        <button class="inbox-tab active" id="inbox-tab-docs" onclick="showInboxTab('docs', this)">
+          📄 Dokumente
+          <span class="inbox-tab-badge" id="inbox-docs-badge" style="display:none">0</span>
+        </button>
+        <button class="inbox-tab" id="inbox-tab-txn" onclick="showInboxTab('txn', this)">
+          💶 Transaktionen Review
+          <span class="inbox-tab-badge" id="inbox-txn-badge" style="display:none">0</span>
+        </button>
+      </div>
+
+      <!-- TAB: DOKUMENTE -->
+      <div class="inbox-panel active" id="inbox-panel-docs">
+        <div id="inbox-content">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>
+        </div>
+      </div>
+
+      <!-- TAB: TRANSAKTIONEN REVIEW -->
+      <div class="inbox-panel" id="inbox-panel-txn">
+        <div id="txn-review-content">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-finanzen">
+      <div class="page-header">
+        <h1>💶 Finanzen</h1>
+        <p>Transaktionen, Kategorien, Cashflow</p>
+      </div>
+
+      <div class="fin-tabs">
+        <button class="fin-tab active" onclick="showFinTab('drilldown', this)">L1 / L2 / L3 Kategorien</button>
+        <button class="fin-tab" onclick="showFinTab('cashflow', this)">Cashflow</button>
+        <button class="fin-tab" onclick="showFinTab('transaktionen', this)">Transaktionen</button>
+        <button class="fin-tab" onclick="showFinTab('dokumente-fin', this)">Dokumente</button>
+      </div>
+
+      <!-- DRILLDOWN -->
+      <div class="fin-panel active" id="fin-drilldown">
+        <div id="drilldown-wrap">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>
+        </div>
+        <div id="drilldown-detail"></div>
+      </div>
+
+      <!-- CASHFLOW -->
+      <div class="fin-panel" id="fin-cashflow">
+        <div id="cashflow-wrap">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Cashflow-Daten…</div>
+        </div>
+      </div>
+
+      <!-- TRANSAKTIONEN -->
+      <div class="fin-panel" id="fin-transaktionen">
+        <div class="card">
+          <div class="card-head"><h2>📊 Transaktionen</h2></div>
+          <div id="txn-filter-row" class="filter-row"></div>
+          <div class="card-body no-pad">
+            <div id="txn-table-wrap">
+              <div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOKUMENTE FIN -->
+      <div class="fin-panel" id="fin-dokumente-fin">
+        <div class="card">
+          <div class="card-head"><h2>📄 Dokumente 2026</h2></div>
+          <div id="docs-fin-filter-row" class="filter-row"></div>
+          <div class="card-body no-pad">
+            <div id="docs-fin-table-wrap">
+              <div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: VERTRÄGE
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-vertraege">
+      <div class="page-header">
+        <h1>📄 Verträge</h1>
+        <p>Aktive Verträge und Abonnements — WF F Contract Agent</p>
+      </div>
+      <div id="vertraege-content">
+        <div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: PROJEKTE
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-projekte">
+      <div class="page-header">
+        <h1>📋 Projekte</h1>
+        <p>Aktive TGV-Projekte</p>
+      </div>
+      <div id="projekte-content">
+        <div class="spinner-wrap"><div class="spinner"></div> Lade Projekte…</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: SYSTEM
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-system">
+      <div class="page-header">
+        <h1>⚙️ System</h1>
+        <p>Migrationen, Workflows, Datenbankstatus</p>
+      </div>
+
+      <!-- MIGRATIONS -->
+      <div class="card">
+        <div class="card-head"><h2>🗄️ Datenbank-Migrationen</h2></div>
+        <div class="card-body no-pad">
+          <div class="mig-table" id="mig-table">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- DB TABLE SIZES -->
+      <div class="card">
+        <div class="card-head"><h2>📊 Tabellen-Statistik</h2></div>
+        <div class="card-body">
+          <div id="db-stats-wrap">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Statistiken…</div>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn-sm btn-open" onclick="runHealthCheck()" style="font-size:12px;padding:7px 16px">
+              ⚡ Health Check ausführen
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKFLOW IDs -->
+      <div class="card">
+        <div class="card-head"><h2>🔗 n8n Workflow IDs</h2></div>
+        <div class="card-body">
+          <table style="font-size:12px">
+            <thead>
+              <tr><th>Workflow</th><th>Version</th><th>Trigger</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>WF A — IMAP Scanner + Dokument-KI</td><td>v11.8</td><td>Schedule 15min</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF B — Google Drive Scanner Intake</td><td>V3 · h10xxRpvo4V9BUja</td><td>Schedule 15min</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF E — Buchhalter-Versand</td><td>v1.4</td><td>1. des Monats 08:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF F — Contract Agent</td><td>—</td><td>—</td><td><span class="pill pill-inbox">In Entwicklung</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#main-content -->
+</div><!-- /#layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════
+const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnY2Rsb3pzdnloaHZpcHlseGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwOTA5ODAsImV4cCI6MjA4OTY2Njk4MH0.kDhUBdwJC1RxS9ii2jFg1AIuVWMAW2SyU580pLHxOiY';
+const SUPA_REST = `${SUPA_URL}/rest/v1`;
+const SUPA_HEADERS = {
+  'apikey': SUPA_KEY,
+  'Authorization': `Bearer ${SUPA_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation',
+  'Range-Unit': 'items'
+};
+
+// ═══════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════════════
+let gEntity = 'all';
+let gPeriod = 'all';
+let gTxns = [];
+let gDocs = [];
+let gFinLoaded = false;
+
+// Sort state for tables
+let txnSort = { col: 'booking_date', dir: 'desc' };
+let docSort = { col: 'created_at', dir: 'desc' };
+
+// Drilldown state
+let ddL1 = null, ddL2 = null, ddL3 = null;
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const eur = v => {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '—';
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n);
+};
+
+const fmtDate = d => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+};
+
+const fmtDateLong = d => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const mapEntity = raw => {
+  if (!raw) return '';
+  const r = raw.toLowerCase();
+  if (r.includes('c4') || r.includes('convis-sarl') || r === 'c4-convis-sarl') return 'c4';
+  if (r.includes('c3') || r.includes('convis-gmbh') || r === 'c3-convis-gmbh') return 'c3';
+  if (r === 'privat' || r === 'priv' || r === 'privat') return 'priv';
+  return r;
+};
+
+const entityBadge = raw => {
+  const e = mapEntity(raw);
+  const cls = e === 'priv' ? 'badge-priv' : e === 'c3' ? 'badge-c3' : e === 'c4' ? 'badge-c4' : 'badge-other';
+  const label = e === 'priv' ? 'PRIV' : e === 'c3' ? 'C3' : e === 'c4' ? 'C4' : (raw || '—').toUpperCase();
+  return `<span class="badge ${cls}">${label}</span>`;
+};
+
+const statusPill = st => {
+  if (!st) return '<span class="pill pill-unknown">—</span>';
+  const cls = 'pill pill-' + st.toLowerCase().replace(/[^a-z_]/g, '');
+  return `<span class="${cls}">${st}</span>`;
+};
+
+const isTestData = row => {
+  const fields = [row.provider, row.subject, row.original_filename, row.counterparty_raw, row.merchant_normalized];
+  return fields.some(f => f && f.includes('TEST_WF_B'));
+};
+
+const entityMatchesFilter = raw => {
+  if (gEntity === 'all') return true;
+  const e = mapEntity(raw);
+  return e === gEntity;
+};
+
+const periodMatchesFilter = dateStr => {
+  if (gPeriod === 'all') return true;
+  if (!dateStr) return false;
+  return dateStr.startsWith(gPeriod);
+};
+
+const escHtml = s => {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+};
+
+// ═══════════════════════════════════════════════════════
+//  SUPABASE FETCH
+// ═══════════════════════════════════════════════════════
+async function supa(path) {
+  const url = `${SUPA_REST}/${path}`;
+  const res = await fetch(url, { headers: SUPA_HEADERS });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+async function supaCount(table, filter) {
+  const q = filter ? `${table}?${filter}&select=id` : `${table}?select=id`;
+  const url = `${SUPA_REST}/${q}`;
+  const res = await fetch(url, {
+    headers: { ...SUPA_HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
+  });
+  const ct = res.headers.get('Content-Range');
+  if (ct) {
+    const m = ct.match(/\/(\d+)$/);
+    if (m) return parseInt(m[1]);
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data.length : 0;
+}
+
+async function supaPatch(table, filter, body) {
+  const url = `${SUPA_REST}/${table}?${filter}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: SUPA_HEADERS,
+    body: JSON.stringify(body)
+  });
+  return res.ok;
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIDEBAR & NAVIGATION
+// ═══════════════════════════════════════════════════════
+let sidebarCollapsed = false;
+
+function toggleSidebar() {
+  sidebarCollapsed = !sidebarCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+  document.getElementById('main-content').classList.toggle('sidebar-collapsed', sidebarCollapsed);
+}
+
+function showPage(pageId, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  if (btn) btn.classList.add('active');
+
+  // Lazy load
+  if (pageId === 'uebersicht') loadUebersicht();
+  if (pageId === 'inbox') loadInbox();
+  if (pageId === 'finanzen') loadFinanzen();
+  if (pageId === 'vertraege') loadVertraege();
+  if (pageId === 'projekte') loadProjekte();
+  if (pageId === 'system') loadSystem();
+}
+
+// ═══════════════════════════════════════════════════════
+//  ENTITY + PERIOD FILTER
+// ═══════════════════════════════════════════════════════
+function setEntity(val, btn) {
+  gEntity = val;
+  document.querySelectorAll('[data-entity]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshCurrentPage();
+}
+
+function setPeriod(val, btn) {
+  gPeriod = val;
+  document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshCurrentPage();
+}
+
+function refreshCurrentPage() {
+  const active = document.querySelector('.page.active');
+  if (!active) return;
+  const id = active.id.replace('page-', '');
+  if (id === 'uebersicht') loadUebersicht();
+  if (id === 'inbox') {
+    loadInbox();
+    if (typeof currentInboxTab !== 'undefined' && currentInboxTab === 'txn') loadTxnReview();
+  }
+  if (id === 'finanzen') refreshFinanzen();
+  if (id === 'vertraege') loadVertraege();
+  if (id === 'projekte') loadProjekte();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FIN TABS
+// ═══════════════════════════════════════════════════════
+function showFinTab(tabId, btn) {
+  document.querySelectorAll('.fin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('fin-' + tabId).classList.add('active');
+  if (tabId === 'transaktionen') renderTxnTable();
+  if (tabId === 'dokumente-fin') renderDocsFinTable();
+  if (tabId === 'drilldown') renderDrilldown();
+  if (tabId === 'cashflow') renderCashflow();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: ÜBERSICHT
+// ═══════════════════════════════════════════════════════
+async function loadUebersicht() {
+  loadKPIs();
+  loadLetzteEingaenge();
+}
+
+async function loadKPIs() {
+  const grid = document.getElementById('kpi-grid');
+  grid.innerHTML = `<div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div> Lade KPIs…</div>`;
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const d7 = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const d30 = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+    const [cToday, c7d, c30d, cTxn, cPending, cContracts] = await Promise.allSettled([
+      supaCount('documents', `created_at=gte.${today}`),
+      supaCount('documents', `created_at=gte.${d7}`),
+      supaCount('documents', `created_at=gte.${d30}`),
+      supaCount('txn_master'),
+      supaCount('documents', `status=in.(inbox,pending_review)`),
+      supaCount('prf_contracts', `active=eq.true`)
+    ]);
+
+    const val = r => r.status === 'fulfilled' ? r.value : '?';
+
+    // Update inbox badge
+    const pendingCount = val(cPending);
+    const badgeEl = document.getElementById('inbox-badge');
+    if (pendingCount > 0) {
+      badgeEl.textContent = pendingCount;
+      badgeEl.style.display = 'inline-block';
+    } else {
+      badgeEl.style.display = 'none';
+    }
+
+    grid.innerHTML = `
+      <div class="kpi kpi-blu">
+        <div class="kpi-lbl">Dokumente Heute</div>
+        <div class="kpi-val">${val(cToday)}</div>
+        <div class="kpi-sub">Neue Eingänge</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Dokumente 7 Tage</div>
+        <div class="kpi-val">${val(c7d)}</div>
+        <div class="kpi-sub">Letzte 7 Tage</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Dokumente 30 Tage</div>
+        <div class="kpi-val">${val(c30d)}</div>
+        <div class="kpi-sub">Letzte 30 Tage</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Transaktionen</div>
+        <div class="kpi-val">${val(cTxn)}</div>
+        <div class="kpi-sub">txn_master gesamt</div>
+      </div>
+      <div class="kpi ${pendingCount > 0 ? 'kpi-warn' : 'kpi-ok'}">
+        <div class="kpi-lbl">Pending Freigabe</div>
+        <div class="kpi-val">${pendingCount}</div>
+        <div class="kpi-sub">${pendingCount > 0 ? '→ Inbox prüfen' : 'Alles freigegeben'}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Verträge Aktiv</div>
+        <div class="kpi-val">${val(cContracts)}</div>
+        <div class="kpi-sub">prf_contracts</div>
+      </div>
+    `;
+  } catch (e) {
+    grid.innerHTML = `<div class="alert alert-err" style="grid-column:1/-1">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
+  }
+}
+
+async function loadLetzteEingaenge() {
+  const wrap = document.getElementById('letzte-eingang-wrap');
+  try {
+    let q = `documents?select=created_at,provider,entity,status,doc_type,original_filename&order=created_at.desc&limit=10`;
+    const data = await supa(q);
+    const rows = data.filter(r => !isTestData(r));
+
+    if (!rows.length) {
+      wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>Keine Dokumente gefunden</p></div>`;
+      return;
+    }
+
+    let html = `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Datum</th><th>Anbieter / Dateiname</th><th>Entität</th><th>Typ</th><th>Status</th>
+      </tr></thead><tbody>`;
+    for (const r of rows) {
+      const name = escHtml(r.provider || r.original_filename || '—');
+      html += `<tr>
+        <td>${fmtDate(r.created_at)}</td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</td>
+        <td>${entityBadge(r.entity)}</td>
+        <td>${escHtml(r.doc_type || '—')}</td>
+        <td>${statusPill(r.status)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = `<div class="card-body"><div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: INBOX
+// ═══════════════════════════════════════════════════════
+async function loadInbox() {
+  const wrap = document.getElementById('inbox-content');
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>`;
+  try {
+    let q = `documents?select=id,created_at,provider,sender,entity,doc_type,amount,currency,status,drive_file_id,original_filename&status=in.(inbox,pending_review)&order=created_at.desc&limit=50`;
+    const data = await supa(q);
+    let rows = data.filter(r => !isTestData(r));
+
+    if (gEntity !== 'all') {
+      rows = rows.filter(r => mapEntity(r.entity) === gEntity);
+    }
+
+    if (!rows.length) {
+      wrap.innerHTML = `<div class="alert alert-ok">✅ Inbox ist leer — alles freigegeben</div>`;
+      document.getElementById('inbox-badge').style.display = 'none';
+      return;
+    }
+
+    const badgeEl = document.getElementById('inbox-badge');
+    badgeEl.textContent = rows.length;
+    badgeEl.style.display = 'inline-block';
+
+    // Update docs tab badge
+    const docsBadge = document.getElementById('inbox-docs-badge');
+    if (docsBadge) {
+      docsBadge.textContent = rows.length;
+      docsBadge.style.display = rows.length > 0 ? 'inline-block' : 'none';
+    }
+
+    let html = `<div class="alert alert-info">📥 ${rows.length} Dokument${rows.length !== 1 ? 'e' : ''} warten auf Freigabe</div>`;
+    for (const r of rows) {
+      const name = escHtml(r.provider || r.sender || r.original_filename || '—');
+      const amt = r.amount ? eur(r.amount) : '—';
+      const supaLink = `${SUPA_URL}/project/egcdlozsvyhhvipylxky/editor/table?schema=public&table=documents&filter=id%3Deq.${r.id}`;
+
+      html += `<div class="inbox-item" id="inbox-item-${r.id}">
+        <div class="inbox-doc-icon">📄</div>
+        <div class="inbox-info">
+          <div class="inbox-provider">${name}</div>
+          <div class="inbox-meta">
+            <span>${fmtDateLong(r.created_at)}</span>
+            <span>${entityBadge(r.entity)}</span>
+            <span>${escHtml(r.doc_type || '—')}</span>
+            ${statusPill(r.status)}
+          </div>
+        </div>
+        <div class="inbox-amount">${amt}</div>
+        <div class="inbox-actions">
+          <button class="btn-sm btn-approve" onclick="approveDoc('${r.id}')">✅ Freigeben</button>
+          <a href="${supaLink}" target="_blank" class="btn-sm btn-open">→ Supabase</a>
+          <button class="btn-sm btn-reject" onclick="rejectDoc('${r.id}')">🗑 Ablehnen</button>
+        </div>
+      </div>`;
+    }
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
+  }
+}
+
+async function approveDoc(id) {
+  const item = document.getElementById('inbox-item-' + id);
+  if (!item) return;
+  const ok = await supaPatch('documents', `id=eq.${id}`, { status: 'approved' });
+  if (ok) {
+    item.style.transition = 'opacity 0.3s';
+    item.style.opacity = '0';
+    setTimeout(() => { item.remove(); checkInboxEmpty(); }, 300);
+  } else {
+    alert('Freigabe fehlgeschlagen — bitte manuell in Supabase bestätigen.');
+  }
+}
+
+async function rejectDoc(id) {
+  if (!confirm('Dokument ablehnen?')) return;
+  const item = document.getElementById('inbox-item-' + id);
+  if (!item) return;
+  const ok = await supaPatch('documents', `id=eq.${id}`, { status: 'rejected' });
+  if (ok) {
+    item.style.transition = 'opacity 0.3s';
+    item.style.opacity = '0';
+    setTimeout(() => { item.remove(); checkInboxEmpty(); }, 300);
+  }
+}
+
+function checkInboxEmpty() {
+  const wrap = document.getElementById('inbox-content');
+  if (!document.querySelector('.inbox-item')) {
+    wrap.innerHTML = `<div class="alert alert-ok">✅ Inbox ist leer — alles freigegeben</div>`;
+    document.getElementById('inbox-badge').style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: FINANZEN — Data Loading
+// ═══════════════════════════════════════════════════════
+async function loadFinanzen() {
+  if (!gFinLoaded) {
+    await Promise.all([loadTxns(), loadDocsFin()]);
+    gFinLoaded = true;
+    renderDrilldown();
+    renderTxnFilters();
+    renderDocsFinFilters();
+  } else {
+    refreshFinanzen();
+  }
+}
+
+function refreshFinanzen() {
+  const activePanel = document.querySelector('.fin-panel.active');
+  if (!activePanel) return;
+  const id = activePanel.id.replace('fin-', '');
+  if (id === 'drilldown') renderDrilldown();
+  if (id === 'cashflow') renderCashflow();
+  if (id === 'transaktionen') renderTxnTable();
+  if (id === 'dokumente-fin') renderDocsFinTable();
+}
+
+async function loadTxns() {
+  const wrap = document.getElementById('drilldown-wrap');
+  try {
+    const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,recurring_flag,anna_relevant,household_flag,insurance_flag&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
+    gTxns = data.filter(r => !isTestData(r));
+  } catch (e) {
+    document.getElementById('drilldown-wrap').innerHTML =
+      `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
+    gTxns = [];
+  }
+}
+
+async function loadDocsFin() {
+  try {
+    const data = await supa(`documents?select=id,created_at,invoice_date,provider,sender,entity,doc_type,amount,currency,status,drive_file_id&created_at=gte.2026-01-01T00:00:00Z&order=created_at.desc&limit=5000`);
+    gDocs = data.filter(r => !isTestData(r));
+  } catch (e) {
+    gDocs = [];
+  }
+}
+
+// ─── Filtered data helpers ───
+function filteredTxns() {
+  return gTxns.filter(r => {
+    if (gEntity !== 'all' && mapEntity(r.entity) !== gEntity) return false;
+    if (gPeriod !== 'all' && !periodMatchesFilter(r.booking_date)) return false;
+    return true;
+  });
+}
+
+function filteredDocs() {
+  return gDocs.filter(r => {
+    if (gEntity !== 'all' && mapEntity(r.entity) !== gEntity) return false;
+    if (gPeriod !== 'all' && !periodMatchesFilter(r.created_at)) return false;
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRILLDOWN L1/L2/L3
+// ═══════════════════════════════════════════════════════
+function renderDrilldown() {
+  const wrap = document.getElementById('drilldown-wrap');
+  const txns = filteredTxns();
+
+  if (!txns.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>Keine Transaktionen für diesen Filter</p></div>`;
+    return;
+  }
+
+  // Build hierarchy
+  const h = {};
+  for (const t of txns) {
+    const l1 = t.category_l1 || '(Unkategorisiert)';
+    const l2 = t.category_l2 || '(Unkategorisiert)';
+    const l3 = t.category_l3 || '(—)';
+    const amt = parseFloat(t.amount) || 0;
+    if (!h[l1]) h[l1] = { total: 0, count: 0, l2: {} };
+    h[l1].total += amt;
+    h[l1].count++;
+    if (!h[l1].l2[l2]) h[l1].l2[l2] = { total: 0, count: 0, l3: {} };
+    h[l1].l2[l2].total += amt;
+    h[l1].l2[l2].count++;
+    if (!h[l1].l2[l2].l3[l3]) h[l1].l2[l2].l3[l3] = { total: 0, count: 0 };
+    h[l1].l2[l2].l3[l3].total += amt;
+    h[l1].l2[l2].l3[l3].count++;
+  }
+
+  const l1Keys = Object.keys(h).sort((a,b) => Math.abs(h[b].total) - Math.abs(h[a].total));
+  const maxL1 = Math.max(...l1Keys.map(k => Math.abs(h[k].total)));
+
+  // L1
+  let l1Html = '';
+  for (const k of l1Keys) {
+    const pct = maxL1 > 0 ? (Math.abs(h[k].total) / maxL1 * 100) : 0;
+    const active = k === ddL1 ? 'active' : '';
+    l1Html += `<div class="drilldown-item ${active}" onclick="selectDD1('${escAttr(k)}')">
+      <div style="flex:1;min-width:0">
+        <div class="di-name">${escHtml(k)}</div>
+        <div class="drilldown-bar-wrap"><div class="drilldown-bar" style="width:${pct.toFixed(1)}%"></div></div>
+      </div>
+      <div style="text-align:right">
+        <div class="di-val">${eur(h[k].total)}</div>
+        <div class="di-count">${h[k].count} Txn</div>
+      </div>
+    </div>`;
+  }
+
+  // L2
+  let l2Html = '';
+  if (ddL1 && h[ddL1]) {
+    const l2Keys = Object.keys(h[ddL1].l2).sort((a,b) => Math.abs(h[ddL1].l2[b].total) - Math.abs(h[ddL1].l2[a].total));
+    const maxL2 = Math.max(...l2Keys.map(k => Math.abs(h[ddL1].l2[k].total)));
+    for (const k of l2Keys) {
+      const pct = maxL2 > 0 ? (Math.abs(h[ddL1].l2[k].total) / maxL2 * 100) : 0;
+      const active = k === ddL2 ? 'active' : '';
+      l2Html += `<div class="drilldown-item ${active}" onclick="selectDD2('${escAttr(k)}')">
+        <div style="flex:1;min-width:0">
+          <div class="di-name">${escHtml(k)}</div>
+          <div class="drilldown-bar-wrap"><div class="drilldown-bar" style="width:${pct.toFixed(1)}%"></div></div>
+        </div>
+        <div style="text-align:right">
+          <div class="di-val">${eur(h[ddL1].l2[k].total)}</div>
+          <div class="di-count">${h[ddL1].l2[k].count}</div>
+        </div>
+      </div>`;
+    }
+  }
+
+  // L3
+  let l3Html = '';
+  if (ddL1 && ddL2 && h[ddL1] && h[ddL1].l2[ddL2]) {
+    const l3Keys = Object.keys(h[ddL1].l2[ddL2].l3).sort((a,b) => Math.abs(h[ddL1].l2[ddL2].l3[b].total) - Math.abs(h[ddL1].l2[ddL2].l3[a].total));
+    const maxL3 = Math.max(...l3Keys.map(k => Math.abs(h[ddL1].l2[ddL2].l3[k].total)));
+    for (const k of l3Keys) {
+      const pct = maxL3 > 0 ? (Math.abs(h[ddL1].l2[ddL2].l3[k].total) / maxL3 * 100) : 0;
+      const active = k === ddL3 ? 'active' : '';
+      l3Html += `<div class="drilldown-item ${active}" onclick="selectDD3('${escAttr(k)}')">
+        <div style="flex:1;min-width:0">
+          <div class="di-name">${escHtml(k)}</div>
+          <div class="drilldown-bar-wrap"><div class="drilldown-bar" style="width:${pct.toFixed(1)}%"></div></div>
+        </div>
+        <div style="text-align:right">
+          <div class="di-val">${eur(h[ddL1].l2[ddL2].l3[k].total)}</div>
+          <div class="di-count">${h[ddL1].l2[ddL2].l3[k].count}</div>
+        </div>
+      </div>`;
+    }
+  }
+
+  wrap.innerHTML = `
+    <div class="drilldown-grid">
+      <div class="drilldown-col">
+        <div class="drilldown-col-head">L1 — Hauptkategorie</div>
+        ${l1Html || '<div style="padding:16px;color:var(--tx2);font-size:12px">Keine Daten</div>'}
+      </div>
+      <div class="drilldown-col">
+        <div class="drilldown-col-head">L2 — Unterkategorie${ddL1 ? ' · ' + escHtml(ddL1) : ''}</div>
+        ${l2Html || '<div style="padding:16px;color:var(--tx2);font-size:12px">← L1 wählen</div>'}
+      </div>
+      <div class="drilldown-col">
+        <div class="drilldown-col-head">L3 — Detail${ddL2 ? ' · ' + escHtml(ddL2) : ''}</div>
+        ${l3Html || '<div style="padding:16px;color:var(--tx2);font-size:12px">← L2 wählen</div>'}
+      </div>
+    </div>
+  `;
+
+  renderDDDetail();
+}
+
+function escAttr(s) {
+  return String(s).replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+}
+
+function selectDD1(k) {
+  ddL1 = k; ddL2 = null; ddL3 = null;
+  renderDrilldown();
+}
+function selectDD2(k) {
+  ddL2 = k; ddL3 = null;
+  renderDrilldown();
+}
+function selectDD3(k) {
+  ddL3 = k;
+  renderDrilldown();
+}
+
+function renderDDDetail() {
+  const detailWrap = document.getElementById('drilldown-detail');
+  if (!ddL3) { detailWrap.innerHTML = ''; return; }
+  const txns = filteredTxns().filter(t =>
+    (t.category_l1 || '(Unkategorisiert)') === ddL1 &&
+    (t.category_l2 || '(Unkategorisiert)') === ddL2 &&
+    (t.category_l3 || '(—)') === ddL3
+  );
+  if (!txns.length) { detailWrap.innerHTML = ''; return; }
+  const total = txns.reduce((s,t) => s + (parseFloat(t.amount)||0), 0);
+
+  let html = `<div class="card">
+    <div class="card-head"><h2>📋 ${escHtml(ddL3)} — ${txns.length} Transaktionen · ${eur(total)}</h2></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Datum</th><th>Buchungstext</th><th>Entität</th><th>Betrag</th><th>Flags</th></tr></thead>
+      <tbody>`;
+  for (const t of txns) {
+    const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
+    const amt = parseFloat(t.amount) || 0;
+    const dir = (t.direction || '').toUpperCase();
+    const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
+    const flags = [
+      t.recurring_flag ? '🔁' : '',
+      t.anna_relevant ? '👩' : '',
+      t.household_flag ? '🏠' : '',
+      t.insurance_flag ? '🛡' : ''
+    ].filter(Boolean).join(' ');
+
+    html += `<tr>
+      <td>${fmtDate(t.booking_date)}</td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(counterparty)}</td>
+      <td>${entityBadge(t.entity)}</td>
+      <td class="${amtCls}">${dir === 'OUT' ? '−' : '+'}${eur(Math.abs(amt))}</td>
+      <td>${flags}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  const tTotal = txns.reduce((s,t) => s + (parseFloat(t.amount)||0), 0);
+  html += `<div class="tbl-footer"><span>${txns.length} Einträge</span><span>Summe: ${eur(tTotal)}</span></div>`;
+  html += '</div>';
+  detailWrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CASHFLOW CHART
+// ═══════════════════════════════════════════════════════
+function renderCashflow() {
+  const wrap = document.getElementById('cashflow-wrap');
+  const txns = filteredTxns();
+
+  if (!txns.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><p>Keine Transaktionen für diesen Filter</p></div>`;
+    return;
+  }
+
+  // Group by month + direction
+  const months = {};
+  const entities = new Set();
+  for (const t of txns) {
+    if (!t.booking_date) continue;
+    const mo = t.booking_date.substring(0, 7);
+    if (!months[mo]) months[mo] = { IN: 0, OUT: 0, byEntity: {} };
+    const dir = (t.direction || '').toUpperCase();
+    const amt = Math.abs(parseFloat(t.amount) || 0);
+    if (dir === 'IN') months[mo].IN += amt;
+    if (dir === 'OUT') months[mo].OUT += amt;
+    const ent = mapEntity(t.entity);
+    entities.add(ent);
+    if (!months[mo].byEntity[ent]) months[mo].byEntity[ent] = 0;
+    months[mo].byEntity[ent] += (dir === 'IN' ? amt : -amt);
+  }
+
+  const moKeys = Object.keys(months).sort();
+  if (!moKeys.length) {
+    wrap.innerHTML = `<div class="empty-state"><p>Keine Monatsdaten</p></div>`;
+    return;
+  }
+
+  const maxAmtBar = Math.max(...moKeys.map(m => Math.max(months[m].IN, months[m].OUT)), 1);
+
+  // Chart
+  let chartHtml = '<div class="cf-chart-wrap"><div class="cf-chart">';
+  for (const mo of moKeys) {
+    const mData = months[mo];
+    const inH = Math.round((mData.IN / maxAmtBar) * 140);
+    const outH = Math.round((mData.OUT / maxAmtBar) * 140);
+    const label = mo.replace('2026-', '') + '/26';
+    chartHtml += `<div class="cf-month">
+      <div class="cf-bars" style="height:140px">
+        <div class="cf-bar cf-bar-in" style="height:${inH}px" title="Einnahmen: ${eur(mData.IN)}"></div>
+        <div class="cf-bar cf-bar-out" style="height:${outH}px" title="Ausgaben: ${eur(mData.OUT)}"></div>
+      </div>
+      <div class="cf-month-label">${label}</div>
+    </div>`;
+  }
+  chartHtml += '</div></div>';
+
+  // Legend
+  chartHtml += `<div style="display:flex;gap:16px;margin:8px 0 16px;font-size:11px">
+    <span><span style="display:inline-block;width:10px;height:10px;background:var(--teal);border-radius:2px;margin-right:4px"></span>Einnahmen</span>
+    <span><span style="display:inline-block;width:10px;height:10px;background:var(--red);opacity:0.7;border-radius:2px;margin-right:4px"></span>Ausgaben</span>
+  </div>`;
+
+  // Table
+  const entCols = [...entities].sort();
+  let tableHtml = `<div class="card"><div class="card-head"><h2>📅 Cashflow Tabelle</h2></div><div class="tbl-wrap"><table>
+    <thead><tr>
+      <th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th>
+      ${entCols.map(e => `<th>${e.toUpperCase()}</th>`).join('')}
+    </tr></thead><tbody>`;
+
+  let totIn = 0, totOut = 0;
+  const entTotals = {};
+  entCols.forEach(e => entTotals[e] = 0);
+
+  for (const mo of moKeys) {
+    const mData = months[mo];
+    const net = mData.IN - mData.OUT;
+    totIn += mData.IN;
+    totOut += mData.OUT;
+    entCols.forEach(e => { entTotals[e] += (mData.byEntity[e] || 0); });
+    const netCls = net >= 0 ? 'amt-in' : 'amt-out';
+    const moLabel = new Date(mo + '-01').toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
+    tableHtml += `<tr>
+      <td><strong>${moLabel}</strong></td>
+      <td class="amt-in">${eur(mData.IN)}</td>
+      <td class="amt-out">${eur(mData.OUT)}</td>
+      <td class="${netCls}">${eur(net)}</td>
+      ${entCols.map(e => {
+        const v = mData.byEntity[e] || 0;
+        return `<td class="${v >= 0 ? 'amt-in' : 'amt-out'}">${eur(v)}</td>`;
+      }).join('')}
+    </tr>`;
+  }
+  const totNet = totIn - totOut;
+  tableHtml += `<tr style="font-weight:700;background:var(--s1)">
+    <td>GESAMT</td>
+    <td class="amt-in">${eur(totIn)}</td>
+    <td class="amt-out">${eur(totOut)}</td>
+    <td class="${totNet >= 0 ? 'amt-in' : 'amt-out'}">${eur(totNet)}</td>
+    ${entCols.map(e => `<td class="${entTotals[e] >= 0 ? 'amt-in' : 'amt-out'}">${eur(entTotals[e])}</td>`).join('')}
+  </tr>`;
+  tableHtml += '</tbody></table></div></div>';
+
+  wrap.innerHTML = `<div class="card"><div class="card-head"><h2>📊 Cashflow 2026</h2></div><div class="card-body">${chartHtml}</div></div>${tableHtml}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TRANSACTION TABLE
+// ═══════════════════════════════════════════════════════
+let txnFilterState = { entity: 'all', l1: '', l2: '', l3: '', flag: '', search: '' };
+
+function renderTxnFilters() {
+  const row = document.getElementById('txn-filter-row');
+  const txns = gTxns;
+  const l1s = [...new Set(txns.map(t => t.category_l1).filter(Boolean))].sort();
+
+  row.innerHTML = `
+    <span class="filter-label">Filter</span>
+    <select id="txn-f-entity" onchange="setTxnFilter('entity', this.value)">
+      <option value="">Alle Entitäten</option>
+      <option value="priv">PRIV</option>
+      <option value="c3">C3</option>
+      <option value="c4">C4</option>
+    </select>
+    <select id="txn-f-l1" onchange="setTxnFilter('l1', this.value); updateTxnL2()">
+      <option value="">Alle L1</option>
+      ${l1s.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('')}
+    </select>
+    <select id="txn-f-l2" onchange="setTxnFilter('l2', this.value)">
+      <option value="">Alle L2</option>
+    </select>
+    <select id="txn-f-flag" onchange="setTxnFilter('flag', this.value)">
+      <option value="">Alle Flags</option>
+      <option value="recurring">🔁 Wiederkehrend</option>
+      <option value="anna">👩 Anna</option>
+      <option value="household">🏠 Haushalt</option>
+      <option value="insurance">🛡 Versicherung</option>
+    </select>
+    <input type="text" id="txn-f-search" placeholder="🔍 Suche…" oninput="setTxnFilter('search', this.value)">
+  `;
+}
+
+function updateTxnL2() {
+  const l1 = txnFilterState.l1;
+  const sel = document.getElementById('txn-f-l2');
+  if (!sel) return;
+  const l2s = l1 ? [...new Set(gTxns.filter(t => t.category_l1 === l1).map(t => t.category_l2).filter(Boolean))].sort() : [];
+  sel.innerHTML = '<option value="">Alle L2</option>' + l2s.map(l => `<option>${escHtml(l)}</option>`).join('');
+  txnFilterState.l2 = '';
+  renderTxnTable();
+}
+
+function setTxnFilter(key, val) {
+  txnFilterState[key] = val;
+  renderTxnTable();
+}
+
+function renderTxnTable() {
+  const wrap = document.getElementById('txn-table-wrap');
+  let rows = filteredTxns();
+
+  // Apply panel filters
+  const f = txnFilterState;
+  if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
+  if (f.l1) rows = rows.filter(r => r.category_l1 === f.l1);
+  if (f.l2) rows = rows.filter(r => r.category_l2 === f.l2);
+  if (f.l3) rows = rows.filter(r => r.category_l3 === f.l3);
+  if (f.flag === 'recurring') rows = rows.filter(r => r.recurring_flag);
+  if (f.flag === 'anna') rows = rows.filter(r => r.anna_relevant);
+  if (f.flag === 'household') rows = rows.filter(r => r.household_flag);
+  if (f.flag === 'insurance') rows = rows.filter(r => r.insurance_flag);
+  if (f.search) {
+    const s = f.search.toLowerCase();
+    rows = rows.filter(r =>
+      (r.counterparty_raw && r.counterparty_raw.toLowerCase().includes(s)) ||
+      (r.merchant_normalized && r.merchant_normalized.toLowerCase().includes(s)) ||
+      (r.purpose && r.purpose.toLowerCase().includes(s))
+    );
+  }
+
+  // Sort
+  rows = [...rows].sort((a, b) => {
+    let va = a[txnSort.col], vb = b[txnSort.col];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return txnSort.dir === 'asc' ? -1 : 1;
+    if (va > vb) return txnSort.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const total = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+
+  const sortArrow = col => txnSort.col === col ? (txnSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const thClick = col => `onclick="sortTxn('${col}')"`;
+
+  let html = `<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th ${thClick('booking_date')}>Datum${sortArrow('booking_date')}</th>
+      <th ${thClick('merchant_normalized')}>Buchungstext${sortArrow('merchant_normalized')}</th>
+      <th ${thClick('entity')}>Entität${sortArrow('entity')}</th>
+      <th ${thClick('category_l1')}>L1${sortArrow('category_l1')}</th>
+      <th ${thClick('category_l2')}>L2${sortArrow('category_l2')}</th>
+      <th ${thClick('amount')}>Betrag${sortArrow('amount')}</th>
+      <th>Flags</th>
+    </tr></thead><tbody>`;
+
+  const shown = rows.slice(0, 500);
+  for (const t of shown) {
+    const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
+    const amt = parseFloat(t.amount) || 0;
+    const dir = (t.direction || '').toUpperCase();
+    const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
+    const flags = [
+      t.recurring_flag ? '🔁' : '',
+      t.anna_relevant ? '👩' : '',
+      t.household_flag ? '🏠' : '',
+      t.insurance_flag ? '🛡' : ''
+    ].filter(Boolean).join(' ');
+
+    html += `<tr>
+      <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
+      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose || '')}">${escHtml(counterparty)}</td>
+      <td>${entityBadge(t.entity)}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.category_l1 || '—')}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.category_l2 || '—')}</td>
+      <td class="${amtCls}" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
+      <td>${flags}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <div class="tbl-footer">
+      <span>${rows.length} Transaktionen${rows.length > 500 ? ' (erste 500 angezeigt)' : ''}</span>
+      <span>Summe: ${eur(total)}</span>
+    </div>`;
+
+  wrap.innerHTML = html;
+}
+
+function sortTxn(col) {
+  if (txnSort.col === col) {
+    txnSort.dir = txnSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    txnSort = { col, dir: 'desc' };
+  }
+  renderTxnTable();
+}
+
+// ═══════════════════════════════════════════════════════
+//  DOCUMENTS TABLE (Finanzen)
+// ═══════════════════════════════════════════════════════
+let docFinFilter = { entity: '', doc_type: '', status: '' };
+
+function renderDocsFinFilters() {
+  const row = document.getElementById('docs-fin-filter-row');
+  const docs = gDocs;
+  const docTypes = [...new Set(docs.map(d => d.doc_type).filter(Boolean))].sort();
+  const statuses = [...new Set(docs.map(d => d.status).filter(Boolean))].sort();
+
+  row.innerHTML = `
+    <span class="filter-label">Filter</span>
+    <select onchange="setDocFinFilter('entity', this.value)">
+      <option value="">Alle Entitäten</option>
+      <option value="priv">PRIV</option>
+      <option value="c3">C3</option>
+      <option value="c4">C4</option>
+    </select>
+    <select onchange="setDocFinFilter('doc_type', this.value)">
+      <option value="">Alle Typen</option>
+      ${docTypes.map(t => `<option>${escHtml(t)}</option>`).join('')}
+    </select>
+    <select onchange="setDocFinFilter('status', this.value)">
+      <option value="">Alle Status</option>
+      ${statuses.map(s => `<option>${escHtml(s)}</option>`).join('')}
+    </select>
+  `;
+}
+
+function setDocFinFilter(key, val) {
+  docFinFilter[key] = val;
+  renderDocsFinTable();
+}
+
+function renderDocsFinTable() {
+  const wrap = document.getElementById('docs-fin-table-wrap');
+  let rows = filteredDocs();
+  const f = docFinFilter;
+  if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
+  if (f.doc_type) rows = rows.filter(r => r.doc_type === f.doc_type);
+  if (f.status) rows = rows.filter(r => r.status === f.status);
+
+  // Sort
+  rows = [...rows].sort((a, b) => {
+    let va = a[docSort.col], vb = b[docSort.col];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return docSort.dir === 'asc' ? -1 : 1;
+    if (va > vb) return docSort.dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const total = rows.filter(r => r.amount).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+
+  let html = `<div class="tbl-wrap"><table>
+    <thead><tr>
+      <th onclick="sortDocFin('created_at')">Datum</th>
+      <th onclick="sortDocFin('provider')">Anbieter</th>
+      <th onclick="sortDocFin('entity')">Entität</th>
+      <th onclick="sortDocFin('doc_type')">Typ</th>
+      <th onclick="sortDocFin('amount')">Betrag</th>
+      <th onclick="sortDocFin('status')">Status</th>
+    </tr></thead><tbody>`;
+
+  for (const r of rows) {
+    const name = escHtml(r.provider || r.sender || '—');
+    const amt = r.amount ? eur(r.amount) : '—';
+    html += `<tr>
+      <td style="white-space:nowrap">${fmtDate(r.created_at)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</td>
+      <td>${entityBadge(r.entity)}</td>
+      <td>${escHtml(r.doc_type || '—')}</td>
+      <td style="white-space:nowrap">${amt}</td>
+      <td>${statusPill(r.status)}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <div class="tbl-footer">
+      <span>${rows.length} Dokumente</span>
+      <span>Summe: ${eur(total)}</span>
+    </div>`;
+
+  wrap.innerHTML = html;
+}
+
+function sortDocFin(col) {
+  if (docSort.col === col) {
+    docSort.dir = docSort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    docSort = { col, dir: 'desc' };
+  }
+  renderDocsFinTable();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: VERTRÄGE
+// ═══════════════════════════════════════════════════════
+async function loadVertraege() {
+  const wrap = document.getElementById('vertraege-content');
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
+  try {
+    let data = await supa(`prf_contracts?select=id,provider,contract_type,side,entity_key,amount,currency,frequency,contract_start_date,contract_end_date,notice_deadline,auto_renews,hosting_flag,context_summary&order=notice_deadline.asc.nullslast&limit=200`);
+
+    if (gEntity !== 'all') {
+      data = data.filter(r => mapEntity(r.entity_key) === gEntity);
+    }
+
+    if (!data.length) {
+      wrap.innerHTML = `<div class="alert alert-info">📄 Noch keine Verträge — WF F Contract Agent wird das befüllen</div>`;
+      return;
+    }
+
+    const today = new Date();
+    const d30 = new Date(today.getTime() + 30 * 86400000);
+    const d90 = new Date(today.getTime() + 90 * 86400000);
+
+    let html = `<div class="card"><div class="card-head"><h2>📄 Verträge (${data.length})</h2></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Anbieter</th><th>Typ</th><th>Entität</th><th>Betrag</th><th>Frequenz</th>
+          <th>Laufzeit</th><th>Kündigungsfrist</th><th>Auto-Verlängerung</th>
+        </tr></thead><tbody>`;
+
+    for (const c of data) {
+      let deadlineCell = '—';
+      if (c.notice_deadline) {
+        const dl = new Date(c.notice_deadline);
+        const label = fmtDate(c.notice_deadline);
+        if (dl < today) {
+          deadlineCell = `<span class="deadline-urgent" title="Abgelaufen">⚠️ ${label}</span>`;
+        } else if (dl < d30) {
+          deadlineCell = `<span class="deadline-urgent" title="< 30 Tage">🔴 ${label}</span>`;
+        } else if (dl < d90) {
+          deadlineCell = `<span class="deadline-soon" title="< 90 Tage">🟡 ${label}</span>`;
+        } else {
+          deadlineCell = label;
+        }
+      }
+
+      const laufzeit = [c.contract_start_date, c.contract_end_date].filter(Boolean).map(fmtDate).join(' – ') || '—';
+      const amt = c.amount ? eur(c.amount) : '—';
+
+      html += `<tr>
+        <td title="${escHtml(c.context_summary || '')}"><strong>${escHtml(c.provider || '—')}</strong></td>
+        <td>${escHtml(c.contract_type || '—')}</td>
+        <td>${entityBadge(c.entity_key)}</td>
+        <td style="white-space:nowrap">${amt}</td>
+        <td>${escHtml(c.frequency || '—')}</td>
+        <td style="white-space:nowrap;font-size:11px">${laufzeit}</td>
+        <td>${deadlineCell}</td>
+        <td>${c.auto_renews ? '✅' : '—'}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div></div>';
+    wrap.innerHTML = html;
+  } catch (e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: PROJEKTE
+// ═══════════════════════════════════════════════════════
+async function loadProjekte() {
+  const wrap = document.getElementById('projekte-content');
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Projekte…</div>`;
+  try {
+    let data = await supa(`prf_projects?select=id,project_code,name,entity_key,status_code,lifecycle_status,budget,tgv_tracked&tgv_tracked=eq.true&order=project_code`);
+
+    if (gEntity !== 'all') {
+      data = data.filter(r => mapEntity(r.entity_key) === gEntity);
+    }
+
+    if (!data.length) {
+      wrap.innerHTML = `<div class="alert alert-info">📋 Keine aktiven Projekte gefunden</div>`;
+      return;
+    }
+
+    let html = `<div class="proj-grid">`;
+    for (const p of data) {
+      const statusColor = p.lifecycle_status === 'active' ? 'var(--grn)' : p.lifecycle_status === 'planning' ? 'var(--amb)' : 'var(--tx2)';
+      html += `<div class="proj-card">
+        <div class="proj-card-head">
+          <span class="proj-code">${escHtml(p.project_code || '—')}</span>
+          ${entityBadge(p.entity_key)}
+        </div>
+        <div class="proj-name">${escHtml(p.name || '—')}</div>
+        <div class="proj-meta">
+          <span style="color:${statusColor};font-weight:600">${escHtml(p.lifecycle_status || p.status_code || '—')}</span>
+          ${p.budget ? `<span>Budget: ${eur(p.budget)}</span>` : ''}
+        </div>
+        <div id="proj-hours-${p.id}" style="margin-top:10px;font-size:11px;color:var(--tx2)">
+          Lade Stunden…
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+
+    // Load hours for each project
+    for (const p of data) {
+      loadProjectHours(p.id);
+    }
+  } catch (e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
+  }
+}
+
+async function loadProjectHours(projectId) {
+  const el = document.getElementById('proj-hours-' + projectId);
+  if (!el) return;
+  try {
+    const data = await supa(`hours_log?select=project_id,hours,billable&project_id=eq.${projectId}`);
+    if (!data.length) {
+      el.textContent = '0 h erfasst';
+      return;
+    }
+    const total = data.reduce((s, r) => s + (parseFloat(r.hours) || 0), 0);
+    const billable = data.filter(r => r.billable).reduce((s, r) => s + (parseFloat(r.hours) || 0), 0);
+    el.innerHTML = `<span>${total} h gesamt</span> · <span style="color:var(--grn)">${billable} h abrechenbar</span>`;
+  } catch (e) {
+    el.textContent = '—';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: SYSTEM
+// ═══════════════════════════════════════════════════════
+function loadSystem() {
+  renderMigrations();
+  loadDbStats();
+}
+
+function renderMigrations() {
+  const migrations = [
+    ['001', 'txn_master + documents base schema'],
+    ['002', 'kb_suppliers + supplier enrichment'],
+    ['003', 'BIC / entity mapping fix'],
+    ['004', 'Accounting views + RLS policies'],
+    ['005', 'supabase_migration_rules'],
+    ['006', 'project_id column (prf_projects)'],
+    ['007', 'agent_prompts + skill_definitions'],
+    ['008', 'rag.project_knowledge (pgvector)'],
+    ['009', 'prf_contracts contract agent'],
+    ['010', 'prf_projects lifecycle + budget'],
+    ['011', 'hours_log billable tracking'],
+    ['012', 'test_run + scope fields (18.04.2026)'],
+  ];
+
+  let html = '';
+  for (const [num, name] of migrations) {
+    html += `<div class="mig-row">
+      <span class="mig-num">${num}</span>
+      <span class="mig-name">${name}</span>
+      <span class="mig-status mig-ok">✅ Ausgeführt</span>
+    </div>`;
+  }
+  document.getElementById('mig-table').innerHTML = html;
+}
+
+async function loadDbStats() {
+  const wrap = document.getElementById('db-stats-wrap');
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Statistiken…</div>`;
+  const tables = [
+    ['documents', 'Dokumente', '📄'],
+    ['txn_master', 'Transaktionen', '💶'],
+    ['prf_contracts', 'Verträge', '📄'],
+    ['prf_projects', 'Projekte', '📋'],
+    ['kb_suppliers', 'Lieferanten-KB', '🏢'],
+    ['agent_prompts', 'Agent Prompts', '🤖'],
+    ['skill_definitions', 'Skills', '⚡'],
+    ['hours_log', 'Stunden-Log', '⏱'],
+  ];
+
+  const results = await Promise.allSettled(tables.map(([t]) => supaCount(t)));
+
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">`;
+  for (let i = 0; i < tables.length; i++) {
+    const [, label, icon] = tables[i];
+    const count = results[i].status === 'fulfilled' ? results[i].value : '⚠️';
+    html += `<div style="background:var(--s1);border-radius:6px;padding:12px;border:1px solid var(--s3)">
+      <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${icon} ${label}</div>
+      <div style="font-size:22px;font-weight:700;color:var(--navy);margin-top:4px">${count}</div>
+    </div>`;
+  }
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+//  HEALTH CHECK
+// ═══════════════════════════════════════════════════════
+async function runHealthCheck() {
+  const btn = document.getElementById('health-btn');
+  btn.textContent = '⏳ Prüfe…';
+  btn.disabled = true;
+
+  const checks = [
+    ['documents', 'Dokumente'],
+    ['txn_master', 'Transaktionen'],
+    ['prf_contracts', 'Verträge'],
+    ['prf_projects', 'Projekte'],
+    ['kb_suppliers', 'KB Lieferanten'],
+  ];
+
+  const results = await Promise.allSettled(checks.map(([t]) => supaCount(t)));
+  let allOk = true;
+  const lines = [];
+  for (let i = 0; i < checks.length; i++) {
+    const [, label] = checks[i];
+    if (results[i].status === 'fulfilled') {
+      lines.push(`✅ ${label}: ${results[i].value}`);
+    } else {
+      lines.push(`❌ ${label}: Fehler`);
+      allOk = false;
+    }
+  }
+
+  btn.textContent = allOk ? '✅ Health OK' : '⚠️ Fehler';
+  btn.disabled = false;
+  setTimeout(() => { btn.textContent = '⚡ Health Check'; }, 3000);
+  alert('TGV Health Check\n\n' + lines.join('\n'));
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  INBOX TABS
+// ═══════════════════════════════════════════════════════
+let currentInboxTab = 'docs';
+
+function showInboxTab(tab, btn) {
+  currentInboxTab = tab;
+  document.querySelectorAll('.inbox-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.inbox-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('inbox-panel-' + tab).classList.add('active');
+  if (tab === 'txn') loadTxnReview();
+}
+
+// ═══════════════════════════════════════════════════════
+//  PAGE: TRANSAKTIONEN REVIEW
+// ═══════════════════════════════════════════════════════
+let gTxnReview = [];
+let txnReviewConfFilter = 'all';
+
+function normConf(v) {
+  if (v === null || v === undefined) return null;
+  const n = parseFloat(v);
+  if (isNaN(n)) return null;
+  // Supabase speichert confidence_score als 0-1 oder 0-100 — normalisieren
+  if (n > 1) return n / 100;
+  return n;
+}
+
+function confClass(score) {
+  if (score === null) return 'red';
+  if (score >= 0.85) return 'grn';
+  if (score >= 0.70) return 'amb';
+  return 'red';
+}
+
+function confBar(score) {
+  const cls = confClass(score);
+  const pct = score !== null ? Math.round(score * 100) : 0;
+  return `<div class="conf-wrap">
+    <div class="conf-track"><div class="conf-fill conf-fill-${cls}" style="width:${pct}%"></div></div>
+    <span class="conf-num conf-num-${cls}">${score !== null ? pct + '%' : '—'}</span>
+  </div>`;
+}
+
+async function loadTxnReview() {
+  const wrap = document.getElementById('txn-review-content');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade ausstehende Transaktionen…</div>';
+  try {
+    const q = 'txn_master?select=id,booking_date,merchant_normalized,counterparty_raw,entity,amount,direction,category_l1,category_l2,confidence_score,review_status&review_status=eq.pending_review&order=confidence_score.desc.nullslast&limit=200';
+    const data = await supa(q);
+    gTxnReview = data.filter(r => !isTestData(r));
+
+    let rows = gTxnReview;
+    if (gEntity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === gEntity);
+
+    const badge = document.getElementById('inbox-txn-badge');
+    if (badge) {
+      badge.textContent = rows.length;
+      badge.style.display = rows.length > 0 ? 'inline-block' : 'none';
+    }
+
+    renderTxnReview();
+  } catch (e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
+  }
+}
+
+function renderTxnReview() {
+  const wrap = document.getElementById('txn-review-content');
+  if (!wrap) return;
+
+  let rows = gTxnReview.map(r => ({ ...r, _conf: normConf(r.confidence_score) }));
+  if (gEntity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === gEntity);
+
+  let filtered = rows;
+  if (txnReviewConfFilter === 'high')  filtered = rows.filter(r => r._conf !== null && r._conf >= 0.85);
+  else if (txnReviewConfFilter === 'mid')  filtered = rows.filter(r => r._conf !== null && r._conf >= 0.70 && r._conf < 0.85);
+  else if (txnReviewConfFilter === 'low')  filtered = rows.filter(r => r._conf === null || r._conf < 0.70);
+
+  const total    = rows.length;
+  const highCount = rows.filter(r => r._conf !== null && r._conf >= 0.85).length;
+  const midCount  = rows.filter(r => r._conf !== null && r._conf >= 0.70 && r._conf < 0.85).length;
+  const lowCount  = rows.filter(r => r._conf === null || r._conf < 0.70).length;
+
+  let html = '';
+
+  // ── KPI Cards ──
+  html += `<div class="kpi-grid" style="margin-bottom:16px">
+    <div class="kpi ${total > 0 ? 'kpi-warn' : 'kpi-ok'}">
+      <div class="kpi-lbl">Ausstehend</div>
+      <div class="kpi-val">${total}</div>
+      <div class="kpi-sub">Transaktionen pending</div>
+    </div>
+    <div class="kpi kpi-ok">
+      <div class="kpi-lbl">Konfidenz ≥ 85%</div>
+      <div class="kpi-val">${highCount}</div>
+      <div class="kpi-sub">Bereit für Bulk-Approve</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">Konfidenz 70–84%</div>
+      <div class="kpi-val">${midCount}</div>
+      <div class="kpi-sub">Manuelle Prüfung empfohlen</div>
+    </div>
+    <div class="kpi kpi-err">
+      <div class="kpi-lbl">Konfidenz &lt; 70%</div>
+      <div class="kpi-val">${lowCount}</div>
+      <div class="kpi-sub">Manuell prüfen</div>
+    </div>
+  </div>`;
+
+  // ── RLS Warning (versteckt, wird bei Fehler eingeblendet) ──
+  html += `<div class="rls-warn" id="rls-warn-box">
+    ⚠️ Freigabe über Dashboard nicht möglich (RLS-Richtlinie) —
+    <a href="https://egcdlozsvyhhvipylxky.supabase.co/project/egcdlozsvyhhvipylxky/editor/table?schema=public&table=txn_master&filter=review_status%3Deq.pending" target="_blank">
+      → Alle offenen Transaktionen in Supabase öffnen
+    </a>
+  </div>`;
+
+  // ── Bulk-Approve Bar ──
+  if (highCount > 0) {
+    html += `<div class="bulk-bar">
+      <div class="bulk-info">✅ <strong>${highCount} Transaktion${highCount !== 1 ? 'en' : ''}</strong> mit Konfidenz ≥ 85% bereit zur Freigabe</div>
+      <button class="btn-bulk-approve" id="bulk-approve-btn" onclick="bulkApproveTxn()">
+        ✅ Alle bestätigen (Konfidenz ≥ 85%)
+      </button>
+    </div>`;
+  } else if (total === 0) {
+    html += `<div class="alert alert-ok">✅ Keine ausstehenden Transaktionen — alles freigegeben</div>`;
+  }
+
+  // ── Konfidenz-Filter-Chips ──
+  html += `<div class="filter-row" style="margin-bottom:16px;background:var(--s0);border-radius:6px;border:1px solid var(--s3)">
+    <span class="filter-label">Konfidenz</span>
+    <div class="conf-filter-chips">
+      <button class="conf-chip ${txnReviewConfFilter === 'all'  ? 'active' : ''}" onclick="setConfFilter('all')">Alle (${total})</button>
+      <button class="conf-chip chip-grn ${txnReviewConfFilter === 'high' ? 'active' : ''}" onclick="setConfFilter('high')">≥ 85% — Hoch (${highCount})</button>
+      <button class="conf-chip chip-amb ${txnReviewConfFilter === 'mid'  ? 'active' : ''}" onclick="setConfFilter('mid')">70–84% — Mittel (${midCount})</button>
+      <button class="conf-chip chip-red ${txnReviewConfFilter === 'low'  ? 'active' : ''}" onclick="setConfFilter('low')">&lt; 70% — Niedrig (${lowCount})</button>
+    </div>
+  </div>`;
+
+  if (!filtered.length) {
+    html += `<div class="empty-state"><div class="empty-icon">✅</div><p>Keine Transaktionen für diesen Filter</p></div>`;
+    wrap.innerHTML = html;
+    return;
+  }
+
+  // ── Tabelle ──
+  const supaBase = 'https://egcdlozsvyhhvipylxky.supabase.co/project/egcdlozsvyhhvipylxky/editor/table?schema=public&table=txn_master&filter=id%3Deq.';
+
+  html += `<div class="card">
+    <div class="card-head"><h2>💶 Transaktionen Review (${filtered.length})</h2></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Datum</th>
+        <th>Buchungstext</th>
+        <th>Entität</th>
+        <th>L1</th>
+        <th>Betrag</th>
+        <th>Konfidenz</th>
+        <th>Aktionen</th>
+      </tr></thead>
+      <tbody id="txn-review-tbody">`;
+
+  for (const r of filtered) {
+    const merchant = escHtml(r.merchant_normalized || r.counterparty_raw || '—');
+    const amt = parseFloat(r.amount) || 0;
+    const dir = (r.direction || '').toUpperCase();
+    const amtCls  = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
+    const amtSign = dir === 'OUT' ? '−' : dir === 'IN' ? '+' : '';
+
+    html += `<tr class="txn-review-row" id="txn-rev-${r.id}">
+      <td style="white-space:nowrap">${fmtDate(r.booking_date)}</td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${merchant}">${merchant}</td>
+      <td>${entityBadge(r.entity)}</td>
+      <td style="font-size:11px;color:var(--tx2)">${escHtml(r.category_l1 || '—')}</td>
+      <td class="${amtCls}" style="white-space:nowrap">${amtSign}${eur(Math.abs(amt))}</td>
+      <td>${confBar(r._conf)}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="btn-sm btn-approve" onclick="approveTxn('${r.id}')" title="Transaktion bestätigen">✅</button>
+          <a href="${supaBase}${r.id}" target="_blank" class="btn-sm btn-open" title="In Supabase öffnen">✏️</a>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  const sumTotal = filtered.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+  html += `</tbody></table></div>
+    <div class="tbl-footer">
+      <span>${filtered.length} Transaktionen</span>
+      <span>Summe: ${eur(sumTotal)}</span>
+    </div>
+  </div>`;
+
+  wrap.innerHTML = html;
+}
+
+function setConfFilter(val) {
+  txnReviewConfFilter = val;
+  renderTxnReview();
+}
+
+async function approveTxn(id) {
+  const row = document.getElementById('txn-rev-' + id);
+  if (!row) return;
+  row.classList.add('approving');
+  const ok = await supaPatch('txn_master', `id=eq.${id}`, { review_status: 'confirmed' });
+  if (ok) {
+    row.classList.remove('approving');
+    row.classList.add('approved-row');
+    setTimeout(() => {
+      row.style.transition = 'opacity 0.3s';
+      row.style.opacity = '0';
+      setTimeout(() => {
+        row.remove();
+        gTxnReview = gTxnReview.filter(r => String(r.id) !== String(id));
+        updateTxnReviewBadge();
+      }, 300);
+    }, 500);
+  } else {
+    row.classList.remove('approving');
+    showRlsWarning();
+  }
+}
+
+async function bulkApproveTxn() {
+  const btn = document.getElementById('bulk-approve-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Wird verarbeitet…';
+
+  const highConf = gTxnReview
+    .map(r => ({ ...r, _conf: normConf(r.confidence_score) }))
+    .filter(r => r._conf !== null && r._conf >= 0.85);
+
+  if (!highConf.length) {
+    btn.textContent = '✅ Keine ausstehend';
+    return;
+  }
+
+  // confidence_score ist 0-100 in Supabase; Schwellenwert 85
+  const ok = await supaPatch('txn_master',
+    'review_status=eq.pending_review&confidence_score=gte.85',
+    { review_status: 'confirmed' });
+
+  if (ok) {
+    for (const r of highConf) {
+      const row = document.getElementById('txn-rev-' + r.id);
+      if (row) {
+        row.classList.add('approved-row');
+        setTimeout(() => {
+          row.style.transition = 'opacity 0.3s';
+          row.style.opacity = '0';
+          setTimeout(() => row.remove(), 300);
+        }, 200);
+      }
+    }
+    gTxnReview = gTxnReview.filter(r => {
+      const c = normConf(r.confidence_score);
+      return c === null || c < 0.85;
+    });
+    btn.textContent = `✅ ${highConf.length} freigegeben`;
+    updateTxnReviewBadge();
+    setTimeout(() => renderTxnReview(), 1200);
+  } else {
+    btn.disabled = false;
+    btn.textContent = '✅ Alle bestätigen (Konfidenz ≥ 85%)';
+    showRlsWarning();
+  }
+}
+
+function showRlsWarning() {
+  const box = document.getElementById('rls-warn-box');
+  if (box) {
+    box.style.display = 'flex';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function updateTxnReviewBadge() {
+  let rows = gTxnReview;
+  if (gEntity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === gEntity);
+  const badge = document.getElementById('inbox-txn-badge');
+  if (badge) {
+    badge.textContent = rows.length;
+    badge.style.display = rows.length > 0 ? 'inline-block' : 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadUebersicht();
+});
+</script>
+</body>
+</html>
