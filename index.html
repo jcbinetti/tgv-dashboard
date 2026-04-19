@@ -735,6 +735,70 @@ tbody tr:last-child td { border-bottom: none; }
 /* ─── TOOLTIP ─── */
 [title] { cursor: help; }
 
+/* ─── INBOX TABLE ─── */
+.inbox-table-wrap { overflow-x: auto; }
+.inbox-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.inbox-table thead th {
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--filterbar-h));
+  background: var(--navy);
+  color: #fff;
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  z-index: 10;
+}
+.inbox-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--s2);
+  vertical-align: top;
+}
+.inbox-table tbody tr:hover td { background: #f0f9f9; }
+.inbox-table tbody tr:last-child td { border-bottom: none; }
+.inbox-edit-sel {
+  font-size: 11px;
+  padding: 3px 6px;
+  border: 1px solid var(--s3);
+  border-radius: 4px;
+  background: var(--s1);
+  font-family: inherit;
+  color: var(--tx0);
+  cursor: pointer;
+  max-width: 140px;
+  display: block;
+  width: 100%;
+}
+.inbox-edit-sel:focus { border-color: var(--teal); outline: none; }
+.inbox-filter-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: 6px;
+}
+.inbox-chip {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--s3);
+  background: var(--s0);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--tx1);
+  transition: all 0.15s;
+}
+.inbox-chip:hover { border-color: var(--teal); color: var(--teal); }
+.inbox-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
 /* ─── INBOX TABS ─── */
 .inbox-tabs {
   display: flex;
@@ -1280,6 +1344,8 @@ let gPeriod = 'all';
 let gTxns = [];
 let gDocs = [];
 let gFinLoaded = false;
+let gInboxFilter = 'all'; // 'all' | 'inbox' | 'pending_review'
+let gInboxRows = [];   // gecachte Inbox-Daten für client-seitigen Filter
 
 // Sort state for tables
 let txnSort = { col: 'booking_date', dir: 'desc' };
@@ -1327,10 +1393,19 @@ const entityBadge = raw => {
   return `<span class="badge ${cls}">${label}</span>`;
 };
 
+const STATUS_LABELS = {
+  'inbox':          '🔄 In Verarbeitung',
+  'pending_review': '⚠️ Prüfen',
+  'approved':       '✅ Freigegeben',
+  'rejected':       '❌ Abgelehnt',
+  'archived':       '🗂 Archiviert',
+  'error':          '🔴 Fehler',
+};
 const statusPill = st => {
   if (!st) return '<span class="pill pill-unknown">—</span>';
   const cls = 'pill pill-' + st.toLowerCase().replace(/[^a-z_]/g, '');
-  return `<span class="${cls}">${st}</span>`;
+  const label = STATUS_LABELS[st.toLowerCase()] || st;
+  return `<span class="${cls}">${label}</span>`;
 };
 
 const isTestData = row => {
@@ -1588,104 +1663,193 @@ async function loadLetzteEingaenge() {
 // ═══════════════════════════════════════════════════════
 //  PAGE: INBOX
 // ═══════════════════════════════════════════════════════
+
+// Hilfsfunktion: final_path für Dokument berechnen
+function calcFinalPath(entity, dateStr) {
+  const e = mapEntity(entity);
+  const folder = e === 'c3' ? 'C3-Convis-GmbH' : e === 'c4' ? 'C4-Convis-SARL' : 'PRIVAT';
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `DOCUMENTS/${folder}/${year}/${month}/`;
+}
+
 async function loadInbox() {
   const wrap = document.getElementById('inbox-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>`;
   try {
-    let q = `documents?select=id,date_received,provider,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,tags,accounting_status&status=in.(inbox,pending_review)&order=date_received.desc&limit=50`;
+    let q = `documents?select=id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion&status=in.(inbox,pending_review)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
     const data = await supa(q);
-    let rows = data.filter(r => !isTestData(r));
-
-    if (gEntity !== 'all') {
-      rows = rows.filter(r => mapEntity(r.entity) === gEntity);
-    }
-
-    if (!rows.length) {
-      wrap.innerHTML = `<div class="alert alert-ok">✅ Inbox ist leer — alles freigegeben</div>`;
-      document.getElementById('inbox-badge').style.display = 'none';
-      return;
-    }
-
-    const badgeEl = document.getElementById('inbox-badge');
-    badgeEl.textContent = rows.length;
-    badgeEl.style.display = 'inline-block';
-
-    // Update docs tab badge
-    const docsBadge = document.getElementById('inbox-docs-badge');
-    if (docsBadge) {
-      docsBadge.textContent = rows.length;
-      docsBadge.style.display = rows.length > 0 ? 'inline-block' : 'none';
-    }
-
-    let html = `<div class="alert alert-info">📥 ${rows.length} Dokument${rows.length !== 1 ? 'e' : ''} warten auf Freigabe</div>`;
-    for (const r of rows) {
-      const name = escHtml(r.provider || r.subject || r.drive_file_name || '—');
-      const amt = r.amount ? eur(r.amount) : '—';
-      const tags = Array.isArray(r.tags) ? r.tags : (typeof r.tags === 'string' ? JSON.parse(r.tags || '[]') : []);
-      const isVorschuss = tags.includes('Vorschuss') || tags.includes('vorschuss');
-      const isSent = r.accounting_status === 'sent';
-
-      html += `<div class="inbox-item" id="inbox-item-${r.id}">
-        <div class="inbox-doc-icon">📄</div>
-        <div class="inbox-info">
-          <div class="inbox-provider">${name}${isVorschuss ? ' <span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;font-size:9px">Vorschuss</span>' : ''}</div>
-          <div class="inbox-meta">
-            <span>${fmtDateLong(r.date_received)}</span>
-            <span>${entityBadge(r.entity)}</span>
-            <span>${escHtml(r.doc_type || '—')}</span>
-            ${statusPill(r.status)}
-            ${isSent ? '<span class="pill pill-approved" style="font-size:9px">📤 Buchhalter</span>' : ''}
-          </div>
-        </div>
-        <div class="inbox-amount">${amt}</div>
-        <div class="inbox-actions">
-          <button class="btn-sm btn-approve" onclick="approveDoc('${r.id}')">✅ Freigeben</button>
-          ${!isSent ? `<button class="btn-sm btn-open" onclick="sendToBuchhalter('${r.id}', this)">📤 Buchhalter</button>` : '<span class="btn-sm" style="opacity:0.5;cursor:default">📤 Gesendet</span>'}
-          <button class="btn-sm btn-reject" onclick="rejectDoc('${r.id}')">🗑 Ablehnen</button>
-        </div>
-      </div>`;
-    }
-    wrap.innerHTML = html;
+    gInboxRows = data.filter(r => !isTestData(r));
+    renderInbox();
   } catch (e) {
     wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
   }
 }
 
+function setInboxFilter(f, btn) {
+  gInboxFilter = f;
+  document.querySelectorAll('.inbox-chip').forEach(c => c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderInbox();
+}
+
+function renderInbox() {
+  const wrap = document.getElementById('inbox-content');
+
+  // Entity-Filter
+  let rows = gInboxRows;
+  if (gEntity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === gEntity);
+
+  // Status-Filter
+  if (gInboxFilter !== 'all') rows = rows.filter(r => r.status === gInboxFilter);
+
+  // Badge aktualisieren
+  const total = gInboxRows.filter(r => gEntity === 'all' || mapEntity(r.entity) === gEntity).length;
+  const badgeEl = document.getElementById('inbox-badge');
+  if (badgeEl) { badgeEl.textContent = total; badgeEl.style.display = total > 0 ? 'inline-block' : 'none'; }
+  const docsBadge = document.getElementById('inbox-docs-badge');
+  if (docsBadge) { docsBadge.textContent = total; docsBadge.style.display = total > 0 ? 'inline-block' : 'none'; }
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="alert alert-ok">✅ Keine Dokumente für diesen Filter</div>`;
+    return;
+  }
+
+  const inboxCount = rows.filter(r => r.status === 'inbox').length;
+  const reviewCount = rows.filter(r => r.status === 'pending_review').length;
+
+  let html = `
+  <div class="inbox-filter-bar">
+    <span style="font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:1px">Filter</span>
+    <button class="inbox-chip ${gInboxFilter==='all'?'active':''}" onclick="setInboxFilter('all',this)">Alle (${total})</button>
+    <button class="inbox-chip ${gInboxFilter==='inbox'?'active':''}" onclick="setInboxFilter('inbox',this)">🔄 In Verarbeitung (${inboxCount})</button>
+    <button class="inbox-chip ${gInboxFilter==='pending_review'?'active':''}" onclick="setInboxFilter('pending_review',this)">⚠️ Prüfen (${reviewCount})</button>
+  </div>
+  <div class="card">
+    <div class="inbox-table-wrap">
+    <table class="inbox-table">
+      <thead><tr>
+        <th>Datum</th>
+        <th>Dateiname / Anbieter</th>
+        <th>Rechnungsdatum</th>
+        <th>Betrag</th>
+        <th>Entität</th>
+        <th>Typ</th>
+        <th>Status</th>
+        <th>Aktionen</th>
+      </tr></thead>
+      <tbody>`;
+
+  for (const r of rows) {
+    const displayDate = r.date_scanned || r.date_received;
+    const fileName = escHtml(r.drive_file_name || r.subject || r.provider || 'GDrive Dokument');
+    const providerLabel = r.provider && r.provider !== r.drive_file_name ? `<br><span style="font-size:10px;color:var(--tx2)">${escHtml(r.provider)}</span>` : '';
+    const amt = r.amount ? `<strong>${eur(r.amount)}</strong>` : '<span style="color:var(--tx2)">—</span>';
+    const isSent = r.accounting_status === 'sent';
+    const tags = Array.isArray(r.tags) ? r.tags : (typeof r.tags === 'string' ? (() => { try { return JSON.parse(r.tags); } catch(e) { return []; } })() : []);
+    const isVorschuss = tags.some(t => t.toLowerCase() === 'vorschuss');
+
+    // ai_suggestion reasoning als Tooltip
+    let reasoning = '';
+    if (r.ai_suggestion) {
+      try {
+        const s = typeof r.ai_suggestion === 'string' ? JSON.parse(r.ai_suggestion) : r.ai_suggestion;
+        reasoning = s.reasoning || s.reason || '';
+      } catch(e) { reasoning = ''; }
+    }
+    const nameTitle = reasoning ? ` title="${escHtml(reasoning)}"` : '';
+
+    // Inline-Edit Selects
+    const entitySel = `<select class="inbox-edit-sel" id="sel-entity-${r.id}">${DOC_ENTITY_OPTS.map(o=>`<option value="${o}"${mapEntity(o)===mapEntity(r.entity)?' selected':''}>${o}</option>`).join('')}</select>`;
+    const docTypeSel = `<select class="inbox-edit-sel" id="sel-doctype-${r.id}">${DOC_TYPES.map(o=>`<option value="${o}"${o===r.doc_type?' selected':''}>${o}</option>`).join('')}</select>`;
+
+    html += `<tr id="inbox-row-${r.id}">
+      <td style="white-space:nowrap">
+        ${fmtDate(displayDate)}
+        ${isVorschuss ? '<br><span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;font-size:9px">Vorschuss</span>' : ''}
+        ${isSent ? '<br><span class="pill pill-approved" style="font-size:9px">📤 Buchhalter</span>' : ''}
+      </td>
+      <td style="max-width:220px"${nameTitle}>
+        <span style="font-weight:600">${fileName}</span>${providerLabel}
+      </td>
+      <td style="white-space:nowrap;color:var(--tx2)">${fmtDate(r.invoice_date)}</td>
+      <td style="white-space:nowrap">${amt}</td>
+      <td>${entitySel}</td>
+      <td>${docTypeSel}</td>
+      <td>${statusPill(r.status)}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn-sm btn-approve" onclick="approveDoc('${r.id}')">✅ OK</button>
+          ${!isSent ? `<button class="btn-sm btn-open" onclick="sendToBuchhalter('${r.id}',this)">📤</button>` : ''}
+          <button class="btn-sm btn-reject" onclick="rejectDoc('${r.id}')">\u274c</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div>
+    <div class="tbl-footer">
+      <span>${rows.length} Dokument${rows.length !== 1 ? 'e' : ''}</span>
+    </div>
+  </div>`;
+
+  wrap.innerHTML = html;
+}
+
 async function approveDoc(id) {
-  const item = document.getElementById('inbox-item-' + id);
-  if (!item) return;
-  const ok = await supaPatch('documents', `id=eq.${id}`, { status: 'approved' });
+  const row = document.getElementById('inbox-row-' + id);
+  if (!row) return;
+
+  // Inline-Edit Werte lesen
+  const entitySel  = document.getElementById('sel-entity-'  + id);
+  const docTypeSel = document.getElementById('sel-doctype-' + id);
+  const newEntity  = entitySel  ? entitySel.value  : null;
+  const newDocType = docTypeSel ? docTypeSel.value : null;
+
+  // final_path berechnen
+  const rowData = gInboxRows.find(r => String(r.id) === String(id));
+  const dateForPath = rowData ? (rowData.invoice_date || rowData.date_scanned || rowData.date_received) : null;
+  const entityForPath = newEntity || (rowData ? rowData.entity : null);
+  const finalPath = calcFinalPath(entityForPath, dateForPath);
+
+  const patchBody = { status: 'approved', final_path: finalPath };
+  if (newEntity)  patchBody.entity   = newEntity;
+  if (newDocType) patchBody.doc_type = newDocType;
+
+  const ok = await supaPatch('documents', `id=eq.${id}`, patchBody);
   if (ok) {
-    item.style.transition = 'opacity 0.3s';
-    item.style.opacity = '0';
-    setTimeout(() => { item.remove(); checkInboxEmpty(); }, 300);
+    toast('✅ Freigegeben — ' + finalPath);
+    row.style.transition = 'opacity 0.3s';
+    row.style.opacity = '0';
+    setTimeout(() => {
+      row.remove();
+      gInboxRows = gInboxRows.filter(r => String(r.id) !== String(id));
+      if (!document.querySelector('#inbox-content .inbox-table tbody tr')) renderInbox();
+    }, 300);
   } else {
-    alert('Freigabe fehlgeschlagen — bitte manuell in Supabase bestätigen.');
+    toast('Freigabe fehlgeschlagen', 'err');
   }
 }
 
 async function rejectDoc(id) {
   if (!confirm('Dokument ablehnen?')) return;
-  const item = document.getElementById('inbox-item-' + id);
-  if (!item) return;
+  const row = document.getElementById('inbox-row-' + id);
+  if (!row) return;
   const ok = await supaPatch('documents', `id=eq.${id}`, { status: 'rejected' });
   if (ok) {
-    item.style.transition = 'opacity 0.3s';
-    item.style.opacity = '0';
-    setTimeout(() => { item.remove(); checkInboxEmpty(); }, 300);
-  }
-}
-
-function checkInboxEmpty() {
-  const wrap = document.getElementById('inbox-content');
-  if (!document.querySelector('.inbox-item')) {
-    wrap.innerHTML = `<div class="alert alert-ok">✅ Inbox ist leer — alles freigegeben</div>`;
-    document.getElementById('inbox-badge').style.display = 'none';
+    row.style.transition = 'opacity 0.3s';
+    row.style.opacity = '0';
+    setTimeout(() => {
+      row.remove();
+      gInboxRows = gInboxRows.filter(r => String(r.id) !== String(id));
+      if (!document.querySelector('#inbox-content .inbox-table tbody tr')) renderInbox();
+    }, 300);
   }
 }
 
 async function sendToBuchhalter(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
   const now = new Date().toISOString();
   const ok = await supaPatch('documents', `id=eq.${id}`, {
     accounting_status: 'sent',
@@ -1693,30 +1857,26 @@ async function sendToBuchhalter(id, btn) {
   });
   if (ok) {
     toast('📤 An Buchhalter gesendet');
-    // Button durch Gesendet-Label ersetzen
-    if (btn) {
-      const span = document.createElement('span');
-      span.className = 'btn-sm';
-      span.style.opacity = '0.5';
-      span.style.cursor = 'default';
-      span.textContent = '📤 Gesendet';
-      btn.replaceWith(span);
-    }
-    // Buchhalter-Badge in Meta-Zeile einblenden
-    const item = document.getElementById('inbox-item-' + id);
-    if (item) {
-      const meta = item.querySelector('.inbox-meta');
-      if (meta) {
+    if (btn) { btn.disabled = true; btn.textContent = '📤'; btn.title = 'Gesendet'; }
+    // Badge in Zeile einblenden
+    const row = document.getElementById('inbox-row-' + id);
+    if (row) {
+      const dateCell = row.querySelector('td:first-child');
+      if (dateCell) {
         const badge = document.createElement('span');
         badge.className = 'pill pill-approved';
         badge.style.fontSize = '9px';
         badge.textContent = '📤 Buchhalter';
-        meta.appendChild(badge);
+        dateCell.appendChild(document.createElement('br'));
+        dateCell.appendChild(badge);
       }
     }
+    // Cache aktualisieren
+    const r = gInboxRows.find(r => String(r.id) === String(id));
+    if (r) r.accounting_status = 'sent';
   } else {
     toast('Fehler beim Senden', 'err');
-    if (btn) { btn.disabled = false; btn.textContent = '📤 Buchhalter'; }
+    if (btn) { btn.disabled = false; btn.textContent = '📤'; }
   }
 }
 
@@ -2568,6 +2728,8 @@ const L2_OPTS = {
   'Gesundheit':    ['Apotheke','Arzt','KK-Beitrag','Krankenhaus','Physiotherapie','Therapie','Zahnarzt','Sonstiges'],
 };
 const ENTITIES = ['privat','c3-convis-gmbh','c4-convis-sarl','unbekannt'];
+const DOC_TYPES = ['Rechnung','Kontoauszug','Vertrag','Lohnzettel','Steuerbescheid','Versicherungspolice','Quittung','Lieferschein','Angebot','Mahnung','Sonstiges'];
+const DOC_ENTITY_OPTS = ['privat','c3-convis-gmbh','c4-convis-sarl'];
 
 function sel(opts, val, cls, extra) {
   return `<select class="${cls||'cat-sel'}" ${extra||''}>${opts.map(o=>`<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
