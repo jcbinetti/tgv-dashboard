@@ -1554,7 +1554,7 @@ async function loadKPIs() {
 async function loadLetzteEingaenge() {
   const wrap = document.getElementById('letzte-eingang-wrap');
   try {
-    let q = `documents?select=date_received,provider,subject,entity,status,doc_type,drive_file_name&order=date_received.desc&limit=10`;
+    let q = `documents?select=date_received,date_scanned,provider,subject,entity,status,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
     const rows = data.filter(r => !isTestData(r));
 
@@ -1569,8 +1569,9 @@ async function loadLetzteEingaenge() {
       </tr></thead><tbody>`;
     for (const r of rows) {
       const name = escHtml(r.provider || r.subject || r.drive_file_name || '—');
+      const displayDate = r.date_scanned || r.date_received;
       html += `<tr>
-        <td>${fmtDate(r.date_received)}</td>
+        <td>${fmtDate(displayDate)}</td>
         <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</td>
         <td>${entityBadge(r.entity)}</td>
         <td>${escHtml(r.doc_type || '—')}</td>
