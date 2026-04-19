@@ -2346,7 +2346,7 @@ function renderTxnTable() {
 
   // Apply panel filters
   const f = txnFilterState;
-  if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
+  if (f.entity && f.entity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === f.entity);
   if (f.l1) rows = rows.filter(r => r.category_l1 === f.l1);
   if (f.l2) rows = rows.filter(r => r.category_l2 === f.l2);
   if (f.l3) rows = rows.filter(r => r.category_l3 === f.l3);
@@ -2899,7 +2899,7 @@ let reviewOffset = 0;
 const REVIEW_PAGE = 50;
 let reviewFilter = 'all';
 let confirmedCount = 0;
-let reviewMode = 'ai_reviewed'; // 'ai_reviewed' | 'confirmed'
+let reviewMode = 'pending_review'; // 'pending_review' | 'confirmed'
 
 async function loadReview(mode) {
   if (mode) reviewMode = mode;
@@ -2911,8 +2911,8 @@ async function loadReview(mode) {
   const btnConfirmed = document.getElementById('btn-show-confirmed');
   if (btnConfirmed) {
     btnConfirmed.style.background = isConfirmedMode ? 'var(--amb)' : '';
-    btnConfirmed.textContent = isConfirmedMode ? '← Zurück zu KI-Review' : '👁 Confirmed prüfen';
-    btnConfirmed.onclick = isConfirmedMode ? () => loadReview('ai_reviewed') : () => loadReview('confirmed');
+    btnConfirmed.textContent = isConfirmedMode ? '← Zurück zu Pending' : '👁 Confirmed prüfen';
+    btnConfirmed.onclick = isConfirmedMode ? () => loadReview('pending_review') : () => loadReview('confirmed');
   }
 
   const tbody = document.getElementById('review-tbody');
@@ -2921,7 +2921,7 @@ async function loadReview(mode) {
   if (btnAll) btnAll.disabled = true;
 
   try {
-    const status = isConfirmedMode ? 'confirmed' : 'ai_reviewed';
+    const status = isConfirmedMode ? 'confirmed' : 'pending_review';
     const data = await supa(`txn_master?review_status=eq.${status}&select=id,booking_date,counterparty_raw,counterparty_iban,merchant_normalized,purpose,booking_text_raw,amount,direction,entity,category_l1,category_l2,category_l3,ai_suggestion,account_iban,account_name,confidence_score,review_status&order=booking_date.desc&limit=800`);
     reviewData = data.filter(r => !isTestData(r));
     renderReview();
