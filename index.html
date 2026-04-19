@@ -929,6 +929,12 @@ tbody tr:last-child td { border-bottom: none; }
 .toast.err { border-left: 4px solid var(--red); }
 @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
+/* ─── ZAHLEN RECHTSBÜNDIG ─── */
+/* Alle Betrag/Zahl-Spalten in allen Tabellen */
+table th.num, table td.num { text-align: right !important; }
+.tbl-wrap table td:last-child.num,
+.tbl-wrap table th:last-child.num { padding-right: 12px; }
+
 /* ─── CONFIRM MODAL ─── */
 .modal-bg {
   display: none;
@@ -1186,12 +1192,12 @@ tbody tr:last-child td { border-bottom: none; }
                     <th style="width:110px">Konto</th>
                     <th style="width:160px">Empfänger</th>
                     <th style="width:180px">Zweck / Buchungstext</th>
-                    <th style="width:85px;text-align:right">Betrag</th>
+                    <th class="num" style="width:85px">Betrag</th>
                     <th style="width:120px">L1 Kategorie</th>
                     <th style="width:130px">L2 Kategorie</th>
                     <th style="width:120px">L3 / Vorschuss</th>
                     <th style="width:95px">Entity</th>
-                    <th style="width:75px">Konfidenz</th>
+                    <th class="num" style="width:75px">Konfidenz</th>
                     <th style="width:110px">Aktionen</th>
                   </tr>
                 </thead>
@@ -1818,7 +1824,7 @@ function renderInbox() {
         <span style="font-weight:600">${fileName}</span>${providerLabel}
       </td>
       <td style="white-space:nowrap;color:var(--tx2)">${fmtDate(r.invoice_date)}</td>
-      <td style="white-space:nowrap">${amt}</td>
+      <td class="num" style="white-space:nowrap">${amt}</td>
       <td>${entitySel}</td>
       <td>${docTypeSel}</td>
       <td>${statusPill(r.status)}</td>
@@ -2156,7 +2162,7 @@ function renderDDDetail() {
   let html = `<div class="card">
     <div class="card-head"><h2>📋 ${escHtml(ddL3)} — ${txns.length} Transaktionen · ${eur(total)}</h2></div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Datum</th><th>Buchungstext</th><th>Entität</th><th>Betrag</th><th>Flags</th></tr></thead>
+      <thead><tr><th>Datum</th><th>Buchungstext</th><th>Entität</th><th class="num">Betrag</th><th>Flags</th></tr></thead>
       <tbody>`;
   for (const t of txns) {
     const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
@@ -2174,7 +2180,7 @@ function renderDDDetail() {
       <td>${fmtDate(t.booking_date)}</td>
       <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(counterparty)}</td>
       <td>${entityBadge(t.entity)}</td>
-      <td class="${amtCls}">${dir === 'OUT' ? '−' : '+'}${eur(Math.abs(amt))}</td>
+      <td class="${amtCls} num">${dir === 'OUT' ? '−' : '+'}${eur(Math.abs(amt))}</td>
       <td>${flags}</td>
     </tr>`;
   }
@@ -2249,8 +2255,8 @@ function renderCashflow() {
   const entCols = [...entities].sort();
   let tableHtml = `<div class="card"><div class="card-head"><h2>📅 Cashflow Tabelle</h2></div><div class="tbl-wrap"><table>
     <thead><tr>
-      <th>Monat</th><th>Einnahmen</th><th>Ausgaben</th><th>Netto</th>
-      ${entCols.map(e => `<th>${e.toUpperCase()}</th>`).join('')}
+      <th>Monat</th><th class="num">Einnahmen</th><th class="num">Ausgaben</th><th class="num">Netto</th>
+      ${entCols.map(e => `<th class="num">${e.toUpperCase()}</th>`).join('')}
     </tr></thead><tbody>`;
 
   let totIn = 0, totOut = 0;
@@ -2267,22 +2273,22 @@ function renderCashflow() {
     const moLabel = new Date(mo + '-01').toLocaleDateString('de-DE', { month: 'short', year: '2-digit' });
     tableHtml += `<tr>
       <td><strong>${moLabel}</strong></td>
-      <td class="amt-in">${eur(mData.IN)}</td>
-      <td class="amt-out">${eur(mData.OUT)}</td>
-      <td class="${netCls}">${eur(net)}</td>
+      <td class="amt-in num">${eur(mData.IN)}</td>
+      <td class="amt-out num">${eur(mData.OUT)}</td>
+      <td class="${netCls} num">${eur(net)}</td>
       ${entCols.map(e => {
         const v = mData.byEntity[e] || 0;
-        return `<td class="${v >= 0 ? 'amt-in' : 'amt-out'}">${eur(v)}</td>`;
+        return `<td class="${v >= 0 ? 'amt-in' : 'amt-out'} num">${eur(v)}</td>`;
       }).join('')}
     </tr>`;
   }
   const totNet = totIn - totOut;
   tableHtml += `<tr style="font-weight:700;background:var(--s1)">
     <td>GESAMT</td>
-    <td class="amt-in">${eur(totIn)}</td>
-    <td class="amt-out">${eur(totOut)}</td>
-    <td class="${totNet >= 0 ? 'amt-in' : 'amt-out'}">${eur(totNet)}</td>
-    ${entCols.map(e => `<td class="${entTotals[e] >= 0 ? 'amt-in' : 'amt-out'}">${eur(entTotals[e])}</td>`).join('')}
+    <td class="amt-in num">${eur(totIn)}</td>
+    <td class="amt-out num">${eur(totOut)}</td>
+    <td class="${totNet >= 0 ? 'amt-in' : 'amt-out'} num">${eur(totNet)}</td>
+    ${entCols.map(e => `<td class="${entTotals[e] >= 0 ? 'amt-in' : 'amt-out'} num">${eur(entTotals[e])}</td>`).join('')}
   </tr>`;
   tableHtml += '</tbody></table></div></div>';
 
@@ -2385,7 +2391,7 @@ function renderTxnTable() {
       <th ${thClick('entity')}>Entität${sortArrow('entity')}</th>
       <th ${thClick('category_l1')}>L1${sortArrow('category_l1')}</th>
       <th ${thClick('category_l2')}>L2${sortArrow('category_l2')}</th>
-      <th ${thClick('amount')}>Betrag${sortArrow('amount')}</th>
+      <th class="num" ${thClick('amount')}>Betrag${sortArrow('amount')}</th>
       <th>Flags</th>
     </tr></thead><tbody>`;
 
@@ -2408,7 +2414,7 @@ function renderTxnTable() {
       <td>${entityBadge(t.entity)}</td>
       <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.category_l1 || '—')}</td>
       <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.category_l2 || '—')}</td>
-      <td class="${amtCls}" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
+      <td class="${amtCls} num" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
       <td>${flags}</td>
     </tr>`;
   }
@@ -2492,7 +2498,7 @@ function renderDocsFinTable() {
       <th onclick="sortDocFin('provider')">Anbieter</th>
       <th onclick="sortDocFin('entity')">Entität</th>
       <th onclick="sortDocFin('doc_type')">Typ</th>
-      <th onclick="sortDocFin('amount')">Betrag</th>
+      <th class="num" onclick="sortDocFin('amount')">Betrag</th>
       <th onclick="sortDocFin('status')">Status</th>
     </tr></thead><tbody>`;
 
@@ -2504,7 +2510,7 @@ function renderDocsFinTable() {
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</td>
       <td>${entityBadge(r.entity)}</td>
       <td>${escHtml(r.doc_type || '—')}</td>
-      <td style="white-space:nowrap">${amt}</td>
+      <td class="num" style="white-space:nowrap">${amt}</td>
       <td>${statusPill(r.status)}</td>
     </tr>`;
   }
@@ -2552,8 +2558,8 @@ async function loadVertraege() {
     let html = `<div class="card"><div class="card-head"><h2>📄 Verträge (${data.length})</h2></div>
       <div class="tbl-wrap"><table>
         <thead><tr>
-          <th>Name / Anbieter</th><th>Entität</th><th>L1 / L2</th><th>Betrag</th><th>Frequenz</th>
-          <th>Laufzeit</th><th>Nächste Verlängerung</th><th>Kündigung (Tage)</th><th>Auto</th><th>Status</th>
+          <th>Name / Anbieter</th><th>Entität</th><th>L1 / L2</th><th class="num">Betrag</th><th>Frequenz</th>
+          <th>Laufzeit</th><th>Nächste Verlängerung</th><th class="num">Kündigung (Tage)</th><th>Auto</th><th>Status</th>
         </tr></thead><tbody>`;
 
     for (const c of data) {
@@ -2584,11 +2590,11 @@ async function loadVertraege() {
         <td>${nameCell}<br><span style="font-size:10px;color:var(--tx2)">${escHtml(c.provider || '')}</span></td>
         <td>${entityBadge(c.entity)}</td>
         <td style="font-size:11px">${escHtml(l1l2)}</td>
-        <td style="white-space:nowrap">${amt}</td>
+        <td class="num" style="white-space:nowrap">${amt}</td>
         <td>${escHtml(c.frequency || '—')}</td>
         <td style="white-space:nowrap;font-size:11px">${laufzeit}</td>
         <td>${renewalCell}</td>
-        <td style="text-align:center">${c.notice_period_days ?? '—'}</td>
+        <td class="num">${c.notice_period_days ?? '—'}</td>
         <td>${c.auto_renewal ? '✅' : '—'}</td>
         <td><span class="pill pill-${c.status === 'active' ? 'approved' : 'inbox'}">${escHtml(c.status || '—')}</span></td>
       </tr>`;
@@ -3023,7 +3029,7 @@ function renderReview() {
       </td>
       <td title="${esc(empfTitle)}"><strong style="font-size:11px">${esc(empfaenger.substring(0,30))}</strong>${isIBAN && !t.merchant_normalized ? '<br><span style="font-size:9px;color:#9CA3AF">'+esc(cpRaw.substring(0,22))+'</span>' : ''}</td>
       <td style="font-size:10px;color:#374151;max-width:180px" title="${esc(zweck)}">${esc(zweck.substring(0,60))}${zweck.length>60?'…':''}</td>
-      <td style="text-align:right;font-family:monospace">${fmtAmt(t.amount, t.direction)}</td>
+      <td class="num" style="font-family:monospace">${fmtAmt(t.amount, t.direction)}</td>
       <td>${sel(L1_CATS, l1, 'cat-sel cat-l1-' + t.id, 'onchange="updateL2('+t.id+',this.value)"')}</td>
       <td>${selL2(l1, l2, t.id)}</td>
       <td><input type="text" class="cat-sel cat-l3-${t.id}" value="${esc(l3)}" placeholder="Vorschuss C3…" style="width:110px;font-size:11px;padding:2px 4px;border:1px solid #D1D5DB;border-radius:4px"></td>
