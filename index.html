@@ -736,11 +736,15 @@ tbody tr:last-child td { border-bottom: none; }
 [title] { cursor: help; }
 
 /* ─── INBOX TABLE ─── */
-.inbox-table-wrap { overflow-x: auto; }
+.inbox-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 260px);
+  border-radius: 0 0 8px 8px;
+}
 .inbox-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .inbox-table thead th {
   position: sticky;
-  top: calc(var(--topbar-h) + var(--filterbar-h));
+  top: 0;
   background: var(--navy);
   color: #fff;
   padding: 9px 10px;
@@ -750,7 +754,7 @@ tbody tr:last-child td { border-bottom: none; }
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
-  z-index: 10;
+  z-index: 5;
 }
 .inbox-table tbody td {
   padding: 8px 10px;
