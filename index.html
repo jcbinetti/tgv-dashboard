@@ -1743,23 +1743,25 @@ function renderInbox() {
   let rows = gInboxRows;
   if (gEntity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === gEntity);
 
-  // Status-Filter
-  if (gInboxFilter !== 'all') rows = rows.filter(r => r.status === gInboxFilter);
+  // Zähler immer aus ungefilterten Entity-Rows (vor Status-Filter)
+  const entityRows = rows; // bereits nach Entity gefiltert, aber noch OHNE Status-Filter
+  const total       = entityRows.length;
+  const inboxCount  = entityRows.filter(r => r.status === 'inbox').length;
+  const reviewCount = entityRows.filter(r => r.status === 'pending_review').length;
 
   // Badge aktualisieren
-  const total = gInboxRows.filter(r => gEntity === 'all' || mapEntity(r.entity) === gEntity).length;
   const badgeEl = document.getElementById('inbox-badge');
   if (badgeEl) { badgeEl.textContent = total; badgeEl.style.display = total > 0 ? 'inline-block' : 'none'; }
   const docsBadge = document.getElementById('inbox-docs-badge');
   if (docsBadge) { docsBadge.textContent = total; docsBadge.style.display = total > 0 ? 'inline-block' : 'none'; }
 
+  // Status-Filter NACH Zähler-Berechnung anwenden
+  if (gInboxFilter !== 'all') rows = rows.filter(r => r.status === gInboxFilter);
+
   if (!rows.length) {
     wrap.innerHTML = `<div class="alert alert-ok">✅ Keine Dokumente für diesen Filter</div>`;
     return;
   }
-
-  const inboxCount = rows.filter(r => r.status === 'inbox').length;
-  const reviewCount = rows.filter(r => r.status === 'pending_review').length;
 
   let html = `
   <div class="inbox-filter-bar">
