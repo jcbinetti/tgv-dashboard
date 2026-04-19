@@ -402,6 +402,8 @@ tbody tr:last-child td { border-bottom: none; }
 .pill-archived { background: var(--s2); color: var(--tx2); border-color: var(--s3); }
 .pill-rejected, .pill-error { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
 .pill-unknown { background: var(--amb-bg); color: var(--amb); border-color: var(--amb-bd); }
+.pill-todo_manual { background: #FFF3E0; color: #E65100; border-color: #FFCC80; }
+.row-todo-manual { background: #FFF8F0 !important; border-left: 3px solid #FF9800; }
 
 /* ─── SPINNER ─── */
 .spinner-wrap {
@@ -1033,7 +1035,7 @@ table th.num, table td.num { text-align: right !important; }
     </button>
 
     <div class="sidebar-footer">
-      TGV Financial OS v11.7<br>
+      TGV Financial OS v11.8<br>
       Jean-Chris Binetti
     </div>
   </nav>
@@ -1589,6 +1591,7 @@ const STATUS_LABELS = {
   'rejected':       '❌ Abgelehnt',
   'archived':       '🗂 Archiviert',
   'error':          '🔴 Fehler',
+  'todo_manual':    '✍️ Manuell',
 };
 const statusPill = st => {
   if (!st) return '<span class="pill pill-unknown">—</span>';
@@ -2140,7 +2143,7 @@ async function loadTxns() {
 
 async function loadDocsFin() {
   try {
-    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
+    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,notes&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
     gDocs = data.filter(r => !isTestData(r));
   } catch (e) {
     gDocs = [];
@@ -2639,9 +2642,14 @@ function renderDocsFinFilters() {
   const docs = gDocs;
   const docTypes = [...new Set(docs.map(d => d.doc_type).filter(Boolean))].sort();
   const statuses = [...new Set(docs.map(d => d.status).filter(Boolean))].sort();
+  const manualCount = docs.filter(d => d.status === 'todo_manual').length;
+  const manualBadge = manualCount > 0
+    ? `<button class="filter-btn" onclick="setDocFinFilter('status','todo_manual')" title="PDF manuell erstellen → in GDrive INBOX hochladen" style="background:#FFF3E0;color:#E65100;border-color:#FFCC80;font-weight:700">✍️ Manuell erforderlich <span style="background:#E65100;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${manualCount}</span></button>`
+    : '';
 
   row.innerHTML = `
     <span class="filter-label">Filter</span>
+    ${manualBadge}
     <select onchange="setDocFinFilter('entity', this.value)">
       <option value="">Alle Entitäten</option>
       <option value="priv">PRIV</option>
@@ -2692,6 +2700,7 @@ function renderDocsFinTable() {
       <th onclick="sortDocFin('doc_type')">Typ</th>
       <th class="num" onclick="sortDocFin('amount')">Betrag</th>
       <th onclick="sortDocFin('status')">Status</th>
+      <th>Notiz</th>
     </tr></thead><tbody>`;
 
   for (const r of rows) {
@@ -2702,17 +2711,24 @@ function renderDocsFinTable() {
     const href = r.drive_file_id
       ? `https://drive.google.com/file/d/${encodeURIComponent(r.drive_file_id)}/view`
       : (r.direct_download_url || '');
-    const rowClick = href ? `style="cursor:pointer" onclick="window.open('${href}','_blank')"` : '';
+    const isTodoManual = r.status === 'todo_manual';
+    const rowClass = isTodoManual ? 'class="row-todo-manual"' : '';
+    const manualTooltip = isTodoManual ? ' title="PDF manuell erstellen → in GDrive INBOX hochladen"' : '';
+    const rowClick = href ? `onclick="window.open('${href}','_blank')" style="cursor:pointer"` : '';
     const nameCell = href
       ? `<a href="${href}" target="_blank" style="font-weight:600">${fileName}</a>${providerLabel}`
       : `<span style="font-weight:600">${fileName}</span>${providerLabel}`;
-    html += `<tr ${rowClick}>
+    const notesCell = r.notes
+      ? `<span style="font-size:11px;color:var(--tx2)" title="${escHtml(r.notes)}">${escHtml(r.notes.substring(0,40))}${r.notes.length>40?'…':''}</span>`
+      : '<span style="color:var(--tx2);font-size:11px">—</span>';
+    html += `<tr ${rowClass}${manualTooltip} ${rowClick}>
       <td style="white-space:nowrap">${fmtDate(r.date_received || r.date_scanned)}</td>
       <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nameCell}</td>
       <td>${entityBadge(r.entity)}</td>
       <td>${escHtml(r.doc_type || '—')}</td>
       <td class="num" style="white-space:nowrap">${amt}</td>
       <td>${statusPill(r.status)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notesCell}</td>
     </tr>`;
   }
 
