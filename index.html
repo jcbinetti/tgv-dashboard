@@ -1017,13 +1017,18 @@ table th.num, table td.num { text-align: right !important; }
       <span class="nav-label">Projekte</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('monatsabschluss', this)">
+      <span class="nav-icon">📅</span>
+      <span class="nav-label">Monatsabschluss</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('system', this)">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label">System</span>
     </button>
 
     <div class="sidebar-footer">
-      TGV Financial OS v11.5<br>
+      TGV Financial OS v11.6<br>
       Jean-Chris Binetti
     </div>
   </nav>
@@ -1303,9 +1308,31 @@ table th.num, table td.num { text-align: right !important; }
       </div>
     </div>
 
+     <!-- ═══════════════════════════════════════════════
+         PAGE: MONATSABSCHLUSS
+    ═══════════════════════════════════════════════ -->
+    <div class="page" id="page-monatsabschluss">
+      <div class="page-header">
+        <h1>📅 Monatsabschluss</h1>
+        <p>Prüfe ob alle Rechnungen für aktive Verträge vorliegen</p>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>📅 Monatsabschluss</h2>
+          <div style="display:flex;gap:10px;align-items:center">
+            <select id="ma-month-sel" onchange="loadMonatsabschluss()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--s1);color:var(--tx1);font-size:13px"></select>
+            <button class="btn-sm btn-open" onclick="sendMonatsabschluss()" id="ma-send-btn" style="padding:7px 16px">📤 Jetzt an Buchhalter senden</button>
+          </div>
+        </div>
+        <div id="ma-content">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══════════════════════════════════════════════
          PAGE: SYSTEM
-    ════════════════════════════════════════════════ -->
+    ═══════════════════════════════════════════════ -->
     <div class="page" id="page-system">
       <div class="page-header">
         <h1>⚙️ System</h1>
@@ -1558,6 +1585,7 @@ function showPage(pageId, btn) {
   if (pageId === 'finanzen') loadFinanzen();
   if (pageId === 'vertraege') loadVertraege();
   if (pageId === 'projekte') loadProjekte();
+  if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
 }
 
@@ -1590,6 +1618,7 @@ function refreshCurrentPage() {
   if (id === 'finanzen') refreshFinanzen();
   if (id === 'vertraege') loadVertraege();
   if (id === 'projekte') loadProjekte();
+  if (id === 'monatsabschluss') loadMonatsabschluss();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1628,7 +1657,7 @@ async function loadKPIs() {
       supaCount('documents', `date_received=gte.${d30}`),
       supaCount('txn_master'),
       supaCount('documents', `status=eq.inbox`),
-      supaCount('prf_contracts', `active=eq.true`)
+      supaCount('prf_contracts', `status=eq.active`)
     ]);
 
     const val = r => r.status === 'fulfilled' ? r.value : '?';
@@ -1685,7 +1714,7 @@ async function loadLetzteEingaenge() {
   try {
     let q = `documents?select=date_received,date_scanned,provider,subject,entity,status,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
-    const rows = data.filter(r => !isTestData(r));
+    const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
 
     if (!rows.length) {
       wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>Keine Dokumente gefunden</p></div>`;
@@ -1990,7 +2019,7 @@ function refreshFinanzen() {
 async function loadTxns() {
   const wrap = document.getElementById('drilldown-wrap');
   try {
-    const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,recurring_flag,anna_relevant,household_flag,insurance_flag&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
+    const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,booking_text_raw,account_iban,account_name,recurring_flag,anna_relevant,household_flag,insurance_flag&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
     gTxns = data.filter(r => !isTestData(r));
   } catch (e) {
     document.getElementById('drilldown-wrap').innerHTML =
@@ -2001,7 +2030,7 @@ async function loadTxns() {
 
 async function loadDocsFin() {
   try {
-    const data = await supa(`documents?select=id,date_received,invoice_date,provider,sender,entity,doc_type,amount,currency,status,drive_file_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc&limit=5000`);
+    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
     gDocs = data.filter(r => !isTestData(r));
   } catch (e) {
     gDocs = [];
@@ -2390,15 +2419,19 @@ function renderTxnTable() {
   const sortArrow = col => txnSort.col === col ? (txnSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const thClick = col => `onclick="sortTxn('${col}')"`;
 
-  let html = `<div class="tbl-wrap"><table>
+  // CSV Export Button
+  const exportBtn = `<button class="btn-sm btn-open" onclick="exportTxnCSV()" style="float:right;margin-bottom:8px;font-size:11px;padding:5px 12px">⬇️ CSV Export</button>`;
+
+  let html = `${exportBtn}<div class="tbl-wrap" style="clear:both"><table>
     <thead><tr>
       <th ${thClick('booking_date')}>Datum${sortArrow('booking_date')}</th>
-      <th ${thClick('merchant_normalized')}>Buchungstext${sortArrow('merchant_normalized')}</th>
-      <th ${thClick('entity')}>Entität${sortArrow('entity')}</th>
+      <th>Konto</th>
+      <th ${thClick('merchant_normalized')}>Empfänger${sortArrow('merchant_normalized')}</th>
+      <th>Zweck</th>
       <th ${thClick('category_l1')}>L1${sortArrow('category_l1')}</th>
       <th ${thClick('category_l2')}>L2${sortArrow('category_l2')}</th>
+      <th ${thClick('entity')}>Entity${sortArrow('entity')}</th>
       <th class="num" ${thClick('amount')}>Betrag${sortArrow('amount')}</th>
-      <th>Flags</th>
     </tr></thead><tbody>`;
 
   const shown = rows.slice(0, 500);
@@ -2407,22 +2440,28 @@ function renderTxnTable() {
     const amt = parseFloat(t.amount) || 0;
     const dir = (t.direction || '').toUpperCase();
     const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
-    const flags = [
-      t.recurring_flag ? '🔁' : '',
-      t.anna_relevant ? '👩' : '',
-      t.household_flag ? '🏠' : '',
-      t.insurance_flag ? '🛡' : ''
-    ].filter(Boolean).join(' ');
-
-    html += `<tr>
-      <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
-      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose || '')}">${escHtml(counterparty)}</td>
-      <td>${entityBadge(t.entity)}</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.category_l1 || '—')}</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.category_l2 || '—')}</td>
-      <td class="${amtCls} num" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
-      <td>${flags}</td>
+    const acctShort = t.account_iban ? t.account_iban.slice(-4) : '—';
+    const acctLabel = t.account_name ? `${t.account_name} ···${acctShort}` : (t.account_iban ? `···${acctShort}` : '—');
+    const purposeShort = (t.purpose || '').slice(0, 50) + ((t.purpose || '').length > 50 ? '…' : '');
+    const detailId = `txn-detail-${t.id}`;
+    const detailRow = `<tr id="${detailId}" style="display:none;background:var(--s1)">
+      <td colspan="8" style="padding:10px 16px;font-size:12px;color:var(--tx2)">
+        <strong>Zweck:</strong> ${escHtml(t.purpose || '—')}<br>
+        <strong>Buchungstext:</strong> ${escHtml(t.booking_text_raw || '—')}<br>
+        <strong>Konto:</strong> ${escHtml(t.account_iban || '—')} · ${escHtml(t.account_name || '—')}
+      </td>
     </tr>`;
+
+    html += `<tr style="cursor:pointer" onclick="toggleTxnDetail('${t.id}')">
+      <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
+      <td style="font-size:11px;white-space:nowrap;color:var(--tx2)">${escHtml(acctLabel)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(counterparty)}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--tx2)" title="${escHtml(t.purpose || '')}">${escHtml(purposeShort)}</td>
+      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l1 || '—')}</td>
+      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l2 || '—')}</td>
+      <td>${entityBadge(t.entity)}</td>
+      <td class="${amtCls} num" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
+    </tr>${detailRow}`;
   }
 
   html += `</tbody></table></div>
@@ -2441,6 +2480,43 @@ function sortTxn(col) {
     txnSort = { col, dir: 'desc' };
   }
   renderTxnTable();
+}
+
+function toggleTxnDetail(id) {
+  const row = document.getElementById('txn-detail-' + id);
+  if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function exportTxnCSV() {
+  let rows = filteredTxns();
+  const f = txnFilterState;
+  if (f.entity && f.entity !== 'all') rows = rows.filter(r => mapEntity(r.entity) === f.entity);
+  if (f.l1) rows = rows.filter(r => r.category_l1 === f.l1);
+  if (f.l2) rows = rows.filter(r => r.category_l2 === f.l2);
+  if (f.search) {
+    const s = f.search.toLowerCase();
+    rows = rows.filter(r =>
+      (r.counterparty_raw && r.counterparty_raw.toLowerCase().includes(s)) ||
+      (r.merchant_normalized && r.merchant_normalized.toLowerCase().includes(s)) ||
+      (r.purpose && r.purpose.toLowerCase().includes(s))
+    );
+  }
+  const header = ['Datum','Konto','Empfänger','Zweck','L1','L2','Entity','Betrag','Richtung'];
+  const csvRows = [header.join(';')];
+  for (const t of rows) {
+    const esc = v => `"${(v || '').toString().replace(/"/g, '""')}"`;
+    csvRows.push([
+      esc(t.booking_date), esc(t.account_name || t.account_iban),
+      esc(t.merchant_normalized || t.counterparty_raw),
+      esc(t.purpose), esc(t.category_l1), esc(t.category_l2),
+      esc(t.entity), esc(t.amount), esc(t.direction)
+    ].join(';'));
+  }
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `txn_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2480,7 +2556,7 @@ function setDocFinFilter(key, val) {
 
 function renderDocsFinTable() {
   const wrap = document.getElementById('docs-fin-table-wrap');
-  let rows = filteredDocs();
+  let rows = filteredDocs().filter(r => r.status !== 'rejected');
   const f = docFinFilter;
   if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
   if (f.doc_type) rows = rows.filter(r => r.doc_type === f.doc_type);
@@ -2501,7 +2577,7 @@ function renderDocsFinTable() {
   let html = `<div class="tbl-wrap"><table>
     <thead><tr>
       <th onclick="sortDocFin('date_received')">Datum</th>
-      <th onclick="sortDocFin('provider')">Anbieter</th>
+      <th onclick="sortDocFin('drive_file_name')">Dateiname / Anbieter</th>
       <th onclick="sortDocFin('entity')">Entität</th>
       <th onclick="sortDocFin('doc_type')">Typ</th>
       <th class="num" onclick="sortDocFin('amount')">Betrag</th>
@@ -2509,11 +2585,20 @@ function renderDocsFinTable() {
     </tr></thead><tbody>`;
 
   for (const r of rows) {
-    const name = escHtml(r.provider || r.sender || '—');
+    const fileName = escHtml(r.drive_file_name || r.subject || r.provider || r.sender || '—');
+    const provider = r.provider || r.sender || '';
+    const providerLabel = provider && provider !== (r.drive_file_name || r.subject) ? `<br><span style="font-size:10px;color:var(--tx2)">${escHtml(provider)}</span>` : '';
     const amt = r.amount ? eur(r.amount) : '—';
-    html += `<tr>
-      <td style="white-space:nowrap">${fmtDate(r.date_received)}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</td>
+    const href = r.drive_file_id
+      ? `https://drive.google.com/file/d/${encodeURIComponent(r.drive_file_id)}/view`
+      : (r.direct_download_url || '');
+    const rowClick = href ? `style="cursor:pointer" onclick="window.open('${href}','_blank')"` : '';
+    const nameCell = href
+      ? `<a href="${href}" target="_blank" style="font-weight:600">${fileName}</a>${providerLabel}`
+      : `<span style="font-weight:600">${fileName}</span>${providerLabel}`;
+    html += `<tr ${rowClick}>
+      <td style="white-space:nowrap">${fmtDate(r.date_received || r.date_scanned)}</td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nameCell}</td>
       <td>${entityBadge(r.entity)}</td>
       <td>${escHtml(r.doc_type || '—')}</td>
       <td class="num" style="white-space:nowrap">${amt}</td>
@@ -3129,8 +3214,10 @@ async function confirmOne(id) {
 }
 
 function rejectOne(id) {
-  if (!confirm('Transaktion ablehnen (review_status = rejected)?')) return;
-  supaPatch('txn_master', `id=eq.${id}`, { review_status: 'rejected' }).then(ok => {
+  showConfirmModal(
+    '⚠️ Transaktion ablehnen',
+    'Transaktion wirklich ablehnen (review_status = rejected)?',
+    () => supaPatch('txn_master', `id=eq.${id}`, { review_status: 'rejected' }).then(ok => {
     if (ok) {
       reviewData = reviewData.filter(t => t.id !== id);
       const row = document.getElementById('row-' + id);
@@ -3144,7 +3231,7 @@ function rejectOne(id) {
     } else {
       toast('Fehler beim Ablehnen', 'err');
     }
-  });
+  }));
 }
 
 async function confirmAll() {
@@ -3202,6 +3289,138 @@ async function loadMdCategories() {
       if (!L2_OPTS[c.l1].includes(c.l2)) L2_OPTS[c.l1].push(c.l2);
     });
   } catch(e) { console.warn('md_categories nicht geladen:', e.message); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MONATSABSCHLUSS
+// ═══════════════════════════════════════════════════════
+const BUCHHALTER_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-v1';
+
+async function loadMonatsabschluss() {
+  const wrap = document.getElementById('ma-content');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
+
+  // Monat-Selector befüllen
+  const sel = document.getElementById('ma-month-sel');
+  if (sel && !sel.options.length) {
+    const now = new Date();
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = label;
+      sel.appendChild(opt);
+    }
+  }
+
+  const selMonth = sel ? sel.value : new Date().toISOString().slice(0,7);
+  const [year, month] = selMonth.split('-');
+  const monthStart = `${year}-${month}-01`;
+  const monthEnd = new Date(parseInt(year), parseInt(month), 1).toISOString().split('T')[0];
+
+  try {
+    // Aktive Verträge laden
+    const contracts = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,amount,frequency,status&status=eq.active&order=entity,name`);
+
+    // Dokumente für diesen Monat laden
+    const docs = await supa(`documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,status,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
+
+    if (!contracts.length) {
+      wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge in prf_contracts gefunden</div>`;
+      return;
+    }
+
+    // Pro Vertrag prüfen ob Rechnung vorhanden
+    let missing = 0, present = 0;
+    let html = `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Vertrag / Anbieter</th><th>Entität</th><th>Kategorie</th>
+        <th class="num">Betrag</th><th>Frequenz</th><th>Beleg vorhanden</th>
+      </tr></thead><tbody>`;
+
+    for (const c of contracts) {
+      const providerNorm = (c.provider || c.name || '').toLowerCase().trim();
+      const matched = docs.find(d => {
+        const dp = (d.provider || '').toLowerCase().trim();
+        return dp && providerNorm && (dp.includes(providerNorm) || providerNorm.includes(dp));
+      });
+
+      const hasBelege = !!matched;
+      if (hasBelege) present++; else missing++;
+
+      const statusCell = hasBelege
+        ? `<span class="pill pill-approved">✅ Vorhanden</span><br><span style="font-size:10px;color:var(--tx2)">${escHtml(matched.drive_file_name || matched.provider || '')}</span>`
+        : `<span class="pill pill-warn">🔴 Fehlt</span>`;
+
+      const rowStyle = hasBelege ? '' : 'background:rgba(239,68,68,0.06)';
+      html += `<tr style="${rowStyle}">
+        <td><strong>${escHtml(c.name || c.provider || '—')}</strong></td>
+        <td>${entityBadge(c.entity)}</td>
+        <td style="font-size:11px">${escHtml(c.category_l1 || '—')}</td>
+        <td class="num">${c.amount ? eur(c.amount) : '—'}</td>
+        <td style="font-size:11px">${escHtml(c.frequency || '—')}</td>
+        <td>${statusCell}</td>
+      </tr>`;
+    }
+
+    html += `</tbody></table></div>
+      <div class="tbl-footer">
+        <span>${contracts.length} aktive Verträge</span>
+        <span style="color:var(--grn)">✅ ${present} mit Beleg</span>
+        <span style="color:var(--red)">🔴 ${missing} fehlend</span>
+      </div>`;
+
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${e.message}</div>`;
+  }
+}
+
+async function sendMonatsabschluss() {
+  const btn = document.getElementById('ma-send-btn');
+  const sel = document.getElementById('ma-month-sel');
+  const selMonth = sel ? sel.value : new Date().toISOString().slice(0,7);
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sende…';
+
+  try {
+    const [year, month] = selMonth.split('-');
+    const monthStart = `${year}-${month}-01`;
+    const monthEnd = new Date(parseInt(year), parseInt(month), 1).toISOString().split('T')[0];
+
+    const contracts = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,amount,frequency&status=eq.active`);
+    const docs = await supa(`documents?select=id,provider,entity,invoice_date,doc_type,amount,drive_file_name,status&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
+
+    const payload = {
+      month: selMonth,
+      sent_at: new Date().toISOString(),
+      contracts_count: contracts.length,
+      docs_count: docs.length,
+      contracts,
+      docs
+    };
+
+    const res = await fetch(BUCHHALTER_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      toast(`✅ Monatsabschluss ${selMonth} an Buchhalter gesendet`);
+      btn.textContent = '✅ Gesendet';
+      setTimeout(() => { btn.textContent = '📤 Jetzt an Buchhalter senden'; btn.disabled = false; }, 3000);
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch(e) {
+    toast('Fehler beim Senden: ' + e.message, 'err');
+    btn.textContent = '📤 Jetzt an Buchhalter senden';
+    btn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════
