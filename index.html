@@ -1,12 +1,11 @@
-<!-- TGV Dashboard v11.1 — 2026-04-18 -->
-<!-- TGV Dashboard v11.1 — 2026-04-19 -->
+<!-- TGV Dashboard v11.5 — 2026-04-19 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.1">
-<title>TGV Dashboard v11.1 — Financial OS</title>
+<meta name="version" content="11.5">
+<title>TGV Dashboard v11.5 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -930,6 +929,32 @@ tbody tr:last-child td { border-bottom: none; }
 .toast.err { border-left: 4px solid var(--red); }
 @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
+/* ─── CONFIRM MODAL ─── */
+.modal-bg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal-box {
+  background: var(--s0);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  padding: 28px 28px 20px;
+  min-width: 320px;
+  max-width: 420px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  animation: slideIn 0.18s ease;
+}
+.modal-icon { font-size: 28px; margin-bottom: 10px; }
+.modal-title { font-size: 15px; font-weight: 700; color: var(--tx0); margin-bottom: 6px; }
+.modal-body-text { font-size: 13px; color: var(--tx1); margin-bottom: 20px; }
+.modal-foot { display: flex; gap: 10px; justify-content: flex-end; }
+
 </style>
 </head>
 <body>
@@ -942,7 +967,7 @@ tbody tr:last-child td { border-bottom: none; }
     <span class="brand-sub">Financial OS</span>
   </div>
   <div class="topbar-right">
-    <span class="topbar-version">v11.1</span>
+    <span class="topbar-version">v11.5</span>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
   </div>
 </div>
@@ -986,7 +1011,7 @@ tbody tr:last-child td { border-bottom: none; }
     </button>
 
     <div class="sidebar-footer">
-      TGV Financial OS v11.1<br>
+      TGV Financial OS v11.5<br>
       Jean-Chris Binetti
     </div>
   </nav>
@@ -1324,6 +1349,19 @@ tbody tr:last-child td { border-bottom: none; }
 
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toasts"></div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-icon" id="confirm-modal-icon">⚠️</div>
+    <div class="modal-title" id="confirm-modal-title">Bestätigen</div>
+    <div class="modal-body-text" id="confirm-modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn-sm btn-reject" id="confirm-modal-ok">Bestätigen</button>
+      <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" onclick="closeConfirmModal()">Abbrechen</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -1837,19 +1875,45 @@ async function approveDoc(id) {
 }
 
 async function rejectDoc(id) {
-  if (!confirm('Dokument ablehnen?')) return;
-  const row = document.getElementById('inbox-row-' + id);
-  if (!row) return;
-  const ok = await supaPatch('documents', `id=eq.${id}`, { status: 'rejected' });
-  if (ok) {
-    row.style.transition = 'opacity 0.3s';
-    row.style.opacity = '0';
-    setTimeout(() => {
-      row.remove();
-      gInboxRows = gInboxRows.filter(r => String(r.id) !== String(id));
-      if (!document.querySelector('#inbox-content .inbox-table tbody tr')) renderInbox();
-    }, 300);
-  }
+  showConfirmModal(
+    '⚠️ Dokument ablehnen',
+    'Dokument wirklich ablehnen?',
+    async () => {
+      const row = document.getElementById('inbox-row-' + id);
+      if (!row) return;
+      const ok = await supaPatch('documents', `id=eq.${id}`, { status: 'rejected' });
+      if (ok) {
+        toast('❌ Abgelehnt');
+        row.style.transition = 'opacity 0.3s';
+        row.style.opacity = '0';
+        setTimeout(() => {
+          row.remove();
+          gInboxRows = gInboxRows.filter(r => String(r.id) !== String(id));
+          if (!document.querySelector('#inbox-content .inbox-table tbody tr')) renderInbox();
+        }, 300);
+      } else {
+        toast('Fehler beim Ablehnen', 'err');
+      }
+    }
+  );
+}
+
+function showConfirmModal(title, body, onConfirm) {
+  document.getElementById('confirm-modal-title').textContent = title;
+  document.getElementById('confirm-modal-body').textContent = body;
+  const okBtn = document.getElementById('confirm-modal-ok');
+  // Alten Listener entfernen
+  const newOkBtn = okBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+  newOkBtn.addEventListener('click', () => {
+    closeConfirmModal();
+    onConfirm();
+  });
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+function closeConfirmModal() {
+  document.getElementById('confirm-modal').classList.remove('open');
 }
 
 async function sendToBuchhalter(id, btn) {
