@@ -1022,13 +1022,18 @@ table th.num, table td.num { text-align: right !important; }
       <span class="nav-label">Monatsabschluss</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('mailrules', this)">
+      <span class="nav-icon">📬</span>
+      <span class="nav-label">Mail Rules</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('system', this)">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label">System</span>
     </button>
 
     <div class="sidebar-footer">
-      TGV Financial OS v11.6<br>
+      TGV Financial OS v11.7<br>
       Jean-Chris Binetti
     </div>
   </nav>
@@ -1331,8 +1336,111 @@ table th.num, table td.num { text-align: right !important; }
     </div>
 
     <!-- ═══════════════════════════════════════════════
+         PAGE: MAIL RULES
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-mailrules">
+      <div class="page-header">
+        <h1>📬 Mail Rules</h1>
+        <p>E-Mail-Weiterleitungsregeln verwalten — mail_routing_rules</p>
+      </div>
+
+      <!-- STATS BAR -->
+      <div class="sum-bar" id="mailrules-stats">
+        <span id="mr-stat-total" style="font-weight:600">— Regeln</span>
+        <span id="mr-stat-active" style="color:var(--grn);font-weight:600">— aktiv</span>
+        <span id="mr-stat-inactive" style="color:var(--tx2)">— inaktiv</span>
+        <span id="mr-stat-blocked" style="color:var(--red);font-weight:600">🚫 — heute geblockt</span>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="card">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+          <h2>📋 Regeln</h2>
+          <button class="btn-sm btn-approve" onclick="openMailRuleModal()" style="padding:7px 16px">➕ Neue Regel</button>
+        </div>
+        <div class="card-body no-pad">
+          <div id="mailrules-content">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIL RULE MODAL -->
+    <div class="modal-bg" id="mailrule-modal">
+      <div class="modal-box" style="max-width:520px;width:95%">
+        <div class="modal-title" id="mr-modal-title">Neue Regel</div>
+        <div class="modal-body-text" style="text-align:left">
+          <div style="display:grid;gap:12px;margin-top:8px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Name *</label>
+              <input id="mr-name" type="text" placeholder="z.B. Vercel Billing" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Match-Feld</label>
+                <select id="mr-match-field" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+                  <option value="sender">Absender (sender)</option>
+                  <option value="subject">Betreff (subject)</option>
+                  <option value="both">Beides</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Match-Typ</label>
+                <select id="mr-match-type" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+                  <option value="contains">enthält (contains)</option>
+                  <option value="exact">exakt (exact)</option>
+                  <option value="starts_with">beginnt mit (starts_with)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Match-Wert *</label>
+              <input id="mr-match-value" type="text" placeholder="z.B. billing@example.com" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Aktion</label>
+                <select id="mr-action" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+                  <option value="forward">Weiterleiten (forward)</option>
+                  <option value="block">Blockieren (block)</option>
+                  <option value="tag">Tag hinzufügen (tag)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Entität</label>
+                <select id="mr-entity" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+                  <option value="">— keine —</option>
+                  <option value="priv">PRIV</option>
+                  <option value="c3">C3</option>
+                  <option value="c4">C4</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Priorität</label>
+                <input id="mr-priority" type="number" value="10" min="1" max="99" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Tag (nur bei Aktion = tag)</label>
+              <input id="mr-tag" type="text" placeholder="z.B. vorschuss" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Notizen</label>
+              <input id="mr-notes" type="text" placeholder="Optionale Beschreibung" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+            </div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-sm btn-approve" id="mr-modal-save" onclick="saveMailRule()" style="padding:7px 16px">💾 Speichern</button>
+          <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" onclick="closeMailRuleModal()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
          PAGE: SYSTEM
-    ═══════════════════════════════════════════════ -->
+    ════════════════════════════════════════════════ -->
     <div class="page" id="page-system">
       <div class="page-header">
         <h1>⚙️ System</h1>
@@ -1587,6 +1695,7 @@ function showPage(pageId, btn) {
   if (pageId === 'projekte') loadProjekte();
   if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
+  if (pageId === 'mailrules') loadMailRules();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1619,6 +1728,7 @@ function refreshCurrentPage() {
   if (id === 'vertraege') loadVertraege();
   if (id === 'projekte') loadProjekte();
   if (id === 'monatsabschluss') loadMonatsabschluss();
+  if (id === 'mailrules') loadMailRules();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3421,6 +3531,228 @@ async function sendMonatsabschluss() {
     btn.textContent = '📤 Jetzt an Buchhalter senden';
     btn.disabled = false;
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIL RULES
+// ═══════════════════════════════════════════════════════
+let mailRulesData = [];
+let mrEditId = null; // null = new, number = edit
+
+const ACTION_COLORS = {
+  block:   { bg: 'var(--red-bg)',  color: 'var(--red)',  border: 'var(--red-bd)',  label: '🚫 Block' },
+  forward: { bg: 'var(--grn-bg)', color: 'var(--grn)', border: 'var(--grn-bd)', label: '➡️ Forward' },
+  tag:     { bg: 'var(--blu-bg)', color: 'var(--blu)', border: 'var(--blu-bd)', label: '🏷️ Tag' },
+};
+
+const MATCH_FIELD_LABELS = { sender: 'Absender', subject: 'Betreff', both: 'Beides' };
+const MATCH_TYPE_LABELS  = { contains: 'enthält', exact: 'exakt', starts_with: 'beginnt mit' };
+
+async function loadMailRules() {
+  const wrap = document.getElementById('mailrules-content');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div>';
+
+  try {
+    const [rules, blockedCount] = await Promise.allSettled([
+      supa('mail_routing_rules?order=priority,id'),
+      loadBlockedToday()
+    ]);
+
+    mailRulesData = rules.status === 'fulfilled' ? rules.value : [];
+    const blocked = blockedCount.status === 'fulfilled' ? blockedCount.value : '?';
+
+    // Update stats bar
+    const total    = mailRulesData.length;
+    const active   = mailRulesData.filter(r => r.active).length;
+    const inactive = total - active;
+    document.getElementById('mr-stat-total').textContent    = `${total} Regel${total !== 1 ? 'n' : ''}`;
+    document.getElementById('mr-stat-active').textContent   = `${active} aktiv`;
+    document.getElementById('mr-stat-inactive').textContent = `${inactive} inaktiv`;
+    document.getElementById('mr-stat-blocked').textContent  = `🚫 ${blocked} heute geblockt`;
+
+    renderMailRules();
+  } catch(e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${e.message}</div>`;
+  }
+}
+
+async function loadBlockedToday() {
+  const today = new Date().toISOString().split('T')[0];
+  return supaCount('documents', `status=eq.rejected&date_received=gte.${today}`);
+}
+
+function renderMailRules() {
+  const wrap = document.getElementById('mailrules-content');
+  if (!wrap) return;
+
+  if (!mailRulesData.length) {
+    wrap.innerHTML = '<div class="alert alert-info">📤 Keine Regeln vorhanden. Klicke auf „Neue Regel“ um zu starten.</div>';
+    return;
+  }
+
+  let html = '<div class="tbl-wrap"><table>';
+  html += '<thead><tr>';
+  html += '<th style="width:32px">#</th>';
+  html += '<th>Name</th>';
+  html += '<th>Feld</th>';
+  html += '<th>Wert</th>';
+  html += '<th>Typ</th>';
+  html += '<th>Aktion</th>';
+  html += '<th>Entität</th>';
+  html += '<th style="text-align:center">Aktiv</th>';
+  html += '<th>Notiz</th>';
+  html += '<th style="text-align:center">Aktionen</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const r of mailRulesData) {
+    const ac = ACTION_COLORS[r.action] || ACTION_COLORS.forward;
+    const actionPill = `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${ac.bg};color:${ac.color};border:1px solid ${ac.border}">${ac.label}</span>`;
+    const rowStyle = r.active ? '' : 'opacity:0.5;background:var(--s2)';
+    const toggleIcon = r.active ? '✅' : '❌';
+    const toggleTitle = r.active ? 'Aktiv — klicken zum Deaktivieren' : 'Inaktiv — klicken zum Aktivieren';
+
+    html += `<tr style="${rowStyle}" id="mr-row-${r.id}">`;
+    html += `<td style="color:var(--tx2);font-size:11px">${r.priority}</td>`;
+    html += `<td><strong style="font-size:12px">${esc(r.name)}</strong></td>`;
+    html += `<td style="font-size:11px;color:var(--tx2)">${MATCH_FIELD_LABELS[r.match_field] || r.match_field}</td>`;
+    html += `<td style="font-family:monospace;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.match_value)}">${esc(r.match_value)}</td>`;
+    html += `<td style="font-size:11px;color:var(--tx2)">${MATCH_TYPE_LABELS[r.match_type] || r.match_type}</td>`;
+    html += `<td>${actionPill}</td>`;
+    html += `<td>${r.entity ? entityBadge(r.entity) : '<span style="color:var(--tx2);font-size:11px">—</span>'}</td>`;
+    html += `<td style="text-align:center"><button class="btn-sm" title="${toggleTitle}" onclick="toggleMailRule(${r.id},${!r.active})" style="padding:2px 8px;font-size:14px;background:transparent;border:none;cursor:pointer">${toggleIcon}</button></td>`;
+    html += `<td style="font-size:11px;color:var(--tx2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.notes||'')}">${esc((r.notes||'').substring(0,40))}</td>`;
+    html += `<td style="text-align:center;white-space:nowrap">`;
+    html += `<button class="btn-sm btn-open" onclick="openMailRuleModal(${r.id})" style="padding:2px 8px;font-size:11px">✏️</button> `;
+    html += `<button class="btn-sm btn-reject" onclick="deleteMailRule(${r.id})" style="padding:2px 8px;font-size:11px">🗑️</button>`;
+    html += '</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  html += `<div class="tbl-footer"><span>${mailRulesData.length} Regeln</span><span style="color:var(--grn)">${mailRulesData.filter(r=>r.active).length} aktiv</span></div>`;
+  wrap.innerHTML = html;
+}
+
+async function toggleMailRule(id, newActive) {
+  const ok = await supaPatch('mail_routing_rules', `id=eq.${id}`, { active: newActive });
+  if (ok) {
+    const rule = mailRulesData.find(r => r.id === id);
+    if (rule) rule.active = newActive;
+    renderMailRules();
+    toast(newActive ? '✅ Regel aktiviert' : '❌ Regel deaktiviert');
+  } else {
+    toast('Fehler beim Aktualisieren', 'err');
+  }
+}
+
+function openMailRuleModal(id) {
+  mrEditId = id || null;
+  const modal = document.getElementById('mailrule-modal');
+  const title = document.getElementById('mr-modal-title');
+
+  if (id) {
+    const r = mailRulesData.find(x => x.id === id);
+    if (!r) return;
+    title.textContent = '✏️ Regel bearbeiten';
+    document.getElementById('mr-name').value        = r.name || '';
+    document.getElementById('mr-match-field').value = r.match_field || 'sender';
+    document.getElementById('mr-match-type').value  = r.match_type || 'contains';
+    document.getElementById('mr-match-value').value = r.match_value || '';
+    document.getElementById('mr-action').value      = r.action || 'forward';
+    document.getElementById('mr-entity').value      = r.entity || '';
+    document.getElementById('mr-priority').value    = r.priority || 10;
+    document.getElementById('mr-tag').value         = r.tag || '';
+    document.getElementById('mr-notes').value       = r.notes || '';
+  } else {
+    title.textContent = '➕ Neue Regel';
+    document.getElementById('mr-name').value        = '';
+    document.getElementById('mr-match-field').value = 'sender';
+    document.getElementById('mr-match-type').value  = 'contains';
+    document.getElementById('mr-match-value').value = '';
+    document.getElementById('mr-action').value      = 'forward';
+    document.getElementById('mr-entity').value      = '';
+    document.getElementById('mr-priority').value    = 10;
+    document.getElementById('mr-tag').value         = '';
+    document.getElementById('mr-notes').value       = '';
+  }
+
+  modal.classList.add('open');
+}
+
+function closeMailRuleModal() {
+  document.getElementById('mailrule-modal').classList.remove('open');
+  mrEditId = null;
+}
+
+async function saveMailRule() {
+  const name       = document.getElementById('mr-name').value.trim();
+  const matchValue = document.getElementById('mr-match-value').value.trim();
+  if (!name || !matchValue) { toast('Name und Match-Wert sind Pflichtfelder', 'err'); return; }
+
+  const body = {
+    name,
+    match_field: document.getElementById('mr-match-field').value,
+    match_type:  document.getElementById('mr-match-type').value,
+    match_value: matchValue,
+    action:      document.getElementById('mr-action').value,
+    entity:      document.getElementById('mr-entity').value || null,
+    priority:    parseInt(document.getElementById('mr-priority').value) || 10,
+    tag:         document.getElementById('mr-tag').value.trim() || null,
+    notes:       document.getElementById('mr-notes').value.trim() || null,
+    updated_at:  new Date().toISOString()
+  };
+
+  const saveBtn = document.getElementById('mr-modal-save');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '⏳ Speichern…';
+
+  try {
+    if (mrEditId) {
+      // UPDATE via PATCH webhook
+      const ok = await supaPatch('mail_routing_rules', `id=eq.${mrEditId}`, body);
+      if (!ok) throw new Error('Patch fehlgeschlagen');
+      toast('✅ Regel aktualisiert');
+    } else {
+      // INSERT via direct Supabase call (anon key has write policy)
+      const res = await fetch(`${SUPA_REST}/mail_routing_rules`, {
+        method: 'POST',
+        headers: { ...SUPA_HEADERS, 'Prefer': 'return=representation' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast('✅ Neue Regel gespeichert');
+    }
+    closeMailRuleModal();
+    loadMailRules();
+  } catch(e) {
+    toast('Fehler: ' + e.message, 'err');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = '💾 Speichern';
+  }
+}
+
+async function deleteMailRule(id) {
+  const rule = mailRulesData.find(r => r.id === id);
+  const name = rule ? rule.name : `ID ${id}`;
+  showConfirmModal(
+    '🗑️ Regel löschen',
+    `Regel "${name}" wirklich löschen?`,
+    async () => {
+      const res = await fetch(`${SUPA_REST}/mail_routing_rules?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: SUPA_HEADERS
+      });
+      if (res.ok) {
+        mailRulesData = mailRulesData.filter(r => r.id !== id);
+        renderMailRules();
+        toast('🗑️ Regel gelöscht');
+      } else {
+        toast('Fehler beim Löschen', 'err');
+      }
+    }
+  );
 }
 
 // ═══════════════════════════════════════════════════════
