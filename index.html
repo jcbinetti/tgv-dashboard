@@ -2455,8 +2455,8 @@ function renderTxnTable() {
     html += `<tr style="cursor:pointer" onclick="toggleTxnDetail('${t.id}')">
       <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
       <td style="font-size:11px;white-space:nowrap;color:var(--tx2)">${escHtml(acctLabel)}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(counterparty)}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--tx2)" title="${escHtml(t.purpose || '')}">${escHtml(purposeShort)}</td>
+        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.counterparty_raw || '—')}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose || '')}">${escHtml(t.purpose || '—')}</td>eShort)}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l1 || '—')}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l2 || '—')}</td>
       <td>${entityBadge(t.entity)}</td>
@@ -2634,7 +2634,7 @@ async function loadVertraege() {
     let data = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,category_l2,amount,currency,frequency,contract_start_date,contract_end_date,next_renewal_date,notice_period_days,auto_renewal,status,portal_url,notes&order=next_renewal_date.asc.nullslast&limit=200`);
 
     if (gEntity !== 'all') {
-      data = data.filter(r => mapEntity(r.entity) === gEntity);
+      data = data.filter(r => mapEntity(r.entity_key) === gEntity);
     }
 
     if (!data.length) {
@@ -2704,10 +2704,10 @@ async function loadProjekte() {
   const wrap = document.getElementById('projekte-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Projekte…</div>`;
   try {
-    let data = await supa(`prf_projects?select=id,project_code,name,entity,status_code,lifecycle_status,budget,tgv_tracked&tgv_tracked=eq.true&order=project_code`);
+    let data = await supa(`prf_projects?select=id,project_code,name,entity_key,status_code,lifecycle_status,budget,tgv_tracked&tgv_tracked=eq.true&order=project_code`);
 
     if (gEntity !== 'all') {
-      data = data.filter(r => mapEntity(r.entity) === gEntity);
+      data = data.filter(r => mapEntity(r.entity_key) === gEntity);
     }
 
     if (!data.length) {
@@ -2721,7 +2721,7 @@ async function loadProjekte() {
       html += `<div class="proj-card">
         <div class="proj-card-head">
           <span class="proj-code">${escHtml(p.project_code || '—')}</span>
-          ${entityBadge(p.entity)}
+          ${entityBadge(p.entity_key)}
         </div>
         <div class="proj-name">${escHtml(p.name || '—')}</div>
         <div class="proj-meta">
