@@ -1035,7 +1035,7 @@ table th.num, table td.num { text-align: right !important; }
     </button>
 
     <div class="sidebar-footer">
-      TGV Financial OS v11.8<br>
+      TGV Financial OS v11.9<br>
       Jean-Chris Binetti
     </div>
   </nav>
@@ -1327,7 +1327,7 @@ table th.num, table td.num { text-align: right !important; }
         <div class="card-head">
           <h2>📅 Monatsabschluss</h2>
           <div style="display:flex;gap:10px;align-items:center">
-            <select id="ma-month-sel" onchange="loadMonatsabschluss()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--s1);color:var(--tx1);font-size:13px"></select>
+            <span id="ma-period-label" style="font-size:12px;color:var(--tx2)"></span>
             <button class="btn-sm btn-open" onclick="sendMonatsabschluss()" id="ma-send-btn" style="padding:7px 16px">📤 Jetzt an Buchhalter senden</button>
           </div>
         </div>
@@ -3426,36 +3426,48 @@ const BUCHHALTER_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalt
 async function loadMonatsabschluss() {
   const wrap = document.getElementById('ma-content');
   if (!wrap) return;
-  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Daten…</div>`;
 
-  // Monat-Selector befüllen
-  const sel = document.getElementById('ma-month-sel');
-  if (sel && !sel.options.length) {
+  // Monat aus globalem Zeitraum-Filter ableiten
+  // gPeriod ist 'all' oder 'YYYY-MM'
+  let selMonth;
+  if (gPeriod && gPeriod !== 'all') {
+    selMonth = gPeriod; // z.B. '2026-04'
+  } else {
+    // Kein Monat gewählt: aktuellen Monat nehmen
     const now = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-      const opt = document.createElement('option');
-      opt.value = val; opt.textContent = label;
-      sel.appendChild(opt);
-    }
+    selMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   }
 
-  const selMonth = sel ? sel.value : new Date().toISOString().slice(0,7);
   const [year, month] = selMonth.split('-');
   const monthStart = `${year}-${month}-01`;
   const monthEnd = new Date(parseInt(year), parseInt(month), 1).toISOString().split('T')[0];
 
+  // Periode-Label im Tabellenkopf aktualisieren
+  const periodLabel = document.getElementById('ma-period-label');
+  if (periodLabel) {
+    const d = new Date(parseInt(year), parseInt(month)-1, 1);
+    const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    const entityLabel = gEntity !== 'all' ? ` • ${gEntity.toUpperCase()}` : '';
+    periodLabel.textContent = `📅 ${label}${entityLabel}`;
+  }
+
   try {
-    // Aktive Verträge laden
-    const contracts = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,amount,frequency,status&status=eq.active&order=entity,name`);
+    // Aktive Verträge laden — mit optionalem Entity-Filter
+    let contractsQuery = `prf_contracts?select=id,name,provider,entity,category_l1,amount,frequency,status&status=eq.active&order=entity,name`;
+    let contracts = await supa(contractsQuery);
+
+    // Entity-Filter anwenden
+    if (gEntity !== 'all') {
+      contracts = contracts.filter(c => mapEntity(c.entity) === gEntity);
+    }
 
     // Dokumente für diesen Monat laden
     const docs = await supa(`documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,status,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
 
     if (!contracts.length) {
-      wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge in prf_contracts gefunden</div>`;
+      const hint = gEntity !== 'all' ? ` für Entität "${gEntity.toUpperCase()}"` : '';
+      wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge${hint} gefunden</div>`;
       return;
     }
 
@@ -3507,8 +3519,14 @@ async function loadMonatsabschluss() {
 
 async function sendMonatsabschluss() {
   const btn = document.getElementById('ma-send-btn');
-  const sel = document.getElementById('ma-month-sel');
-  const selMonth = sel ? sel.value : new Date().toISOString().slice(0,7);
+  // Monat aus globalem Zeitraum-Filter (gPeriod) ableiten
+  let selMonth;
+  if (gPeriod && gPeriod !== 'all') {
+    selMonth = gPeriod;
+  } else {
+    const now = new Date();
+    selMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
 
   btn.disabled = true;
   btn.textContent = '⏳ Sende…';
