@@ -1004,7 +1004,7 @@ table th.num, table td.num { text-align: right !important; }
     <span class="brand-sub">Financial OS</span>
   </div>
   <div class="topbar-right">
-    <span class="topbar-version">v11.9</span>
+    <span class="topbar-version" id="topbar-version">v?</span>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
   </div>
 </div>
@@ -1058,7 +1058,7 @@ table th.num, table td.num { text-align: right !important; }
     </button>
 
     <div class="sidebar-footer">
-      TGV Financial OS v11.9<br>
+      TGV Financial OS <span id="sidebar-version">v?</span><br>
       Jean-Chris Binetti
     </div>
   </nav>
@@ -1576,6 +1576,8 @@ table th.num, table td.num { text-align: right !important; }
 // ═══════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════
+// Versionsnummer dynamisch aus dem <meta name="version">-Tag lesen
+const DASHBOARD_VERSION = document.querySelector('meta[name="version"]')?.content || '?';
 const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnY2Rsb3pzdnloaHZpcHlseGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwOTA5ODAsImV4cCI6MjA4OTY2Njk4MH0.kDhUBdwJC1RxS9ii2jFg1AIuVWMAW2SyU580pLHxOiY';
 const SUPA_REST = `${SUPA_URL}/rest/v1`;
@@ -4238,6 +4240,13 @@ async function deleteMailRule(id) {
 //  INIT
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+  // Versionsnummer dynamisch in alle Anzeige-Elemente schreiben
+  const vLabel = `v${DASHBOARD_VERSION}`;
+  const tvEl = document.getElementById('topbar-version');
+  const svEl = document.getElementById('sidebar-version');
+  if (tvEl) tvEl.textContent = vLabel;
+  if (svEl) svEl.textContent = vLabel;
+
   loadUebersicht();
   loadMdCategories();
 });
