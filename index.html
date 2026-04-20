@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.9">
-<title>TGV Dashboard v11.9 — Financial OS</title>
+<meta name="version" content="11.10">
+<title>TGV Dashboard v11.10 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2901,7 +2901,7 @@ async function loadVertraege() {
   const wrap = document.getElementById('vertraege-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
   try {
-    let data = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,category_l2,amount,currency,frequency,contract_start_date,contract_end_date,next_renewal_date,notice_period_days,auto_renewal,status,portal_url,notes,rechargeable,rechargeable_to,project_id&order=next_renewal_date.asc.nullslast&limit=200`);
+    let data = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,category_l2,amount,currency,frequency,contract_start_date,contract_end_date,next_renewal_date,notice_period_days,auto_renewal,status,portal_url,notes,rechargeable,rechargeable_to,project_id,ai_summary,key_terms,next_action_date,document_id&order=next_renewal_date.asc.nullslast&limit=200`);
 
     if (gEntity !== 'all') {
       data = data.filter(r => mapEntity(r.entity) === gEntity);
@@ -3025,12 +3025,12 @@ async function loadVertraege() {
   }
 }
 
-function openSteckbrief(contractId) {
+async function openSteckbrief(contractId) {
   gSelectedContractId = contractId;
   const c = gVertraegeData.find(x => x.id === contractId);
   if (!c) return;
 
-  // Bug 4 Fix: Zeile via data-contract-id highlighten (nicht per onclick-String-Match)
+  // Bug 4 Fix: Zeile via data-contract-id highlighten
   document.querySelectorAll('.contract-row').forEach(r => r.classList.remove('selected'));
   const targetRow = document.querySelector(`.contract-row[data-contract-id="${contractId}"]`);
   if (targetRow) targetRow.classList.add('selected');
@@ -3039,58 +3039,126 @@ function openSteckbrief(contractId) {
   const body = document.getElementById('steckbrief-body');
   if (!panel || !body) return;
 
+  // Sofort Panel öffnen mit Spinner für async-Teile
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
   const laufzeit = [c.contract_start_date, c.contract_end_date].filter(Boolean).map(fmtDate).join(' – ') || '—';
   const l1l2 = [c.category_l1, c.category_l2].filter(Boolean).join(' / ') || '—';
 
+  // ── next_action_date Farbkodierung ──
+  let nextActionHtml = '—';
+  if (c.next_action_date) {
+    const nad = new Date(c.next_action_date);
+    const today = new Date();
+    const diffDays = Math.round((nad - today) / 86400000);
+    const label = fmtDateLong(c.next_action_date);
+    if (diffDays < 0) {
+      nextActionHtml = `<span style="color:var(--tx2);text-decoration:line-through">${label} (abgelaufen)</span>`;
+    } else if (diffDays < 60) {
+      nextActionHtml = `<span style="color:var(--red);font-weight:700">🔴 ${label} (in ${diffDays} Tagen)</span>`;
+    } else if (diffDays < 90) {
+      nextActionHtml = `<span style="color:var(--amb);font-weight:600">🟡 ${label} (in ${diffDays} Tagen)</span>`;
+    } else {
+      nextActionHtml = `<span style="color:var(--grn)">${label} (in ${diffDays} Tagen)</span>`;
+    }
+  }
+
+  // ── key_terms aus JSONB ──
+  const kt = c.key_terms || {};
+  const ktRows = [
+    ['Kündigungsfrist', kt.cancellation_period ?? (c.notice_period_days ? c.notice_period_days + ' Tage' : null)],
+    ['Auto-Renewal', kt.auto_renewal != null ? (kt.auto_renewal ? '✅ Ja' : '— Nein') : (c.auto_renewal ? '✅ Ja' : '— Nein')],
+    ['Preiserhöhungsklausel', kt.price_increase_clause != null ? (kt.price_increase_clause ? '⚠️ Ja' : '— Nein') : null],
+    ['Weiterberechnet', kt.rechargeable != null ? (kt.rechargeable ? `✅ Ja${kt.rechargeable_to ? ' (an: ' + escHtml(kt.rechargeable_to) + ')' : ''}` : '— Nein') : (c.rechargeable ? `✅ Ja${c.rechargeable_to ? ' (an: ' + escHtml(c.rechargeable_to) + ')' : ''}` : '— Nein')],
+    ['Nächste Aktion', nextActionHtml],
+  ].filter(([, v]) => v != null);
+
+  // ── Vertragsdokument-Link ──
+  let docLinkHtml = '<span style="color:var(--tx2);font-size:12px;font-style:italic">Kein Vertragsdokument verknüpft</span>';
+  if (c.document_id) {
+    // document_id ist UUID → Dokument direkt laden
+    docLinkHtml = `<span style="color:var(--tx2);font-size:12px">⏳ Lade Dokument…</span>`;
+  }
+
+  // ── Initiales HTML rendern ──
   body.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px">
+    <!-- ① KI-ZUSAMMENFASSUNG -->
+    <div style="background:var(--s2);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:18px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--teal);margin-bottom:6px">📋 KI-Zusammenfassung</div>
+      ${c.ai_summary
+        ? `<div style="font-size:13px;color:var(--tx0);line-height:1.6;font-style:italic">${escHtml(c.ai_summary)}</div>`
+        : `<div style="font-size:12px;color:var(--tx2);font-style:italic">Noch keine KI-Analyse vorhanden.</div>`
+      }
+    </div>
+
+    <!-- ② KOPFZEILE: Anbieter + Entität + Links -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap">
       <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Anbieter</div>
-        <div style="font-weight:600">${escHtml(c.name || c.provider || '—')}</div>
-        ${c.portal_url ? `<a href="${escHtml(c.portal_url)}" target="_blank" style="font-size:11px;color:var(--teal)">🔗 Portal</a>` : ''}
+        <div style="font-size:18px;font-weight:700;color:var(--tx0)">${escHtml(c.name || c.provider || '—')}</div>
+        <div style="font-size:12px;color:var(--tx2);margin-top:2px">${escHtml(c.provider || '')}</div>
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${c.entity ? entityBadge(c.entity) : ''}
+          ${c.portal_url ? `<a href="${escHtml(c.portal_url)}" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none;border:1px solid var(--teal);border-radius:4px;padding:2px 8px">🔗 Portal öffnen</a>` : ''}
+          ${c.cancellation_url ? `<a href="${escHtml(c.cancellation_url)}" target="_blank" style="font-size:11px;color:var(--red);text-decoration:none;border:1px solid var(--red);border-radius:4px;padding:2px 8px">✂️ Kündigung</a>` : ''}
+        </div>
       </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Entität</div>
-        <div>${c.entity ? entityBadge(c.entity) : '<span style="color:var(--tx2);font-style:italic">— unbekannt</span>'}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Betrag / Frequenz</div>
-        <div>${c.amount ? eur(c.amount) : '—'} ${c.currency && c.currency !== 'EUR' ? c.currency : ''} / ${escHtml(c.frequency || '—')}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Kategorie</div>
-        <div>${escHtml(l1l2)}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Laufzeit</div>
-        <div>${laufzeit}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Nächste Fälligkeit</div>
-        <div>${fmtDate(c.next_renewal_date) || '—'}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Kündigung (Tage)</div>
-        <div>${c.notice_period_days ?? '—'}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Auto-Verlängerung</div>
-        <div>${c.auto_renewal ? '✅ Ja' : '— Nein'}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Weiterberechnet</div>
-        <div>${c.rechargeable ? `✅ ${c.rechargeable_to || 'Ja'}` : '—'}</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Status</div>
-        <div><span class="pill pill-${c.status === 'active' ? 'approved' : 'inbox'}">${escHtml(c.status || '—')}</span></div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:var(--teal)">${c.amount ? eur(c.amount) : '—'}</div>
+        <div style="font-size:11px;color:var(--tx2)">${escHtml(c.currency && c.currency !== 'EUR' ? c.currency + ' / ' : '')}${escHtml(c.frequency || '—')}</div>
       </div>
     </div>
-    ${c.notes ? `<div style="margin-top:14px;padding:10px 14px;background:var(--s1);border-radius:6px;font-size:12px;color:var(--tx1)">📝 ${escHtml(c.notes)}</div>` : ''}
+
+    <!-- ③ VERTRAGSDETAILS-TABELLE -->
+    <div style="margin-bottom:18px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:8px">Vertragsdetails</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <tbody>
+          <tr style="border-bottom:1px solid var(--s3)">
+            <td style="padding:6px 0;color:var(--tx2);width:40%">Laufzeit</td>
+            <td style="padding:6px 0;font-weight:500">${laufzeit}</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--s3)">
+            <td style="padding:6px 0;color:var(--tx2)">Nächste Fälligkeit</td>
+            <td style="padding:6px 0">${c.next_renewal_date ? fmtDateLong(c.next_renewal_date) : '—'}</td>
+          </tr>
+          ${ktRows.map(([label, val]) => `
+          <tr style="border-bottom:1px solid var(--s3)">
+            <td style="padding:6px 0;color:var(--tx2)">${escHtml(label)}</td>
+            <td style="padding:6px 0">${val}</td>
+          </tr>`).join('')}
+          <tr style="border-bottom:1px solid var(--s3)">
+            <td style="padding:6px 0;color:var(--tx2)">Kategorie</td>
+            <td style="padding:6px 0">${escHtml(l1l2)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:var(--tx2)">Status</td>
+            <td style="padding:6px 0"><span class="pill pill-${c.status === 'active' ? 'approved' : 'inbox'}">${escHtml(c.status || '—')}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ④ VERTRAGSDOKUMENT -->
+    <div style="margin-bottom:18px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:8px">📄 Vertragsdokument / Referenz</div>
+      <div id="steckbrief-doc-link">${docLinkHtml}</div>
+    </div>
+
+    <!-- ⑤ RECHNUNGEN -->
+    <div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:8px">🧾 Verknüpfte Rechnungen</div>
+      <div id="steckbrief-invoices"><div class="spinner-wrap" style="padding:8px 0"><div class="spinner"></div> Lade…</div></div>
+    </div>
+
+    ${c.notes ? `<div style="margin-top:14px;padding:10px 14px;background:var(--amb-bg);border:1px solid var(--amb-bd);border-radius:6px;font-size:12px;color:var(--tx1)">📝 ${escHtml(c.notes)}</div>` : ''}
   `;
 
-  panel.style.display = 'block';
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // ── Async: Vertragsdokument laden ──
+  loadSteckbriefDoc(c);
+
+  // ── Async: Rechnungen laden ──
+  loadSteckbriefInvoices(c);
 }
 
 function closeSteckbrief() {
@@ -3098,6 +3166,105 @@ function closeSteckbrief() {
   const panel = document.getElementById('vertrag-steckbrief');
   if (panel) panel.style.display = 'none';
   document.querySelectorAll('.contract-row').forEach(r => r.classList.remove('selected'));
+}
+
+// ── Steckbrief: Vertragsdokument laden ──
+async function loadSteckbriefDoc(c) {
+  const el = document.getElementById('steckbrief-doc-link');
+  if (!el) return;
+
+  try {
+    let docRow = null;
+
+    // 1. Wenn document_id direkt gesetzt → Dokument per ID laden
+    if (c.document_id) {
+      const rows = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date&id=eq.${c.document_id}&limit=1`);
+      if (rows && rows.length) docRow = rows[0];
+    }
+
+    // 2. Fallback: Neuestes Vertragsdokument vom gleichen Provider suchen
+    if (!docRow) {
+      const provNorm = (c.provider || c.name || '').replace(/[^a-zA-Z0-9]/g, '%');
+      if (provNorm.length >= 3) {
+        const rows = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date&doc_type=in.(Vertrag,Versicherungspolice,Versicherungsschein)&provider=ilike.*${encodeURIComponent(c.provider || c.name || '')}*&order=invoice_date.desc.nullslast&limit=1`);
+        if (rows && rows.length) docRow = rows[0];
+      }
+    }
+
+    // 3. Fallback: Neuestes beliebiges Dokument vom Provider
+    if (!docRow) {
+      const provSearch = encodeURIComponent(c.provider || c.name || '');
+      if (provSearch.length >= 3) {
+        const rows = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date&provider=ilike.*${provSearch}*&order=invoice_date.desc.nullslast&limit=1`);
+        if (rows && rows.length) docRow = rows[0];
+      }
+    }
+
+    if (docRow && docRow.drive_file_id) {
+      const href = `https://drive.google.com/file/d/${encodeURIComponent(docRow.drive_file_id)}/view`;
+      const docLabel = escHtml(docRow.drive_file_name || docRow.provider || 'Dokument');
+      const docDate = docRow.invoice_date ? ` (${fmtDateLong(docRow.invoice_date)})` : '';
+      const docType = docRow.doc_type ? `<span style="font-size:10px;color:var(--tx2);margin-left:6px">${escHtml(docRow.doc_type)}</span>` : '';
+      el.innerHTML = `<a href="${href}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;color:var(--blu);font-size:13px;font-weight:500;text-decoration:none">
+        <span style="font-size:16px">📎</span>
+        <span>${docLabel}${docDate}</span>
+        ${docType}
+      </a>`;
+    } else if (docRow) {
+      el.innerHTML = `<span style="font-size:12px;color:var(--tx2)">${escHtml(docRow.drive_file_name || docRow.provider || 'Dokument')} (kein Drive-Link)</span>`;
+    } else {
+      el.innerHTML = `<span style="color:var(--tx2);font-size:12px;font-style:italic">Kein Vertragsdokument in der Datenbank gefunden</span>`;
+    }
+  } catch(e) {
+    if (el) el.innerHTML = `<span style="color:var(--tx2);font-size:12px">Fehler beim Laden des Dokuments</span>`;
+  }
+}
+
+// ── Steckbrief: Verknüpfte Rechnungen laden ──
+async function loadSteckbriefInvoices(c) {
+  const el = document.getElementById('steckbrief-invoices');
+  if (!el) return;
+
+  try {
+    const provSearch = encodeURIComponent(c.provider || c.name || '');
+    let invoices = [];
+
+    if (provSearch.length >= 3) {
+      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(Rechnung,Zahlungsbeleg)&status=neq.rejected&order=invoice_date.desc.nullslast&limit=24`);
+    }
+
+    if (!invoices || !invoices.length) {
+      el.innerHTML = `<span style="color:var(--tx2);font-size:12px;font-style:italic">Keine Rechnungen für diesen Anbieter gefunden</span>`;
+      return;
+    }
+
+    let html = `<div style="font-size:11px;color:var(--tx2);margin-bottom:6px">${invoices.length} Rechnung${invoices.length !== 1 ? 'en' : ''} gefunden</div>`;
+    html += `<table style="width:100%;font-size:12px;border-collapse:collapse">`;
+    html += `<thead><tr style="border-bottom:2px solid var(--s3)">
+      <th style="padding:4px 8px 4px 0;text-align:left;color:var(--tx2);font-weight:600">Datum</th>
+      <th style="padding:4px 8px;text-align:left;color:var(--tx2);font-weight:600">Datei</th>
+      <th style="padding:4px 0 4px 8px;text-align:right;color:var(--tx2);font-weight:600">Betrag</th>
+    </tr></thead><tbody>`;
+
+    for (const inv of invoices) {
+      const dateCell = fmtDateLong(inv.invoice_date);
+      const amtCell = inv.amount ? eur(inv.amount) : '—';
+      const fileName = escHtml(inv.drive_file_name || inv.provider || 'Dokument');
+      const fileCell = inv.drive_file_id
+        ? `<a href="https://drive.google.com/file/d/${encodeURIComponent(inv.drive_file_id)}/view" target="_blank" style="color:var(--blu);text-decoration:none" title="${fileName}">${fileName.length > 35 ? fileName.substring(0,35) + '…' : fileName}</a>`
+        : `<span style="color:var(--tx2)">${fileName.length > 35 ? fileName.substring(0,35) + '…' : fileName}</span>`;
+      html += `<tr style="border-bottom:1px solid var(--s3)">
+        <td style="padding:5px 8px 5px 0;white-space:nowrap;color:var(--tx2)">${dateCell}</td>
+        <td style="padding:5px 8px">${fileCell}</td>
+        <td style="padding:5px 0 5px 8px;text-align:right;font-weight:500;white-space:nowrap">${amtCell}</td>
+      </tr>`;
+    }
+
+    html += `</tbody></table>`;
+    el.innerHTML = html;
+  } catch(e) {
+    if (el) el.innerHTML = `<span style="color:var(--tx2);font-size:12px">Fehler beim Laden der Rechnungen</span>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════
