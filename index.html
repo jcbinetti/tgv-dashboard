@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.5 — 2026-04-19 -->
+<!-- TGV Dashboard v11.9 — 2026-04-20 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.5">
-<title>TGV Dashboard v11.5 — Financial OS</title>
+<meta name="version" content="11.9">
+<title>TGV Dashboard v11.9 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -943,6 +943,29 @@ table th.num, table td.num { text-align: right !important; }
 .tbl-wrap table td:last-child.num,
 .tbl-wrap table th:last-child.num { padding-right: 12px; }
 
+/* ─── MONATSABSCHLUSS ─── */
+.ma-status-ok   { color: var(--grn); font-weight: 600; }
+.ma-status-warn { color: var(--amb); font-weight: 600; }
+.ma-status-err  { color: var(--red); font-weight: 600; }
+.ma-action-btn  { padding: 3px 8px; border-radius: 4px; border: 1px solid var(--s3); background: var(--s1); font-size: 10px; font-family: inherit; cursor: pointer; color: var(--tx1); transition: all 0.15s; white-space: nowrap; }
+.ma-action-btn:hover { border-color: var(--teal); color: var(--teal); }
+.ma-summary-bar { display: flex; gap: 20px; flex-wrap: wrap; padding: 12px 18px; background: var(--s1); border-top: 1px solid var(--s3); font-size: 12px; }
+.ma-summary-bar span { font-weight: 600; }
+.ma-source-icon { font-size: 13px; }
+
+/* ─── INLINE EDIT ─── */
+.inline-edit-cell { cursor: pointer; }
+.inline-edit-cell:hover { background: var(--blu-bg) !important; }
+.inline-input { padding: 3px 6px; border: 1px solid var(--teal); border-radius: 4px; font-family: inherit; font-size: 12px; width: 100%; box-sizing: border-box; outline: none; }
+.inline-input:focus { box-shadow: 0 0 0 2px rgba(0,127,127,0.2); }
+@keyframes flashGreen { 0%,100% { background: transparent; } 50% { background: var(--grn-bg); } }
+.flash-green { animation: flashGreen 0.6s ease; }
+
+/* ─── VERTRAGS-REGISTRY ─── */
+.contract-row { cursor: pointer; }
+.contract-row:hover td { background: #e0f2f2 !important; }
+.contract-row.selected td { background: #d0ede9 !important; border-left: 3px solid var(--teal); }
+
 /* ─── CONFIRM MODAL ─── */
 .modal-bg {
   display: none;
@@ -981,7 +1004,7 @@ table th.num, table td.num { text-align: right !important; }
     <span class="brand-sub">Financial OS</span>
   </div>
   <div class="topbar-right">
-    <span class="topbar-version">v11.5</span>
+    <span class="topbar-version">v11.9</span>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
   </div>
 </div>
@@ -1291,14 +1314,30 @@ table th.num, table td.num { text-align: right !important; }
 
     <!-- ═══════════════════════════════════════════════
          PAGE: VERTRÄGE
-    ════════════════════════════════════════════════ -->
+    ═══════════════════════════════════════════════ -->
     <div class="page" id="page-vertraege">
       <div class="page-header">
         <h1>📄 Verträge</h1>
-        <p>Aktive Verträge und Abonnements — WF F Contract Agent</p>
+        <p>Registry aller aktiven Verträge und Abonnements</p>
       </div>
-      <div id="vertraege-content">
-        <div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>
+      <div class="card">
+        <div class="card-head">
+          <h2>📄 Vertrags-Registry</h2>
+          <span id="vertraege-count" style="font-size:11px;color:rgba(255,255,255,0.6)"></span>
+        </div>
+        <div id="vertraege-content">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>
+        </div>
+      </div>
+      <!-- Steckbrief-Panel (vorbereitet, noch nicht vollständig) -->
+      <div id="vertrag-steckbrief" style="display:none">
+        <div class="card">
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
+            <h2>📎 Steckbrief</h2>
+            <button class="btn-sm" onclick="closeSteckbrief()" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);padding:4px 10px">&#x2715; Schließen</button>
+          </div>
+          <div class="card-body" id="steckbrief-body"></div>
+        </div>
       </div>
     </div>
 
@@ -1315,24 +1354,45 @@ table th.num, table td.num { text-align: right !important; }
       </div>
     </div>
 
-     <!-- ═══════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════
          PAGE: MONATSABSCHLUSS
-    ═══════════════════════════════════════════════ -->
+    ══════════ -->
     <div class="page" id="page-monatsabschluss">
       <div class="page-header">
         <h1>📅 Monatsabschluss</h1>
-        <p>Prüfe ob alle Rechnungen für aktive Verträge vorliegen</p>
+        <p>Rechnungen des Monats prüfen und an Buchhalter senden</p>
       </div>
+
+      <!-- BLOCK 1: RECHNUNGEN DES MONATS -->
       <div class="card">
         <div class="card-head">
-          <h2>📅 Monatsabschluss</h2>
-          <div style="display:flex;gap:10px;align-items:center">
-            <span id="ma-period-label" style="font-size:12px;color:var(--tx2)"></span>
-            <button class="btn-sm btn-open" onclick="sendMonatsabschluss()" id="ma-send-btn" style="padding:7px 16px">📤 Jetzt an Buchhalter senden</button>
-          </div>
+          <h2>📄 Block 1 — Rechnungen des Monats</h2>
+          <span id="ma-period-label" style="font-size:12px;color:rgba(255,255,255,0.6)"></span>
         </div>
-        <div id="ma-content">
+        <div id="ma-docs-content">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Rechnungen…</div>
+        </div>
+      </div>
+
+      <!-- BLOCK 2: VERTRAGS-CHECK -->
+      <div class="card">
+        <div class="card-head">
+          <h2>🟡 Block 2 — Vertrags-Check</h2>
+          <button class="btn-sm btn-open" onclick="showPage('vertraege', document.querySelector('[onclick*=vertraege]'))" style="font-size:11px;padding:4px 10px">→ Verträge-Tab</button>
+        </div>
+        <div id="ma-contracts-content">
           <div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>
+        </div>
+      </div>
+
+      <!-- VERSAND-BUTTON -->
+      <div class="card">
+        <div class="card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--tx0)">📤 Monatsabschluss an Buchhalter senden</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px">WF E sendet DE/FR getrennt mit Drive-Links und Beträgen-Tabelle</div>
+          </div>
+          <button class="btn-sm btn-approve" onclick="sendMonatsabschluss()" id="ma-send-btn" style="padding:10px 22px;font-size:13px;font-weight:700">📤 Jetzt an Buchhalter senden</button>
         </div>
       </div>
     </div>
@@ -2690,45 +2750,64 @@ function renderDocsFinTable() {
     return 0;
   });
 
-  const total = rows.filter(r => r.amount).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+  const total = rows.filter(r => r.amount != null && r.amount !== 0).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
   let html = `<div class="tbl-wrap"><table>
     <thead><tr>
       <th onclick="sortDocFin('date_received')">Datum</th>
-      <th onclick="sortDocFin('drive_file_name')">Dateiname / Anbieter</th>
+      <th onclick="sortDocFin('provider')">Anbieter</th>
       <th onclick="sortDocFin('entity')">Entität</th>
       <th onclick="sortDocFin('doc_type')">Typ</th>
       <th class="num" onclick="sortDocFin('amount')">Betrag</th>
+      <th>Beleg</th>
       <th onclick="sortDocFin('status')">Status</th>
-      <th>Notiz</th>
+      <th>Aktionen</th>
     </tr></thead><tbody>`;
 
   for (const r of rows) {
-    const fileName = escHtml(r.drive_file_name || r.subject || r.provider || r.sender || '—');
-    const provider = r.provider || r.sender || '';
-    const providerLabel = provider && provider !== (r.drive_file_name || r.subject) ? `<br><span style="font-size:10px;color:var(--tx2)">${escHtml(provider)}</span>` : '';
-    const amt = r.amount ? eur(r.amount) : '—';
+    // Fix 4: Stub-Docs
+    const isStub = !r.drive_file_name && r.sender === 'gdrive-upload';
+    const displayName = r.provider || r.drive_file_name || r.subject || r.sender || '';
+    const nameDisplay = isStub
+      ? `<span style="color:var(--amb);font-style:italic">(kein Name)</span>`
+      : `<span class="inline-edit-cell" onclick="startInlineEdit(this,'${r.id}','provider','${escHtml(displayName)}')" title="Klicken zum Bearbeiten">${escHtml(displayName || '—')}</span>`;
+
+    // Fix 3: amount=null vs amount=0
+    let amtCell;
+    if (r.amount == null) {
+      amtCell = `<span style="color:var(--tx2)">—</span>`;
+    } else if (parseFloat(r.amount) === 0) {
+      amtCell = `<span style="color:var(--amb);font-weight:600" title="Betrag = 0 (Warnung)">0,00 €</span>`;
+    } else {
+      amtCell = `<span class="inline-edit-cell" onclick="startInlineEdit(this,'${r.id}','amount','${r.amount}')" title="Klicken zum Bearbeiten">${eur(r.amount)}</span>`;
+    }
+
+    // Beleg-Link
     const href = r.drive_file_id
       ? `https://drive.google.com/file/d/${encodeURIComponent(r.drive_file_id)}/view`
       : (r.direct_download_url || '');
+    const belegCell = href
+      ? `<a href="${href}" target="_blank" style="font-size:11px;color:var(--blu)">📄 Beleg</a>`
+      : `<span style="color:var(--tx2);font-size:11px">—</span>`;
+
     const isTodoManual = r.status === 'todo_manual';
-    const rowClass = isTodoManual ? 'class="row-todo-manual"' : '';
-    const manualTooltip = isTodoManual ? ' title="PDF manuell erstellen → in GDrive INBOX hochladen"' : '';
-    const rowClick = href ? `onclick="window.open('${href}','_blank')" style="cursor:pointer"` : '';
-    const nameCell = href
-      ? `<a href="${href}" target="_blank" style="font-weight:600">${fileName}</a>${providerLabel}`
-      : `<span style="font-weight:600">${fileName}</span>${providerLabel}`;
-    const notesCell = r.notes
-      ? `<span style="font-size:11px;color:var(--tx2)" title="${escHtml(r.notes)}">${escHtml(r.notes.substring(0,40))}${r.notes.length>40?'…':''}</span>`
-      : '<span style="color:var(--tx2);font-size:11px">—</span>';
-    html += `<tr ${rowClass}${manualTooltip} ${rowClick}>
+    const rowClass = isTodoManual ? 'row-todo-manual' : '';
+
+    // Fix 2: Reclass-Button (nur bei amount=null)
+    let actionsCell = '';
+    if (r.amount == null) {
+      actionsCell = `<button class="ma-action-btn" onclick="reclassDoc('${r.id}','${r.drive_file_id||''}','${escHtml(r.drive_file_name||'')}')" title="KI-Reclass anfordern">🤖 Reclass</button>`;
+    }
+
+    html += `<tr class="${rowClass}">
       <td style="white-space:nowrap">${fmtDate(r.date_received || r.date_scanned)}</td>
-      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nameCell}</td>
+      <td style="max-width:200px">${nameDisplay}</td>
       <td>${entityBadge(r.entity)}</td>
       <td>${escHtml(r.doc_type || '—')}</td>
-      <td class="num" style="white-space:nowrap">${amt}</td>
+      <td class="num" style="white-space:nowrap">${amtCell}</td>
+      <td>${belegCell}</td>
       <td>${statusPill(r.status)}</td>
-      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${notesCell}</td>
+      <td>${actionsCell}</td>
     </tr>`;
   }
 
@@ -2736,9 +2815,69 @@ function renderDocsFinTable() {
     <div class="tbl-footer">
       <span>${rows.length} Dokumente</span>
       <span>Summe: ${eur(total)}</span>
+      <span style="color:var(--tx2);font-size:11px">Betrag/Anbieter klicken zum Bearbeiten</span>
     </div>`;
 
   wrap.innerHTML = html;
+}
+
+// Inline-Edit Funktionen
+function startInlineEdit(cell, docId, field, currentVal) {
+  if (cell.querySelector('input')) return; // bereits im Edit-Modus
+  const input = document.createElement('input');
+  input.className = 'inline-input';
+  input.type = field === 'amount' ? 'number' : 'text';
+  input.value = currentVal || '';
+  input.step = '0.01';
+  input.style.width = '100%';
+
+  const originalContent = cell.innerHTML;
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newVal = input.value.trim();
+    if (newVal === currentVal) {
+      cell.innerHTML = originalContent;
+      return;
+    }
+    const body = {};
+    body[field] = field === 'amount' ? (newVal ? parseFloat(newVal) : null) : (newVal || null);
+    const ok = await supaPatch('documents', `id=eq.${docId}`, body);
+    if (ok) {
+      // Cache aktualisieren
+      const doc = gDocs.find(d => d.id == docId);
+      if (doc) doc[field] = body[field];
+      cell.innerHTML = originalContent;
+      cell.classList.add('flash-green');
+      setTimeout(() => cell.classList.remove('flash-green'), 600);
+      // Zelle neu rendern
+      if (field === 'amount') {
+        const newAmt = body[field];
+        if (newAmt == null) {
+          cell.innerHTML = `<span style="color:var(--tx2)">—</span>`;
+        } else if (newAmt === 0) {
+          cell.innerHTML = `<span style="color:var(--amb);font-weight:600">0,00 €</span>`;
+        } else {
+          cell.innerHTML = `<span class="inline-edit-cell" onclick="startInlineEdit(this,'${docId}','amount','${newAmt}')" title="Klicken zum Bearbeiten">${eur(newAmt)}</span>`;
+        }
+      } else {
+        cell.innerHTML = `<span class="inline-edit-cell" onclick="startInlineEdit(this,'${docId}','${field}','${escHtml(newVal)}')" title="Klicken zum Bearbeiten">${escHtml(newVal || '—')}</span>`;
+      }
+      toast('✅ Gespeichert');
+    } else {
+      cell.innerHTML = originalContent;
+      toast('Fehler beim Speichern', 'err');
+    }
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { cell.innerHTML = originalContent; }
+  });
 }
 
 function sortDocFin(col) {
@@ -2753,74 +2892,198 @@ function sortDocFin(col) {
 // ═══════════════════════════════════════════════════════
 //  PAGE: VERTRÄGE
 // ═══════════════════════════════════════════════════════
+let gVertraegeData = [];
+let gSelectedContractId = null;
+
 async function loadVertraege() {
   const wrap = document.getElementById('vertraege-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
   try {
-    let data = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,category_l2,amount,currency,frequency,contract_start_date,contract_end_date,next_renewal_date,notice_period_days,auto_renewal,status,portal_url,notes&order=next_renewal_date.asc.nullslast&limit=200`);
+    let data = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,category_l2,amount,currency,frequency,contract_start_date,contract_end_date,next_renewal_date,notice_period_days,auto_renewal,status,portal_url,notes,rechargeable,rechargeable_to,project_id&order=next_renewal_date.asc.nullslast&limit=200`);
 
     if (gEntity !== 'all') {
-      data = data.filter(r => mapEntity(r.entity_key) === gEntity);
+      data = data.filter(r => mapEntity(r.entity) === gEntity);
     }
+
+    gVertraegeData = data;
+
+    // Count-Label aktualisieren
+    const countEl = document.getElementById('vertraege-count');
+    if (countEl) countEl.textContent = `${data.length} Verträge`;
 
     if (!data.length) {
       wrap.innerHTML = `<div class="alert alert-info">📄 Noch keine Verträge — WF F Contract Agent wird das befüllen</div>`;
       return;
     }
 
+    // Letzte Belege laden (für "Letzter Beleg"-Spalte)
+    let lastDocs = {};
+    try {
+      const recentDocs = await supa(`documents?select=id,provider,drive_file_id,drive_file_name,invoice_date&status=neq.rejected&order=invoice_date.desc&limit=200`);
+      for (const d of recentDocs) {
+        const prov = (d.provider || '').toLowerCase().trim();
+        if (prov && !lastDocs[prov]) lastDocs[prov] = d;
+      }
+    } catch(e) { /* ignorieren */ }
+
     const today = new Date();
     const d30 = new Date(today.getTime() + 30 * 86400000);
     const d90 = new Date(today.getTime() + 90 * 86400000);
 
-    let html = `<div class="card"><div class="card-head"><h2>📄 Verträge (${data.length})</h2></div>
-      <div class="tbl-wrap"><table>
-        <thead><tr>
-          <th>Name / Anbieter</th><th>Entität</th><th>L1 / L2</th><th class="num">Betrag</th><th>Frequenz</th>
-          <th>Laufzeit</th><th>Nächste Verlängerung</th><th class="num">Kündigung (Tage)</th><th>Auto</th><th>Status</th>
-        </tr></thead><tbody>`;
+    let html = `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Anbieter</th>
+        <th>Entität</th>
+        <th class="num">Betrag</th>
+        <th>Frequenz</th>
+        <th>Nächste Fälligkeit</th>
+        <th>Weiterberechnet</th>
+        <th>Letzter Beleg</th>
+        <th>Status</th>
+      </tr></thead><tbody>`;
 
     for (const c of data) {
-      let renewalCell = '—';
+      // Fälligkeits-Zelle
+      let dueCell = '—';
       if (c.next_renewal_date) {
         const dl = new Date(c.next_renewal_date);
         const label = fmtDate(c.next_renewal_date);
         if (dl < today) {
-          renewalCell = `<span class="deadline-urgent" title="Abgelaufen">⚠️ ${label}</span>`;
+          dueCell = `<span class="deadline-urgent">⚠️ ${label}</span>`;
         } else if (dl < d30) {
-          renewalCell = `<span class="deadline-urgent" title="< 30 Tage">🔴 ${label}</span>`;
+          dueCell = `<span class="deadline-urgent">🔴 ${label}</span>`;
         } else if (dl < d90) {
-          renewalCell = `<span class="deadline-soon" title="< 90 Tage">🟡 ${label}</span>`;
+          dueCell = `<span class="deadline-soon">🟡 ${label}</span>`;
         } else {
-          renewalCell = label;
+          dueCell = label;
         }
       }
 
-      const laufzeit = [c.contract_start_date, c.contract_end_date].filter(Boolean).map(fmtDate).join(' – ') || '—';
-      const amt = c.amount ? eur(c.amount) : '—';
-      const l1l2 = [c.category_l1, c.category_l2].filter(Boolean).join(' / ') || '—';
-      const notesTitle = escHtml(c.notes || '');
-      const nameCell = c.portal_url
-        ? `<a href="${escHtml(c.portal_url)}" target="_blank" title="${notesTitle}"><strong>${escHtml(c.name || c.provider || '—')}</strong></a>`
-        : `<strong title="${notesTitle}">${escHtml(c.name || c.provider || '—')}</strong>`;
+      // Weiterberechnet
+      const rechargeCell = c.rechargeable
+        ? `<span style="color:var(--grn);font-weight:600">✅ ${c.rechargeable_to ? escHtml(c.rechargeable_to) : 'Ja'}</span>`
+        : `<span style="color:var(--tx2)">—</span>`;
 
-      html += `<tr>
-        <td>${nameCell}<br><span style="font-size:10px;color:var(--tx2)">${escHtml(c.provider || '')}</span></td>
+      // Letzter Beleg
+      const provNorm = (c.provider || c.name || '').toLowerCase().trim();
+      const lastDoc = lastDocs[provNorm];
+      let lastDocCell = '<span style="color:var(--tx2);font-size:11px">—</span>';
+      if (lastDoc) {
+        if (lastDoc.drive_file_id) {
+          const href = `https://drive.google.com/file/d/${encodeURIComponent(lastDoc.drive_file_id)}/view`;
+          lastDocCell = `<a href="${href}" target="_blank" style="font-size:11px;color:var(--blu)">${fmtDate(lastDoc.invoice_date)}</a>`;
+        } else {
+          lastDocCell = `<span style="font-size:11px;color:var(--tx2)">${fmtDate(lastDoc.invoice_date)}</span>`;
+        }
+      }
+
+      const amt = c.amount ? `${eur(c.amount)}${c.currency && c.currency !== 'EUR' ? ` ${c.currency}` : ''}` : '—';
+      const isSelected = c.id === gSelectedContractId;
+
+      html += `<tr class="contract-row${isSelected ? ' selected' : ''}" onclick="openSteckbrief(${c.id})">
+        <td>
+          <strong>${escHtml(c.name || c.provider || '—')}</strong>
+          ${c.portal_url ? `<a href="${escHtml(c.portal_url)}" target="_blank" onclick="event.stopPropagation()" style="font-size:10px;color:var(--teal);margin-left:6px">🔗</a>` : ''}
+          ${c.notes ? `<br><span style="font-size:10px;color:var(--tx2)" title="${escHtml(c.notes)}">${escHtml(c.notes.substring(0,40))}${c.notes.length>40?'…':''}</span>` : ''}
+        </td>
         <td>${entityBadge(c.entity)}</td>
-        <td style="font-size:11px">${escHtml(l1l2)}</td>
         <td class="num" style="white-space:nowrap">${amt}</td>
-        <td>${escHtml(c.frequency || '—')}</td>
-        <td style="white-space:nowrap;font-size:11px">${laufzeit}</td>
-        <td>${renewalCell}</td>
-        <td class="num">${c.notice_period_days ?? '—'}</td>
-        <td>${c.auto_renewal ? '✅' : '—'}</td>
+        <td style="font-size:11px">${escHtml(c.frequency || '—')}</td>
+        <td>${dueCell}</td>
+        <td>${rechargeCell}</td>
+        <td>${lastDocCell}</td>
         <td><span class="pill pill-${c.status === 'active' ? 'approved' : 'inbox'}">${escHtml(c.status || '—')}</span></td>
       </tr>`;
     }
-    html += '</tbody></table></div></div>';
+
+    html += `</tbody></table></div>`;
+    html += `<div class="tbl-footer">
+      <span>${data.length} Verträge</span>
+      <span style="color:var(--grn)">${data.filter(c => c.status === 'active').length} aktiv</span>
+      <span style="color:var(--tx2);font-size:11px">Klick auf Zeile → Steckbrief</span>
+    </div>`;
+
     wrap.innerHTML = html;
   } catch (e) {
     wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
   }
+}
+
+function openSteckbrief(contractId) {
+  gSelectedContractId = contractId;
+  const c = gVertraegeData.find(x => x.id === contractId);
+  if (!c) return;
+
+  // Zeile highlighten
+  document.querySelectorAll('.contract-row').forEach(r => r.classList.remove('selected'));
+  const rows = document.querySelectorAll('.contract-row');
+  rows.forEach(r => {
+    if (r.onclick && r.onclick.toString().includes(contractId)) r.classList.add('selected');
+  });
+
+  const panel = document.getElementById('vertrag-steckbrief');
+  const body = document.getElementById('steckbrief-body');
+  if (!panel || !body) return;
+
+  const laufzeit = [c.contract_start_date, c.contract_end_date].filter(Boolean).map(fmtDate).join(' – ') || '—';
+  const l1l2 = [c.category_l1, c.category_l2].filter(Boolean).join(' / ') || '—';
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px">
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Anbieter</div>
+        <div style="font-weight:600">${escHtml(c.name || c.provider || '—')}</div>
+        ${c.portal_url ? `<a href="${escHtml(c.portal_url)}" target="_blank" style="font-size:11px;color:var(--teal)">🔗 Portal</a>` : ''}
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Entität</div>
+        <div>${entityBadge(c.entity)}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Betrag / Frequenz</div>
+        <div>${c.amount ? eur(c.amount) : '—'} ${c.currency && c.currency !== 'EUR' ? c.currency : ''} / ${escHtml(c.frequency || '—')}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Kategorie</div>
+        <div>${escHtml(l1l2)}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Laufzeit</div>
+        <div>${laufzeit}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Nächste Fälligkeit</div>
+        <div>${fmtDate(c.next_renewal_date) || '—'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Kündigung (Tage)</div>
+        <div>${c.notice_period_days ?? '—'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Auto-Verlängerung</div>
+        <div>${c.auto_renewal ? '✅ Ja' : '— Nein'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Weiterberechnet</div>
+        <div>${c.rechargeable ? `✅ ${c.rechargeable_to || 'Ja'}` : '—'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--tx2);margin-bottom:4px">Status</div>
+        <div><span class="pill pill-${c.status === 'active' ? 'approved' : 'inbox'}">${escHtml(c.status || '—')}</span></div>
+      </div>
+    </div>
+    ${c.notes ? `<div style="margin-top:14px;padding:10px 14px;background:var(--s1);border-radius:6px;font-size:12px;color:var(--tx1)">📝 ${escHtml(c.notes)}</div>` : ''}
+  `;
+
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeSteckbrief() {
+  gSelectedContractId = null;
+  const panel = document.getElementById('vertrag-steckbrief');
+  if (panel) panel.style.display = 'none';
+  document.querySelectorAll('.contract-row').forEach(r => r.classList.remove('selected'));
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3421,105 +3684,11 @@ async function loadMdCategories() {
 // ═══════════════════════════════════════════════════════
 //  MONATSABSCHLUSS
 // ═══════════════════════════════════════════════════════
-const BUCHHALTER_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-v1';
+const BUCHHALTER_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-versand';
+const RECLASS_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-reclass-doc';
 
 async function loadMonatsabschluss() {
-  const wrap = document.getElementById('ma-content');
-  if (!wrap) return;
-  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Daten…</div>`;
-
   // Monat aus globalem Zeitraum-Filter ableiten
-  // gPeriod ist 'all' oder 'YYYY-MM'
-  let selMonth;
-  if (gPeriod && gPeriod !== 'all') {
-    selMonth = gPeriod; // z.B. '2026-04'
-  } else {
-    // Kein Monat gewählt: aktuellen Monat nehmen
-    const now = new Date();
-    selMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  }
-
-  const [year, month] = selMonth.split('-');
-  const monthStart = `${year}-${month}-01`;
-  const monthEnd = new Date(parseInt(year), parseInt(month), 1).toISOString().split('T')[0];
-
-  // Periode-Label im Tabellenkopf aktualisieren
-  const periodLabel = document.getElementById('ma-period-label');
-  if (periodLabel) {
-    const d = new Date(parseInt(year), parseInt(month)-1, 1);
-    const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-    const entityLabel = gEntity !== 'all' ? ` • ${gEntity.toUpperCase()}` : '';
-    periodLabel.textContent = `📅 ${label}${entityLabel}`;
-  }
-
-  try {
-    // Aktive Verträge laden — mit optionalem Entity-Filter
-    let contractsQuery = `prf_contracts?select=id,name,provider,entity,category_l1,amount,frequency,status&status=eq.active&order=entity,name`;
-    let contracts = await supa(contractsQuery);
-
-    // Entity-Filter anwenden
-    if (gEntity !== 'all') {
-      contracts = contracts.filter(c => mapEntity(c.entity) === gEntity);
-    }
-
-    // Dokumente für diesen Monat laden
-    const docs = await supa(`documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,status,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
-
-    if (!contracts.length) {
-      const hint = gEntity !== 'all' ? ` für Entität "${gEntity.toUpperCase()}"` : '';
-      wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge${hint} gefunden</div>`;
-      return;
-    }
-
-    // Pro Vertrag prüfen ob Rechnung vorhanden
-    let missing = 0, present = 0;
-    let html = `<div class="tbl-wrap"><table>
-      <thead><tr>
-        <th>Vertrag / Anbieter</th><th>Entität</th><th>Kategorie</th>
-        <th class="num">Betrag</th><th>Frequenz</th><th>Beleg vorhanden</th>
-      </tr></thead><tbody>`;
-
-    for (const c of contracts) {
-      const providerNorm = (c.provider || c.name || '').toLowerCase().trim();
-      const matched = docs.find(d => {
-        const dp = (d.provider || '').toLowerCase().trim();
-        return dp && providerNorm && (dp.includes(providerNorm) || providerNorm.includes(dp));
-      });
-
-      const hasBelege = !!matched;
-      if (hasBelege) present++; else missing++;
-
-      const statusCell = hasBelege
-        ? `<span class="pill pill-approved">✅ Vorhanden</span><br><span style="font-size:10px;color:var(--tx2)">${escHtml(matched.drive_file_name || matched.provider || '')}</span>`
-        : `<span class="pill pill-warn">🔴 Fehlt</span>`;
-
-      const rowStyle = hasBelege ? '' : 'background:rgba(239,68,68,0.06)';
-      html += `<tr style="${rowStyle}">
-        <td><strong>${escHtml(c.name || c.provider || '—')}</strong></td>
-        <td>${entityBadge(c.entity)}</td>
-        <td style="font-size:11px">${escHtml(c.category_l1 || '—')}</td>
-        <td class="num">${c.amount ? eur(c.amount) : '—'}</td>
-        <td style="font-size:11px">${escHtml(c.frequency || '—')}</td>
-        <td>${statusCell}</td>
-      </tr>`;
-    }
-
-    html += `</tbody></table></div>
-      <div class="tbl-footer">
-        <span>${contracts.length} aktive Verträge</span>
-        <span style="color:var(--grn)">✅ ${present} mit Beleg</span>
-        <span style="color:var(--red)">🔴 ${missing} fehlend</span>
-      </div>`;
-
-    wrap.innerHTML = html;
-  } catch(e) {
-    wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${e.message}</div>`;
-  }
-}
-
-async function sendMonatsabschluss() {
-  const btn = document.getElementById('ma-send-btn');
-  // Monat aus globalem Zeitraum-Filter (gPeriod) ableiten
   let selMonth;
   if (gPeriod && gPeriod !== 'all') {
     selMonth = gPeriod;
@@ -3528,36 +3697,311 @@ async function sendMonatsabschluss() {
     selMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   }
 
+  const [year, month] = selMonth.split('-');
+  const monthStart = `${year}-${month}-01`;
+  const monthEnd = new Date(parseInt(year), parseInt(month), 1).toISOString().split('T')[0];
+
+  // Periode-Label aktualisieren
+  const periodLabel = document.getElementById('ma-period-label');
+  if (periodLabel) {
+    const d = new Date(parseInt(year), parseInt(month)-1, 1);
+    const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+    const entityLabel = gEntity !== 'all' ? ` • ${gEntity.toUpperCase()}` : '';
+    periodLabel.textContent = `📅 ${label}${entityLabel}`;
+  }
+
+  await Promise.all([
+    loadMaBlock1(monthStart, monthEnd, selMonth),
+    loadMaBlock2(monthStart, monthEnd)
+  ]);
+}
+
+async function loadMaBlock1(monthStart, monthEnd, selMonth) {
+  const wrap = document.getElementById('ma-docs-content');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Rechnungen…</div>`;
+
+  try {
+    // Dokumente des Monats laden (mit neuen Feldern)
+    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
+    let docs = await supa(q);
+
+    // Entity-Filter
+    if (gEntity !== 'all') {
+      docs = docs.filter(d => mapEntity(d.entity) === gEntity);
+    }
+
+    if (!docs.length) {
+      wrap.innerHTML = `<div class="alert alert-info">📄 Keine Rechnungen für diesen Zeitraum gefunden</div>`;
+      return;
+    }
+
+    // Statistiken
+    const totalAmt = docs.filter(d => d.amount != null).reduce((s,d) => s + parseFloat(d.amount||0), 0);
+    const sentCount = docs.filter(d => d.sent_to_accountant_at).length;
+    const missingAmt = docs.filter(d => d.amount == null && !d.skip_accountant).length;
+    const missingDoc = docs.filter(d => !d.drive_file_name && !d.skip_accountant).length;
+
+    // Tabelle
+    let html = `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Anbieter</th>
+        <th class="num">Betrag</th>
+        <th>Quelle</th>
+        <th>Beleg</th>
+        <th>Gesendet?</th>
+        <th>Status</th>
+        <th>Aktionen</th>
+      </tr></thead><tbody>`;
+
+    for (const d of docs) {
+      if (d.skip_accountant) continue;
+
+      // Betrag-Anzeige
+      let amtCell;
+      if (d.amount == null) {
+        amtCell = `<span style="color:var(--tx2)">—</span>`;
+      } else if (parseFloat(d.amount) === 0) {
+        amtCell = `<span style="color:var(--amb);font-weight:600">0,00 €</span>`;
+      } else {
+        amtCell = `<strong>${eur(d.amount)}</strong>`;
+      }
+
+      // Quelle-Icon
+      const srcMap = { gdrive: '📂', gmail: '📧', imap: '📨' };
+      const srcIcon = srcMap[d.source] || '📄';
+      const srcTitle = d.source || '?';
+
+      // Beleg-Link
+      let belegCell;
+      if (d.drive_file_id) {
+        const href = `https://drive.google.com/file/d/${encodeURIComponent(d.drive_file_id)}/view`;
+        belegCell = `<a href="${href}" target="_blank" style="font-size:11px;color:var(--blu)">${escHtml((d.drive_file_name||'').substring(0,30)||'📄 Beleg')}</a>`;
+      } else if (d.drive_file_name) {
+        belegCell = `<span style="font-size:11px;color:var(--tx2)">${escHtml(d.drive_file_name.substring(0,30))}</span>`;
+      } else {
+        belegCell = `<span style="color:var(--tx2);font-size:11px">—</span>`;
+      }
+
+      // Gesendet-Spalte
+      let sentCell;
+      if (d.sent_to_accountant_at) {
+        const sentDate = fmtDate(d.sent_to_accountant_at);
+        sentCell = d.sent_mail_link
+          ? `<a href="${escHtml(d.sent_mail_link)}" target="_blank" style="color:var(--grn);font-size:11px">✅ ${sentDate}</a>`
+          : `<span style="color:var(--grn);font-size:11px">✅ ${sentDate}</span>`;
+      } else {
+        sentCell = `<span style="color:var(--tx2);font-size:11px">—</span>`;
+      }
+
+      // Status berechnen
+      let statusCell, rowStyle = '';
+      if (!d.drive_file_name && !d.drive_file_id) {
+        statusCell = `<span style="color:var(--red);font-weight:600">🔴 kein Beleg</span>`;
+        rowStyle = 'background:rgba(239,68,68,0.04)';
+      } else if (d.amount == null) {
+        statusCell = `<span style="color:var(--amb);font-weight:600">⚠️ Betrag fehlt</span>`;
+        rowStyle = 'background:rgba(180,83,9,0.04)';
+      } else {
+        statusCell = `<span style="color:var(--grn);font-weight:600">✅ OK</span>`;
+      }
+
+      // Aktionen (nur bei Problemen)
+      let actionsCell = '';
+      const hasIssue = (d.amount == null || (!d.drive_file_name && !d.drive_file_id));
+      if (hasIssue) {
+        actionsCell = `<div style="display:flex;gap:4px;flex-wrap:wrap">`;
+        actionsCell += `<a href="https://drive.google.com/drive/folders/1wH4pl4uguwvIYbZrMU0QlJtjVpaaL7bF" target="_blank" class="ma-action-btn" title="In INBOX hochladen">📂 INBOX</a>`;
+        if (d.amount == null) {
+          actionsCell += `<button class="ma-action-btn" onclick="reclassDoc('${d.id}','${d.drive_file_id||''}','${escHtml(d.drive_file_name||'')}')" title="KI-Reclass anfordern">🤖 Reclass</button>`;
+        }
+        actionsCell += `<button class="ma-action-btn" onclick="skipDoc('${d.id}')" title="Als nicht relevant markieren">❌ Skip</button>`;
+        actionsCell += `</div>`;
+      }
+
+      html += `<tr style="${rowStyle}">
+        <td><strong>${escHtml(d.provider || d.drive_file_name || '—')}</strong><br><span style="font-size:10px;color:var(--tx2)">${fmtDate(d.invoice_date || d.date_received)}</span></td>
+        <td class="num">${amtCell}</td>
+        <td style="text-align:center" title="${srcTitle}">${srcIcon}</td>
+        <td>${belegCell}</td>
+        <td>${sentCell}</td>
+        <td>${statusCell}</td>
+        <td>${actionsCell}</td>
+      </tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+
+    // Zusammenfassung
+    html += `<div class="ma-summary-bar">
+      <span>📄 ${docs.filter(d=>!d.skip_accountant).length} Belege</span>
+      <span>💶 ${eur(totalAmt)} gesamt</span>
+      <span style="color:var(--grn)">✅ ${sentCount} gesendet</span>
+      ${missingAmt > 0 ? `<span style="color:var(--amb)">⚠️ ${missingAmt} ohne Betrag</span>` : ''}
+      ${missingDoc > 0 ? `<span style="color:var(--red)">🔴 ${missingDoc} ohne Beleg</span>` : ''}
+    </div>`;
+
+    wrap.innerHTML = html;
+
+    // Versand-Button Status aktualisieren
+    updateSendBtn(docs);
+
+  } catch(e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${e.message}</div>`;
+  }
+}
+
+function updateSendBtn(docs) {
+  const btn = document.getElementById('ma-send-btn');
+  if (!btn) return;
+  const missingAmt = docs.filter(d => d.amount == null && !d.skip_accountant).length;
+  if (missingAmt > 0) {
+    btn.disabled = true;
+    btn.title = `${missingAmt} Belege ohne Betrag — bitte zuerst klären oder überspringen`;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    btn.disabled = false;
+    btn.title = '';
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+  }
+}
+
+async function loadMaBlock2(monthStart, monthEnd) {
+  const wrap = document.getElementById('ma-contracts-content');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
+
+  try {
+    let contracts = await supa(`prf_contracts?select=id,name,provider,entity,amount,frequency&status=eq.active&order=entity,name`);
+
+    if (gEntity !== 'all') {
+      contracts = contracts.filter(c => mapEntity(c.entity) === gEntity);
+    }
+
+    const docs = await supa(`documents?select=id,provider,entity,invoice_date,drive_file_id,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
+
+    if (!contracts.length) {
+      wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge gefunden</div>`;
+      return;
+    }
+
+    let present = 0, missing = 0;
+    let html = `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Vertrag</th><th>Entität</th><th class="num">Betrag erwartet</th><th>Beleg vorhanden?</th>
+      </tr></thead><tbody>`;
+
+    for (const c of contracts) {
+      const provNorm = (c.provider || c.name || '').toLowerCase().trim();
+      const matched = docs.find(d => {
+        const dp = (d.provider || '').toLowerCase().trim();
+        return dp && provNorm && (dp.includes(provNorm) || provNorm.includes(dp));
+      });
+
+      const hasBelege = !!matched;
+      if (hasBelege) present++; else missing++;
+
+      let belegCell;
+      if (hasBelege && matched.drive_file_id) {
+        const href = `https://drive.google.com/file/d/${encodeURIComponent(matched.drive_file_id)}/view`;
+        belegCell = `<a href="${href}" target="_blank" style="color:var(--grn);font-weight:600">✅ Link</a>`;
+      } else if (hasBelege) {
+        belegCell = `<span style="color:var(--grn);font-weight:600">✅ Vorhanden</span>`;
+      } else {
+        belegCell = `<span style="color:var(--red);font-weight:600">🔴 Fehlt</span>`;
+      }
+
+      const rowStyle = hasBelege ? '' : 'background:rgba(239,68,68,0.04)';
+      html += `<tr style="${rowStyle}">
+        <td><strong>${escHtml(c.name || c.provider || '—')}</strong></td>
+        <td>${entityBadge(c.entity)}</td>
+        <td class="num">${c.amount ? eur(c.amount) : '<span style="color:var(--tx2)">—</span>'}</td>
+        <td>${belegCell}</td>
+      </tr>`;
+    }
+
+    html += `</tbody></table></div>`;
+    html += `<div class="tbl-footer">
+      <span>${contracts.length} Verträge</span>
+      <span style="color:var(--grn)">✅ ${present} mit Beleg</span>
+      <span style="color:var(--red)">🔴 ${missing} fehlend</span>
+    </div>`;
+
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${e.message}</div>`;
+  }
+}
+
+async function skipDoc(docId) {
+  const ok = await supaPatch('documents', `id=eq.${docId}`, { skip_accountant: true });
+  if (ok) {
+    toast('❌ Als nicht relevant markiert');
+    loadMonatsabschluss();
+  } else {
+    toast('Fehler beim Markieren', 'err');
+  }
+}
+
+async function reclassDoc(docId, driveFileId, driveFileName) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳…';
+  try {
+    const res = await fetch(RECLASS_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_id: docId, drive_file_id: driveFileId, drive_file_name: driveFileName })
+    });
+    if (res.ok) {
+      toast('🤖 Reclass angefragt — wird in ~30s aktualisiert');
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch(e) {
+    toast('Fehler: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 Reclass';
+  }
+}
+
+async function sendMonatsabschluss() {
+  const btn = document.getElementById('ma-send-btn');
+  let selMonth;
+  if (gPeriod && gPeriod !== 'all') {
+    selMonth = gPeriod;
+  } else {
+    const now = new Date();
+    selMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  const [year, month] = selMonth.split('-');
+
   btn.disabled = true;
   btn.textContent = '⏳ Sende…';
 
   try {
-    const [year, month] = selMonth.split('-');
-    const monthStart = `${year}-${month}-01`;
-    const monthEnd = new Date(parseInt(year), parseInt(month), 1).toISOString().split('T')[0];
-
-    const contracts = await supa(`prf_contracts?select=id,name,provider,entity,category_l1,amount,frequency&status=eq.active`);
-    const docs = await supa(`documents?select=id,provider,entity,invoice_date,doc_type,amount,drive_file_name,status&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
-
-    const payload = {
-      month: selMonth,
-      sent_at: new Date().toISOString(),
-      contracts_count: contracts.length,
-      docs_count: docs.length,
-      contracts,
-      docs
-    };
-
     const res = await fetch(BUCHHALTER_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        entity: gEntity !== 'all' ? gEntity : null,
+        month: parseInt(month),
+        year: parseInt(year)
+      })
     });
 
     if (res.ok) {
       toast(`✅ Monatsabschluss ${selMonth} an Buchhalter gesendet`);
       btn.textContent = '✅ Gesendet';
-      setTimeout(() => { btn.textContent = '📤 Jetzt an Buchhalter senden'; btn.disabled = false; }, 3000);
+      setTimeout(() => {
+        btn.textContent = '📤 Jetzt an Buchhalter senden';
+        btn.disabled = false;
+        loadMonatsabschluss(); // Tabelle neu laden (sent_to_accountant_at aktualisiert)
+      }, 3000);
     } else {
       throw new Error(`HTTP ${res.status}`);
     }
