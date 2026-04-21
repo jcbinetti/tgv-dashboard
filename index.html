@@ -2194,7 +2194,7 @@ function refreshFinanzen() {
 async function loadTxns() {
   const wrap = document.getElementById('drilldown-wrap');
   try {
-    const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,booking_text_raw,account_iban,account_name,recurring_flag,anna_relevant,household_flag,insurance_flag&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
+    const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,booking_text_raw,account_iban,account_name,recurring_flag,anna_relevant,household_flag,insurance_flag,document_id,review_status,confidence_score&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
     gTxns = data.filter(r => !isTestData(r));
   } catch (e) {
     document.getElementById('drilldown-wrap').innerHTML =
@@ -2205,7 +2205,7 @@ async function loadTxns() {
 
 async function loadDocsFin() {
   try {
-    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,notes&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
+    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
     gDocs = data.filter(r => !isTestData(r));
   } catch (e) {
     gDocs = [];
@@ -2607,6 +2607,7 @@ function renderTxnTable() {
       <th ${thClick('category_l2')}>L2${sortArrow('category_l2')}</th>
       <th ${thClick('entity')}>Entity${sortArrow('entity')}</th>
       <th class="num" ${thClick('amount')}>Betrag${sortArrow('amount')}</th>
+      <th>Reconcile</th>
     </tr></thead><tbody>`;
 
   const shown = rows.slice(0, 500);
@@ -2619,15 +2620,23 @@ function renderTxnTable() {
     const acctLabel = t.account_name ? `${t.account_name} ···${acctShort}` : (t.account_iban ? `···${acctShort}` : '—');
     const purposeShort = (t.purpose || '').slice(0, 50) + ((t.purpose || '').length > 50 ? '…' : '');
     const detailId = `txn-detail-${t.id}`;
+    const reconcileCell = t.document_id
+      ? `<span style="color:var(--grn);font-size:11px;font-weight:600" title="Dokument ${t.document_id} verknüpft">🔗 Doc</span>`
+      : `<span style="color:var(--tx2);font-size:11px">—</span>`;
+    const reviewLine = t.review_status || t.confidence_score != null
+      ? `<br><strong>Status:</strong> ${escHtml(t.review_status || '—')}${t.confidence_score != null ? ` · Score ${escHtml(String(t.confidence_score))}` : ''}`
+      : '';
     const detailRow = `<tr id="${detailId}" style="display:none;background:var(--s1)">
-      <td colspan="8" style="padding:10px 16px;font-size:12px;color:var(--tx2)">
+      <td colspan="9" style="padding:10px 16px;font-size:12px;color:var(--tx2)">
         <strong>Zweck:</strong> ${escHtml(t.purpose || '—')}<br>
         <strong>Buchungstext:</strong> ${escHtml(t.booking_text_raw || '—')}<br>
         <strong>Konto:</strong> ${escHtml(t.account_iban || '—')} · ${escHtml(t.account_name || '—')}
+        ${reviewLine}
+        ${t.document_id ? `<br><strong>Verknüpftes Dokument:</strong> ${escHtml(String(t.document_id))}` : ''}
       </td>
     </tr>`;
 
-    html += `<tr style="cursor:pointer" onclick="toggleTxnDetail('${t.id}')">
+    html += `<tr id="txn-row-${t.id}" style="cursor:pointer" onclick="toggleTxnDetail('${t.id}')">
       <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
       <td style="font-size:11px;white-space:nowrap;color:var(--tx2)">${escHtml(acctLabel)}</td>
         <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.counterparty_raw || '—')}</td>
@@ -2636,6 +2645,7 @@ function renderTxnTable() {
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l2 || '—')}</td>
       <td>${entityBadge(t.entity)}</td>
       <td class="${amtCls} num" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
+      <td>${reconcileCell}</td>
     </tr>${detailRow}`;
   }
 
@@ -2660,6 +2670,29 @@ function sortTxn(col) {
 function toggleTxnDetail(id) {
   const row = document.getElementById('txn-detail-' + id);
   if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+
+function openLinkedTxn(txnId) {
+  const finBtn = document.querySelector('.nav-item[onclick*="finanzen"]');
+  if (finBtn) showPage('finanzen', finBtn);
+  const txnBtn = Array.from(document.querySelectorAll('.fin-tab')).find(b => (b.getAttribute('onclick') || '').includes('transaktionen'));
+  if (txnBtn) showFinTab('transaktionen', txnBtn);
+
+  txnFilterState = { entity: 'all', l1: '', l2: '', l3: '', flag: '', search: '' };
+  renderTxnFilters();
+  renderTxnTable();
+
+  setTimeout(() => {
+    const row = document.getElementById('txn-row-' + txnId);
+    if (row) {
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.style.outline = '2px solid var(--teal)';
+      row.style.outlineOffset = '-2px';
+      const detail = document.getElementById('txn-detail-' + txnId);
+      if (detail) detail.style.display = 'table-row';
+      setTimeout(() => { row.style.outline = ''; row.style.outlineOffset = ''; }, 1800);
+    }
+  }, 80);
 }
 
 function exportTxnCSV() {
@@ -2762,6 +2795,7 @@ function renderDocsFinTable() {
       <th onclick="sortDocFin('doc_type')">Typ</th>
       <th class="num" onclick="sortDocFin('amount')">Betrag</th>
       <th>Beleg</th>
+      <th>Transaktion</th>
       <th onclick="sortDocFin('status')">Status</th>
       <th>Aktionen</th>
     </tr></thead><tbody>`;
@@ -2792,6 +2826,10 @@ function renderDocsFinTable() {
       ? `<a href="${href}" target="_blank" style="font-size:11px;color:var(--blu)">📄 Beleg</a>`
       : `<span style="color:var(--tx2);font-size:11px">—</span>`;
 
+    const txnCell = r.txn_id
+      ? `<button class="ma-action-btn" onclick="openLinkedTxn('${r.txn_id}')" title="Transaktion ${escHtml(String(r.txn_id))} anzeigen" style="color:var(--grn);font-weight:700">🔗 Verknüpft</button>`
+      : `<span style="color:var(--tx2);font-size:11px">Offen</span>`;
+
     const isTodoManual = r.status === 'todo_manual';
     const rowClass = isTodoManual ? 'row-todo-manual' : '';
 
@@ -2808,6 +2846,7 @@ function renderDocsFinTable() {
       <td>${escHtml(r.doc_type || '—')}</td>
       <td class="num" style="white-space:nowrap">${amtCell}</td>
       <td>${belegCell}</td>
+      <td>${txnCell}</td>
       <td>${statusPill(r.status)}</td>
       <td>${actionsCell}</td>
     </tr>`;
@@ -3077,7 +3116,7 @@ async function openSteckbrief(contractId) {
   // ── Vertragsdokument-Link ──
   let docLinkHtml = '<span style="color:var(--tx2);font-size:12px;font-style:italic">Kein Vertragsdokument verknüpft</span>';
   if (c.document_id) {
-    // document_id ist UUID → Dokument direkt laden
+    // document_id ist die documents.id Referenz → Dokument direkt laden
     docLinkHtml = `<span style="color:var(--tx2);font-size:12px">⏳ Lade Dokument…</span>`;
   }
 
@@ -3913,7 +3952,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
 
   try {
     // Dokumente des Monats laden (mit neuen Feldern)
-    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
+    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
     let docs = await supa(q);
 
     // Entity-Filter
@@ -3939,6 +3978,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
         <th class="num">Betrag</th>
         <th>Quelle</th>
         <th>Beleg</th>
+        <th>Transaktion</th>
         <th>Gesendet?</th>
         <th>Status</th>
         <th>Aktionen</th>
@@ -3972,6 +4012,10 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
       } else {
         belegCell = `<span style="color:var(--tx2);font-size:11px">—</span>`;
       }
+
+      const txnCell = d.txn_id
+        ? `<button class="ma-action-btn" onclick="openLinkedTxn('${d.txn_id}')" title="Transaktion ${escHtml(String(d.txn_id))} anzeigen" style="color:var(--grn);font-weight:700">🔗 Verknüpft</button>`
+        : `<span style="color:var(--tx2);font-size:11px">○ Offen</span>`;
 
       // Gesendet-Spalte
       let sentCell;
@@ -4014,6 +4058,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
         <td class="num">${amtCell}</td>
         <td style="text-align:center" title="${srcTitle}">${srcIcon}</td>
         <td>${belegCell}</td>
+        <td>${txnCell}</td>
         <td>${sentCell}</td>
         <td>${statusCell}</td>
         <td>${actionsCell}</td>
