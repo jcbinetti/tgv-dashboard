@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.9 — 2026-04-20 -->
+<!-- TGV Dashboard v11.13 — 2026-05-02 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.10">
-<title>TGV Dashboard v11.10 — Financial OS</title>
+<meta name="version" content="11.13">
+<title>TGV Dashboard v11.13 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -966,6 +966,235 @@ table th.num, table td.num { text-align: right !important; }
 .contract-row:hover td { background: #e0f2f2 !important; }
 .contract-row.selected td { background: #d0ede9 !important; border-left: 3px solid var(--teal); }
 
+/* ─── CHAT PANEL ─── */
+#chat-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+#chat-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+#chat-btn.has-msg::after {
+  content: '';
+  position: absolute;
+  top: -3px; right: -3px;
+  width: 8px; height: 8px;
+  background: var(--teal);
+  border-radius: 50%;
+  border: 2px solid var(--navy);
+}
+
+#chat-panel {
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: var(--s0);
+  border-left: 1px solid var(--s3);
+  box-shadow: -4px 0 20px rgba(0,0,0,0.12);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+#chat-panel.open { transform: translateX(0); }
+
+.chat-header {
+  background: var(--navy);
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.chat-header h3 { font-size: 13px; font-weight: 600; }
+.chat-header-sub { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.chat-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.chat-close:hover { color: #fff; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-bubble {
+  max-width: 90%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.chat-bubble.user {
+  background: var(--navy);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+.chat-bubble.assistant {
+  background: var(--s2);
+  color: var(--tx0);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.thinking {
+  background: var(--s2);
+  color: var(--tx2);
+  align-self: flex-start;
+  font-style: italic;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.tool-result {
+  background: var(--grn-bg);
+  color: var(--grn);
+  border: 1px solid var(--grn-bd);
+  align-self: flex-start;
+  font-size: 11px;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.error {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-bd);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input-area {
+  padding: 12px;
+  border-top: 1px solid var(--s3);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+  background: var(--s0);
+}
+#chat-input {
+  flex: 1;
+  border: 1px solid var(--s3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  resize: none;
+  min-height: 38px;
+  max-height: 120px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+#chat-input:focus { border-color: var(--teal); }
+#chat-send {
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#chat-send:hover { background: #006666; }
+#chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.chat-quick-btns {
+  padding: 8px 12px 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chat-quick-btn {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--s3);
+  background: var(--s1);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--tx1);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chat-quick-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+/* ─── ABGLEICH VIEW ─── */
+.abgleich-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .abgleich-split { grid-template-columns: 1fr; }
+}
+.abgleich-kpi-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.abgleich-kpi {
+  background: var(--s0);
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  flex: 1;
+  min-width: 160px;
+}
+.abgleich-kpi.warn { border-left: 4px solid var(--amb); }
+.abgleich-kpi.err  { border-left: 4px solid var(--red); }
+.abgleich-kpi.ok   { border-left: 4px solid var(--grn); }
+.abgleich-kpi .ak-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--tx2); margin-bottom: 4px; }
+.abgleich-kpi .ak-val { font-size: 24px; font-weight: 700; color: var(--navy); }
+.abgleich-kpi .ak-sub { font-size: 11px; color: var(--tx2); margin-top: 2px; }
+.abgleich-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: 6px;
+}
+.abgleich-filter-row label { font-size: 11px; font-weight: 600; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.5px; }
+.abgleich-filter-row select {
+  padding: 5px 10px;
+  border: 1px solid var(--s3);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  background: var(--s0);
+  color: var(--tx0);
+  outline: none;
+}
+.abgleich-filter-row select:focus { border-color: var(--teal); }
+
 /* ─── CONFIRM MODAL ─── */
 .modal-bg {
   display: none;
@@ -1005,7 +1234,31 @@ table th.num, table td.num { text-align: right !important; }
   </div>
   <div class="topbar-right">
     <span class="topbar-version" id="topbar-version">v?</span>
+    <button id="chat-btn" onclick="toggleChat()" title="TGV Chat — Ad-hoc Korrekturen">💬 Chat</button>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
+  </div>
+</div>
+
+<!-- CHAT PANEL -->
+<div id="chat-panel">
+  <div class="chat-header">
+    <div>
+      <h3>💬 TGV Chat</h3>
+      <div class="chat-header-sub">Claude Haiku — TGV-Kontext</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-quick-btns">
+    <button class="chat-quick-btn" onclick="chatQuick('Zeig mir alle offenen Docs')">Offene Docs</button>
+    <button class="chat-quick-btn" onclick="chatQuick('Was sind die nächsten Aktionen?')">Nächste Aktionen</button>
+    <button class="chat-quick-btn" onclick="chatQuick('Wie viele Transaktionen ohne Rechnung gibt es?')">Abgleich-Status</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-bubble assistant">Hallo! Ich bin dein TGV-Assistent. Du kannst mir Fragen stellen oder Korrekturen anfordern, z.B.:<br><br>• &ldquo;BVG bestätigen privat Mobilität&rdquo;<br>• &ldquo;Zeig mir alle offenen Docs April&rdquo;<br>• &ldquo;Vercel → c3 Server-Hosting&rdquo;</div>
+  </div>
+  <div class="chat-input-area">
+    <textarea id="chat-input" placeholder="Nachricht eingeben..." rows="1" onkeydown="chatKeydown(event)"></textarea>
+    <button id="chat-send" onclick="sendChat()">Senden</button>
   </div>
 </div>
 
@@ -1268,6 +1521,7 @@ table th.num, table td.num { text-align: right !important; }
         <button class="fin-tab" onclick="showFinTab('cashflow', this)">Cashflow</button>
         <button class="fin-tab" onclick="showFinTab('transaktionen', this)">Transaktionen</button>
         <button class="fin-tab" onclick="showFinTab('dokumente-fin', this)">Dokumente</button>
+        <button class="fin-tab" onclick="showFinTab('abgleich', this)" id="fin-tab-abgleich">🔗 Abgleich <span id="abgleich-badge" style="display:none;background:var(--red);color:#fff;border-radius:9999px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">0</span></button>
       </div>
 
       <!-- DRILLDOWN -->
@@ -1311,7 +1565,68 @@ table th.num, table td.num { text-align: right !important; }
         </div>
       </div>
     </div>
-
+      <!-- ABGLEICH -->
+      <div class="fin-panel" id="fin-abgleich">
+        <!-- Filter-Zeile -->
+        <div class="abgleich-filter-row">
+          <label>Entität</label>
+          <select id="abgleich-entity-sel" onchange="renderAbgleich()">
+            <option value="all">Alle</option>
+            <option value="priv">PRIV</option>
+            <option value="c3">C3</option>
+            <option value="c4">C4</option>
+          </select>
+          <label style="margin-left:12px">Monat</label>
+          <select id="abgleich-month-sel" onchange="renderAbgleich()">
+            <option value="all">Alle</option>
+            <option value="2026-05">Mai 2026</option>
+            <option value="2026-04">Apr 2026</option>
+            <option value="2026-03">Mär 2026</option>
+            <option value="2026-02">Feb 2026</option>
+            <option value="2026-01">Jan 2026</option>
+          </select>
+          <button class="btn-sm btn-open" onclick="loadAbgleich()" style="margin-left:auto;font-size:11px;padding:5px 12px">🔄 Aktualisieren</button>
+        </div>
+        <!-- KPI-Zeile -->
+        <div class="abgleich-kpi-row" id="abgleich-kpi-row">
+          <div class="abgleich-kpi warn">
+            <div class="ak-lbl">Txn ohne Rechnung</div>
+            <div class="ak-val" id="ak-txn-count">—</div>
+            <div class="ak-sub">Transaktionen unverknüpft</div>
+          </div>
+          <div class="abgleich-kpi err">
+            <div class="ak-lbl">Rechnungen ohne Txn</div>
+            <div class="ak-val" id="ak-doc-count">—</div>
+            <div class="ak-sub">Dokumente unverknüpft</div>
+          </div>
+          <div class="abgleich-kpi ok">
+            <div class="ak-lbl">Verknüpfte Paare</div>
+            <div class="ak-val" id="ak-linked-count">—</div>
+            <div class="ak-sub">Txn + Rechnung verbunden</div>
+          </div>
+        </div>
+        <!-- Zwei-Spalten-Ansicht -->
+        <div class="abgleich-split">
+          <!-- Tab A: Transaktionen ohne Rechnung -->
+          <div class="card">
+            <div class="card-head"><h2>💳 Transaktionen ohne Rechnung</h2></div>
+            <div class="card-body no-pad">
+              <div id="abgleich-txn-wrap">
+                <div class="spinner-wrap"><div class="spinner"></div> Lade…</div>
+              </div>
+            </div>
+          </div>
+          <!-- Tab B: Rechnungen ohne Transaktion -->
+          <div class="card">
+            <div class="card-head"><h2>📄 Rechnungen ohne Transaktion</h2></div>
+            <div class="card-body no-pad">
+              <div id="abgleich-doc-wrap">
+                <div class="spinner-wrap"><div class="spinner"></div> Lade…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     <!-- ═══════════════════════════════════════════════
          PAGE: VERTRÄGE
     ═══════════════════════════════════════════════ -->
@@ -1808,6 +2123,7 @@ function showFinTab(tabId, btn) {
   if (tabId === 'dokumente-fin') renderDocsFinTable();
   if (tabId === 'drilldown') renderDrilldown();
   if (tabId === 'cashflow') renderCashflow();
+  if (tabId === 'abgleich') loadAbgleich();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2210,6 +2526,142 @@ async function loadDocsFin() {
   } catch (e) {
     gDocs = [];
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ABGLEICH (Rechnungs-Abgleich-View)
+// ═══════════════════════════════════════════════════════
+let gAbgleichTxns = [];
+let gAbgleichDocs = [];
+let gAbgleichLoaded = false;
+
+async function loadAbgleich() {
+  const entitySel = document.getElementById('abgleich-entity-sel');
+  const monthSel  = document.getElementById('abgleich-month-sel');
+  const entity = entitySel ? entitySel.value : 'all';
+  const month  = monthSel  ? monthSel.value  : 'all';
+
+  const txnWrap = document.getElementById('abgleich-txn-wrap');
+  const docWrap = document.getElementById('abgleich-doc-wrap');
+  txnWrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>';
+  docWrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>';
+
+  try {
+    // Build filters
+    let txnFilter = 'document_id=is.null&order=booking_date.desc&limit=2000';
+    let docFilter = 'txn_id=is.null&status=neq.rejected&order=invoice_date.desc.nullslast&limit=2000';
+
+    if (entity !== 'all') {
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      const eVal = entityMap[entity] || entity;
+      txnFilter += `&entity=eq.${encodeURIComponent(eVal)}`;
+      docFilter += `&entity=eq.${encodeURIComponent(eVal)}`;
+    }
+    if (month !== 'all') {
+      const [y, m] = month.split('-');
+      const start = `${y}-${m}-01`;
+      const end   = new Date(parseInt(y), parseInt(m), 0).toISOString().split('T')[0];
+      txnFilter += `&booking_date=gte.${start}&booking_date=lte.${end}`;
+      docFilter += `&invoice_date=gte.${start}&invoice_date=lte.${end}`;
+    }
+
+    const [txnData, docData] = await Promise.all([
+      supa(`txn_master?select=id,booking_date,entity,amount,counterparty_raw,purpose,document_id&${txnFilter}`),
+      supa(`documents?select=id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
+    ]);
+
+    gAbgleichTxns = (txnData || []).filter(r => !isTestData(r));
+    gAbgleichDocs = (docData || []).filter(r => !isTestData(r));
+
+    // KPI: verlinkte Paare (Txns mit document_id != null im selben Zeitraum)
+    let linkedFilter = 'document_id=is.not.null&order=booking_date.desc&limit=1';
+    if (entity !== 'all') {
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      linkedFilter = `document_id=is.not.null&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}&order=booking_date.desc&limit=1`;
+    }
+    const linkedCount = await supaCount('txn_master', 'document_id=is.not.null' + (entity !== 'all' ? `&entity=eq.${encodeURIComponent({ priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' }[entity] || entity)}` : ''));
+
+    // Update KPIs
+    const txnCountEl = document.getElementById('ak-txn-count');
+    const docCountEl = document.getElementById('ak-doc-count');
+    const linkedEl   = document.getElementById('ak-linked-count');
+    if (txnCountEl) txnCountEl.textContent = gAbgleichTxns.length;
+    if (docCountEl) docCountEl.textContent = gAbgleichDocs.length;
+    if (linkedEl)   linkedEl.textContent   = linkedCount;
+
+    // Update badge
+    const badge = document.getElementById('abgleich-badge');
+    const total = gAbgleichTxns.length + gAbgleichDocs.length;
+    if (badge) {
+      badge.textContent = total;
+      badge.style.display = total > 0 ? 'inline-block' : 'none';
+    }
+
+    renderAbgleich();
+  } catch (e) {
+    txnWrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${escHtml(e.message)}</div>`;
+    docWrap.innerHTML = '';
+  }
+}
+
+function renderAbgleich() {
+  renderAbgleichTxns();
+  renderAbgleichDocs();
+}
+
+function renderAbgleichTxns() {
+  const wrap = document.getElementById('abgleich-txn-wrap');
+  if (!wrap) return;
+  const rows = gAbgleichTxns;
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Alle Transaktionen verknüpft</p></div>';
+    return;
+  }
+  let html = '<div class="tbl-wrap"><table><thead><tr><th>Datum</th><th>Entität</th><th class="num">Betrag</th><th>Gegenseite</th><th>Aktion</th></tr></thead><tbody>';
+  for (const t of rows) {
+    const amt = parseFloat(t.amount) || 0;
+    const amtCls = amt < 0 ? 'amt-out' : amt > 0 ? 'amt-in' : 'amt-neu';
+    const counterparty = escHtml((t.counterparty_raw || '').slice(0, 40) || '—');
+    const purposeShort = escHtml((t.purpose || '').slice(0, 50));
+    html += `<tr>
+      <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
+      <td>${entityBadge(t.entity)}</td>
+      <td class="${amtCls} num" style="white-space:nowrap">${eur(amt)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose||'')}">${counterparty}</td>
+      <td><button class="ma-action-btn" onclick="openLinkedTxn('${t.id}')" title="Transaktion anzeigen">🔍 Detail</button></td>
+    </tr>`;
+  }
+  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Transaktionen ohne Rechnung</span></div>`;
+  wrap.innerHTML = html;
+}
+
+function renderAbgleichDocs() {
+  const wrap = document.getElementById('abgleich-doc-wrap');
+  if (!wrap) return;
+  const rows = gAbgleichDocs;
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Alle Rechnungen verknüpft</p></div>';
+    return;
+  }
+  let html = '<div class="tbl-wrap"><table><thead><tr><th>Datum</th><th>Provider</th><th class="num">Betrag</th><th>Kategorie</th><th>Status</th><th>Beleg</th></tr></thead><tbody>';
+  for (const d of rows) {
+    const href = d.drive_file_id
+      ? `https://drive.google.com/file/d/${encodeURIComponent(d.drive_file_id)}/view`
+      : '';
+    const belegCell = href
+      ? `<a href="${href}" target="_blank" style="font-size:11px;color:var(--blu)">📄 Beleg</a>`
+      : `<span style="color:var(--tx2);font-size:11px">—</span>`;
+    html += `<tr>
+      <td style="white-space:nowrap">${fmtDate(d.invoice_date)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.provider || '—')}</td>
+      <td class="num" style="white-space:nowrap">${d.amount != null ? eur(d.amount) : '<span style="color:var(--tx2)">—</span>'}</td>
+      <td style="font-size:11px;color:var(--tx2)">${escHtml(d.category || '—')}</td>
+      <td>${statusPill(d.status)}</td>
+      <td>${belegCell}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Rechnungen ohne Transaktion</span></div>`;
+  wrap.innerHTML = html;
 }
 
 // ─── Filtered data helpers ───
@@ -4467,6 +4919,294 @@ async function deleteMailRule(id) {
       }
     }
   );
+}
+
+// ═══════════════════════════════════════════════════════
+//  MCP CHAT (Feature 2)
+// ═══════════════════════════════════════════════════════
+// API Key wird zur Laufzeit aus Supabase agent_config geladen (kein Hardcode im Repo)
+let CLAUDE_API_KEY = null;
+const CLAUDE_MODEL   = 'claude-haiku-4-5-20251001';
+const CLAUDE_PROXY   = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy';
+
+let chatHistory = []; // Session-only
+let chatOpen = false;
+
+const TGV_SYSTEM_PROMPT = `Du bist der TGV-Assistent für das persönliche Finanz-Dashboard von Jean-Chris Binetti.
+
+Kontext:
+- Entitäten: PRIV (privat), C3 (Convis GmbH, Deutschland), C4 (Convis SARL, Frankreich)
+- Kategorien L1: Betriebsausgaben, Personalkosten, Vorsorge, Wohnen, Mobilität, Ernährung, Freizeit, Sonstiges
+- Datenbank: Supabase — Tabellen: txn_master (Transaktionen), documents (Belege/Rechnungen)
+- Status-Werte: inbox, pending_review, approved, rejected, archived, todo_manual
+
+Vearfügbare Tools:
+1. get_pending_documents — Zeigt offene Dokumente (status=inbox oder pending_review)
+2. confirm_document — Bestätigt ein Dokument (setzt status=approved)
+3. get_tgv_next_actions — Zeigt Prioritätenliste offener Aufgaben
+
+Antworte immer auf Deutsch, präzise und hilfreich. Bei Korrekturen bestätige was geändert wurde.`;
+
+const TGV_TOOLS = [
+  {
+    name: 'get_pending_documents',
+    description: 'Gibt eine Liste aller offenen Dokumente zurück (status inbox oder pending_review)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        entity: { type: 'string', description: 'Filter nach Entität: all, priv, c3, c4', enum: ['all','priv','c3','c4'] },
+        limit:  { type: 'integer', description: 'Max. Anzahl Ergebnisse (Standard: 20)' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'confirm_document',
+    description: 'Bestätigt ein Dokument und setzt den Status auf approved',
+    input_schema: {
+      type: 'object',
+      properties: {
+        doc_id:   { type: 'integer', description: 'Die ID des Dokuments' },
+        category: { type: 'string',  description: 'Optional: Kategorie setzen/ändern' },
+        entity:   { type: 'string',  description: 'Optional: Entität setzen (priv, c3, c4)' }
+      },
+      required: ['doc_id']
+    }
+  },
+  {
+    name: 'get_tgv_next_actions',
+    description: 'Gibt die Prioritätenliste der nächsten Aufgaben im TGV-System zurück',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  }
+];
+
+async function executeTool(toolName, toolInput) {
+  try {
+    if (toolName === 'get_pending_documents') {
+      const entity = toolInput.entity || 'all';
+      const limit  = toolInput.limit  || 20;
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      let filter = `status=in.(inbox,pending_review)&order=date_received.desc.nullslast&limit=${limit}`;
+      if (entity !== 'all') filter += `&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}`;
+      const data = await supa(`documents?select=id,invoice_date,entity,provider,amount,status&${filter}`);
+      if (!data.length) return 'Keine offenen Dokumente gefunden.';
+      const lines = data.map(d => `- ID ${d.id}: ${d.provider || '(kein Name)'} | ${d.entity} | ${d.amount != null ? eur(d.amount) : '—'} | ${d.status}`);
+      return `${data.length} offene Dokumente:\n${lines.join('\n')}`;
+    }
+
+    if (toolName === 'confirm_document') {
+      const { doc_id, category, entity } = toolInput;
+      if (!doc_id) return 'Fehler: doc_id fehlt.';
+      const body = { status: 'approved' };
+      if (category) body.category = category;
+      if (entity) {
+        const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+        body.entity = entityMap[entity] || entity;
+      }
+      const ok = await supaPatch('documents', `id=eq.${doc_id}`, body);
+      if (ok) {
+        // Cache aktualisieren
+        const doc = gDocs.find(d => d.id == doc_id);
+        if (doc) Object.assign(doc, body);
+        return `✅ Dokument ${doc_id} wurde bestätigt (status=approved)${category ? `, Kategorie: ${category}` : ''}${entity ? `, Entität: ${entity}` : ''}.`;
+      } else {
+        return `⚠️ Bestätigung fehlgeschlagen (RLS oder Verbindungsfehler).`;
+      }
+    }
+
+    if (toolName === 'get_tgv_next_actions') {
+      const [pendingDocs, pendingTxns, unlinkedTxns] = await Promise.all([
+        supaCount('documents', 'status=in.(inbox,pending_review)'),
+        supaCount('txn_master', 'review_status=eq.pending_review'),
+        supaCount('txn_master', 'document_id=is.null')
+      ]);
+      return `Nächste Aktionen im TGV-System:\n• ${pendingDocs} Dokumente offen (inbox/pending_review)\n• ${pendingTxns} Transaktionen zur Kategorie-Bestätigung\n• ${unlinkedTxns} Transaktionen ohne Rechnung (Abgleich)`;
+    }
+
+    return `Unbekanntes Tool: ${toolName}`;
+  } catch (e) {
+    return `Fehler bei Tool ${toolName}: ${e.message}`;
+  }
+}
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chat-panel');
+  const btn   = document.getElementById('chat-btn');
+  if (panel) panel.classList.toggle('open', chatOpen);
+  if (btn)   btn.classList.toggle('has-msg', chatOpen);
+  if (chatOpen) {
+    const input = document.getElementById('chat-input');
+    if (input) setTimeout(() => input.focus(), 300);
+  }
+}
+
+function chatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+}
+
+function chatQuick(text) {
+  const input = document.getElementById('chat-input');
+  if (input) input.value = text;
+  sendChat();
+}
+
+function addChatBubble(type, text) {
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+  const div = document.createElement('div');
+  div.className = `chat-bubble ${type}`;
+  div.innerHTML = text.replace(/\n/g, '<br>');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const input  = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  if (!input || !sendBtn) return;
+
+  const userText = input.value.trim();
+  if (!userText) return;
+
+  input.value = '';
+  sendBtn.disabled = true;
+
+  addChatBubble('user', escHtml(userText));
+  chatHistory.push({ role: 'user', content: userText });
+
+  const thinkingBubble = addChatBubble('thinking', '⏳ Denke nach…');
+
+  try {
+    const response = await callClaude(chatHistory);
+    if (thinkingBubble) thinkingBubble.remove();
+    await processChatResponse(response);
+  } catch (e) {
+    if (thinkingBubble) thinkingBubble.remove();
+    addChatBubble('error', `⚠️ Fehler: ${escHtml(e.message)}`);
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+async function loadClaudeApiKey() {
+  if (CLAUDE_API_KEY) return CLAUDE_API_KEY;
+  // Lade API Key aus Supabase agent_config Tabelle (falls vorhanden)
+  try {
+    const data = await supa('agent_config?select=value&key=eq.anthropic_api_key&limit=1');
+    if (data && data.length && data[0].value) {
+      CLAUDE_API_KEY = data[0].value;
+      return CLAUDE_API_KEY;
+    }
+  } catch (e) { /* ignorieren */ }
+  // Fallback: Proxy verwenden (kein direkter API-Key nötig)
+  return null;
+}
+
+async function callClaude(messages) {
+  // API Key laden (aus Supabase oder null für Proxy-Modus)
+  const apiKey = await loadClaudeApiKey();
+
+  // Versuche direkte Anthropic API (CORS kann blockieren), Fallback: n8n Proxy
+  const payload = {
+    model: CLAUDE_MODEL,
+    max_tokens: 1024,
+    system: TGV_SYSTEM_PROMPT,
+    tools: TGV_TOOLS,
+    messages: messages
+  };
+
+  // Direkte API (nur wenn API Key vorhanden)
+  if (apiKey) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-allow-browser': 'true'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) return res.json();
+      // Bei Fehler: Fallback auf Proxy
+    } catch (e) { /* Fallback auf Proxy */ }
+  }
+  // Fallback / Standard: n8n Proxy
+  const res2 = await fetch(CLAUDE_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res2.ok) throw new Error(`Chat-Proxy nicht erreichbar (${res2.status}). Bitte n8n Proxy aktivieren.`);
+  return res2.json();
+}
+
+async function processChatResponse(response) {
+  if (!response || !response.content) {
+    addChatBubble('error', '⚠️ Leere Antwort vom Modell.');
+    return;
+  }
+
+  let assistantText = '';
+  const toolCalls = [];
+
+  for (const block of response.content) {
+    if (block.type === 'text') {
+      assistantText += block.text;
+    } else if (block.type === 'tool_use') {
+      toolCalls.push(block);
+    }
+  }
+
+  // Antwort-Text anzeigen
+  if (assistantText) {
+    addChatBubble('assistant', escHtml(assistantText));
+    chatHistory.push({ role: 'assistant', content: response.content });
+  }
+
+  // Tool-Calls ausführen
+  if (toolCalls.length > 0) {
+    const toolResults = [];
+    for (const tc of toolCalls) {
+      addChatBubble('thinking', `🔧 Rufe Tool auf: ${tc.name}…`);
+      const result = await executeTool(tc.name, tc.input || {});
+      // Letztes thinking-bubble entfernen
+      const msgs = document.getElementById('chat-messages');
+      const lastThinking = msgs ? msgs.querySelector('.chat-bubble.thinking:last-child') : null;
+      if (lastThinking) lastThinking.remove();
+      addChatBubble('tool-result', `🔧 ${tc.name}:\n${escHtml(result)}`);
+      toolResults.push({
+        type: 'tool_result',
+        tool_use_id: tc.id,
+        content: result
+      });
+    }
+
+    // Tool-Ergebnisse an Claude senden für finale Antwort
+    if (!assistantText) {
+      chatHistory.push({ role: 'assistant', content: response.content });
+    }
+    chatHistory.push({ role: 'user', content: toolResults });
+
+    const followUp = await callClaude(chatHistory);
+    await processChatResponse(followUp);
+  }
+
+  // Stop-Reason: end_turn
+  if (response.stop_reason === 'end_turn' && !toolCalls.length && !assistantText) {
+    addChatBubble('assistant', '(Keine Antwort)');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
