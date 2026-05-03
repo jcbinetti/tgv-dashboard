@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.13 — 2026-05-02 -->
+<!-- TGV Dashboard v11.14 — 2026-05-03 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.13">
-<title>TGV Dashboard v11.13 — Financial OS</title>
+<meta name="version" content="11.14">
+<title>TGV Dashboard v11.14 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1244,9 +1244,12 @@ table th.num, table td.num { text-align: right !important; }
   <div class="chat-header">
     <div>
       <h3>💬 TGV Chat</h3>
-      <div class="chat-header-sub">Claude Haiku — TGV-Kontext</div>
+      <div class="chat-header-sub" id="chat-key-status">Claude Haiku — TGV-Kontext</div>
     </div>
-    <button class="chat-close" onclick="toggleChat()">×</button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="configureChatKey()" title="API-Key konfigurieren" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:12px">🔑</button>
+      <button class="chat-close" onclick="toggleChat()">×</button>
+    </div>
   </div>
   <div class="chat-quick-btns">
     <button class="chat-quick-btn" onclick="chatQuick('Zeig mir alle offenen Docs')">Offene Docs</button>
@@ -1894,7 +1897,7 @@ table th.num, table td.num { text-align: right !important; }
 // Versionsnummer dynamisch aus dem <meta name="version">-Tag lesen
 const DASHBOARD_VERSION = document.querySelector('meta[name="version"]')?.content || '?';
 const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnY2Rsb3pzdnloaHZpcHlseGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwOTA5ODAsImV4cCI6MjA4OTY2Njk4MH0.kDhUBdwJC1RxS9ii2jFg1AIuVWMAW2SyU580pLHxOiY';
+const SUPA_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
 const SUPA_REST = `${SUPA_URL}/rest/v1`;
 const SUPA_HEADERS = {
   'apikey': SUPA_KEY,
@@ -2032,22 +2035,34 @@ async function supaCount(table, filter) {
 const APPROVE_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-approve-webhook';
 
 async function supaPatch(table, filter, body) {
+  // Versuch 1: n8n Approve-Webhook (Service-Key serverseitig)
   if (APPROVE_WEBHOOK) {
-    const res = await fetch(APPROVE_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table, filter, body })
-    });
-    return res.ok;
+    try {
+      const res = await fetch(APPROVE_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table, filter, body })
+      });
+      if (res.ok) return true;
+      console.warn(`supaPatch webhook ${res.status} — versuche direkten Supabase-Call`);
+    } catch(e) {
+      console.warn('supaPatch webhook nicht erreichbar:', e.message);
+    }
   }
-  // Fallback: direkter Supabase-Call (schlägt bei RLS fehl)
-  const url = `${SUPA_REST}/${table}?${filter}`;
-  const res = await fetch(url, {
-    method: 'PATCH',
-    headers: SUPA_HEADERS,
-    body: JSON.stringify(body)
-  });
-  return res.ok;
+  // Versuch 2: direkter Supabase PATCH (klappt wenn RLS anon-Schreibzugriff erlaubt)
+  try {
+    const url = `${SUPA_REST}/${table}?${filter}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { ...SUPA_HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) return true;
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  } catch(e) {
+    throw new Error(`Schreibzugriff fehlgeschlagen: ${e.message}. Approve-Webhook aktivieren.`);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5042,6 +5057,7 @@ function toggleChat() {
   if (chatOpen) {
     const input = document.getElementById('chat-input');
     if (input) setTimeout(() => input.focus(), 300);
+    loadClaudeApiKey().then(k => updateChatKeyStatus(!!k));
   }
 }
 
@@ -5070,6 +5086,16 @@ function addChatBubble(type, text) {
 }
 
 async function sendChat() {
+  // Auto-Prompt wenn noch kein Key gesetzt
+  const existingKey = await loadClaudeApiKey();
+  if (!existingKey) {
+    configureChatKey();
+    if (!CLAUDE_API_KEY) {
+      addChatBubble('error', '⚠️ Kein API-Key konfiguriert. Bitte 🔑 oben rechts klicken und deinen Anthropic API-Key (sk-ant-…) eingeben.');
+      return;
+    }
+  }
+  //
   const input  = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
   if (!input || !sendBtn) return;
@@ -5100,16 +5126,39 @@ async function sendChat() {
 
 async function loadClaudeApiKey() {
   if (CLAUDE_API_KEY) return CLAUDE_API_KEY;
-  // Lade API Key aus Supabase agent_config Tabelle (falls vorhanden)
-  try {
-    const data = await supa('agent_config?select=value&key=eq.anthropic_api_key&limit=1');
-    if (data && data.length && data[0].value) {
-      CLAUDE_API_KEY = data[0].value;
-      return CLAUDE_API_KEY;
-    }
-  } catch (e) { /* ignorieren */ }
-  // Fallback: Proxy verwenden (kein direkter API-Key nötig)
+  // 1. localStorage (persistent, vom User einmalig gesetzt)
+  const lsKey = localStorage.getItem('tgv_claude_api_key');
+  if (lsKey) { CLAUDE_API_KEY = lsKey; updateChatKeyStatus(true); return lsKey; }
   return null;
+}
+
+function updateChatKeyStatus(hasKey) {
+  const el = document.getElementById('chat-key-status');
+  if (!el) return;
+  el.textContent = hasKey ? 'Claude Haiku — bereit ✅' : 'Kein API-Key — 🔑 klicken';
+  el.style.color = hasKey ? 'rgba(100,220,180,0.9)' : 'rgba(255,180,80,0.9)';
+}
+
+function configureChatKey() {
+  const current = localStorage.getItem('tgv_claude_api_key') || '';
+  const key = prompt(
+    'Anthropic API-Key eingeben (sk-ant-…)\nWird nur lokal im Browser gespeichert.',
+    current
+  );
+  if (key === null) return; // Abbrechen
+  if (key.trim().startsWith('sk-ant-') || key.trim().startsWith('sk-')) {
+    localStorage.setItem('tgv_claude_api_key', key.trim());
+    CLAUDE_API_KEY = key.trim();
+    updateChatKeyStatus(true);
+    toast('🔑 API-Key gespeichert');
+  } else if (key.trim() === '') {
+    localStorage.removeItem('tgv_claude_api_key');
+    CLAUDE_API_KEY = null;
+    updateChatKeyStatus(false);
+    toast('API-Key entfernt', 'err');
+  } else {
+    toast('Ungültiges Format — muss mit sk-ant- beginnen', 'err');
+  }
 }
 
 async function callClaude(messages) {
@@ -5148,7 +5197,7 @@ async function callClaude(messages) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-  if (!res2.ok) throw new Error(`Chat-Proxy nicht erreichbar (${res2.status}). Bitte n8n Proxy aktivieren.`);
+  if (!res2.ok) throw new Error(`Chat-Proxy nicht erreichbar (${res2.status}). API-Key via 🔑 setzen oder n8n Proxy aktivieren.`);
   return res2.json();
 }
 
