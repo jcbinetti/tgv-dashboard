@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.11 — 2026-04-21 -->
+<!-- TGV Dashboard v11.13 — 2026-05-02 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -6,12 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="version" content="11.13">
 <title>TGV Dashboard v11.13 — Financial OS</title>
-<!-- ═══════════════════════════════════════════════════════
-     SUPABASE JS CLIENT (CDN) — Auth only
-     Only anon key allowed here. Never use service_role in frontend.
-     ═══════════════════════════════════════════════════════ -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -54,98 +48,6 @@ body {
   font-size: 14px;
   line-height: 1.5;
 }
-
-/* ─── LOGIN GATE ─── */
-#auth-gate {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: var(--navy);
-  z-index: 9999;
-  align-items: center;
-  justify-content: center;
-}
-#auth-gate.visible { display: flex; }
-
-.auth-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px 36px;
-  width: 100%;
-  max-width: 380px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-}
-.auth-logo {
-  text-align: center;
-  margin-bottom: 28px;
-}
-.auth-logo h1 {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--navy);
-  letter-spacing: -0.5px;
-}
-.auth-logo p {
-  font-size: 13px;
-  color: var(--tx2);
-  margin-top: 4px;
-}
-.auth-field {
-  margin-bottom: 16px;
-}
-.auth-field label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--tx1);
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.auth-field input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1.5px solid var(--s3);
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-.auth-field input:focus { border-color: var(--teal); }
-.auth-btn {
-  width: 100%;
-  padding: 12px;
-  background: var(--navy);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: background 0.2s;
-  font-family: inherit;
-}
-.auth-btn:hover { background: var(--teal); }
-.auth-btn:disabled { background: var(--tx2); cursor: not-allowed; }
-.auth-error {
-  margin-top: 14px;
-  padding: 10px 14px;
-  background: var(--red-bg);
-  border: 1px solid var(--red-bd);
-  border-radius: 8px;
-  color: var(--red);
-  font-size: 13px;
-  display: none;
-}
-.auth-error.visible { display: block; }
-.auth-denied {
-  text-align: center;
-  padding: 20px 0;
-}
-.auth-denied p { color: var(--red); font-weight: 600; margin-bottom: 16px; }
 
 /* ─── TOPBAR ─── */
 #topbar {
@@ -1064,6 +966,235 @@ table th.num, table td.num { text-align: right !important; }
 .contract-row:hover td { background: #e0f2f2 !important; }
 .contract-row.selected td { background: #d0ede9 !important; border-left: 3px solid var(--teal); }
 
+/* ─── CHAT PANEL ─── */
+#chat-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+#chat-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+#chat-btn.has-msg::after {
+  content: '';
+  position: absolute;
+  top: -3px; right: -3px;
+  width: 8px; height: 8px;
+  background: var(--teal);
+  border-radius: 50%;
+  border: 2px solid var(--navy);
+}
+
+#chat-panel {
+  position: fixed;
+  top: var(--topbar-h);
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  background: var(--s0);
+  border-left: 1px solid var(--s3);
+  box-shadow: -4px 0 20px rgba(0,0,0,0.12);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+#chat-panel.open { transform: translateX(0); }
+
+.chat-header {
+  background: var(--navy);
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.chat-header h3 { font-size: 13px; font-weight: 600; }
+.chat-header-sub { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.chat-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.chat-close:hover { color: #fff; }
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-bubble {
+  max-width: 90%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.chat-bubble.user {
+  background: var(--navy);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+.chat-bubble.assistant {
+  background: var(--s2);
+  color: var(--tx0);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.thinking {
+  background: var(--s2);
+  color: var(--tx2);
+  align-self: flex-start;
+  font-style: italic;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.tool-result {
+  background: var(--grn-bg);
+  color: var(--grn);
+  border: 1px solid var(--grn-bd);
+  align-self: flex-start;
+  font-size: 11px;
+  border-bottom-left-radius: 4px;
+}
+.chat-bubble.error {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid var(--red-bd);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input-area {
+  padding: 12px;
+  border-top: 1px solid var(--s3);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+  background: var(--s0);
+}
+#chat-input {
+  flex: 1;
+  border: 1px solid var(--s3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  resize: none;
+  min-height: 38px;
+  max-height: 120px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+#chat-input:focus { border-color: var(--teal); }
+#chat-send {
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+#chat-send:hover { background: #006666; }
+#chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.chat-quick-btns {
+  padding: 8px 12px 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.chat-quick-btn {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--s3);
+  background: var(--s1);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--tx1);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chat-quick-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+/* ─── ABGLEICH VIEW ─── */
+.abgleich-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .abgleich-split { grid-template-columns: 1fr; }
+}
+.abgleich-kpi-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.abgleich-kpi {
+  background: var(--s0);
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  flex: 1;
+  min-width: 160px;
+}
+.abgleich-kpi.warn { border-left: 4px solid var(--amb); }
+.abgleich-kpi.err  { border-left: 4px solid var(--red); }
+.abgleich-kpi.ok   { border-left: 4px solid var(--grn); }
+.abgleich-kpi .ak-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--tx2); margin-bottom: 4px; }
+.abgleich-kpi .ak-val { font-size: 24px; font-weight: 700; color: var(--navy); }
+.abgleich-kpi .ak-sub { font-size: 11px; color: var(--tx2); margin-top: 2px; }
+.abgleich-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--s1);
+  border: 1px solid var(--s3);
+  border-radius: 6px;
+}
+.abgleich-filter-row label { font-size: 11px; font-weight: 600; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.5px; }
+.abgleich-filter-row select {
+  padding: 5px 10px;
+  border: 1px solid var(--s3);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  background: var(--s0);
+  color: var(--tx0);
+  outline: none;
+}
+.abgleich-filter-row select:focus { border-color: var(--teal); }
+
 /* ─── CONFIRM MODAL ─── */
 .modal-bg {
   display: none;
@@ -1094,46 +1225,6 @@ table th.num, table td.num { text-align: right !important; }
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════
-     AUTH GATE — Login-Formular (vor dem Dashboard)
-     Wird durch initAuth() gesteuert. Dashboard bleibt versteckt bis Auth OK.
-     ═══════════════════════════════════════════════════════ -->
-<div id="auth-gate">
-  <div class="auth-card">
-    <!-- LOGIN FORM -->
-    <div id="auth-login-view">
-      <div class="auth-logo">
-        <h1>TGV</h1>
-        <p>Financial OS — Bitte anmelden</p>
-      </div>
-      <div class="auth-field">
-        <label for="auth-email">E-Mail</label>
-        <input type="email" id="auth-email" placeholder="jc@example.com" autocomplete="email">
-      </div>
-      <div class="auth-field">
-        <label for="auth-password">Passwort</label>
-        <input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"
-               onkeydown="if(event.key==='Enter') authLogin()">
-      </div>
-      <button class="auth-btn" id="auth-login-btn" onclick="authLogin()">Anmelden</button>
-      <div class="auth-error" id="auth-error-msg"></div>
-    </div>
-    <!-- ACCESS DENIED VIEW -->
-    <div id="auth-denied-view" style="display:none">
-      <div class="auth-logo">
-        <h1>TGV</h1>
-      </div>
-      <div class="auth-denied">
-        <p>Kein Zugriff für diesen Account.</p>
-        <button class="auth-btn" onclick="authLogout()">Abmelden</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- DASHBOARD (wird erst nach Auth eingeblendet) -->
-<div id="dashboard-wrapper" style="display:none">
-
 <!-- TOPBAR -->
 <div id="topbar">
   <button id="sidebar-toggle" onclick="toggleSidebar()" title="Sidebar ein/ausblenden">☰</button>
@@ -1143,12 +1234,31 @@ table th.num, table td.num { text-align: right !important; }
   </div>
   <div class="topbar-right">
     <span class="topbar-version" id="topbar-version">v?</span>
+    <button id="chat-btn" onclick="toggleChat()" title="TGV Chat — Ad-hoc Korrekturen">💬 Chat</button>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
-    <button id="auth-logout-btn" onclick="authLogout()" title="Abmelden" style="
-      background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);
-      color:rgba(255,255,255,0.8);padding:6px 12px;border-radius:6px;
-      font-size:12px;cursor:pointer;font-family:inherit;
-    ">🔒 Abmelden</button>
+  </div>
+</div>
+
+<!-- CHAT PANEL -->
+<div id="chat-panel">
+  <div class="chat-header">
+    <div>
+      <h3>💬 TGV Chat</h3>
+      <div class="chat-header-sub">Claude Haiku — TGV-Kontext</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-quick-btns">
+    <button class="chat-quick-btn" onclick="chatQuick('Zeig mir alle offenen Docs')">Offene Docs</button>
+    <button class="chat-quick-btn" onclick="chatQuick('Was sind die nächsten Aktionen?')">Nächste Aktionen</button>
+    <button class="chat-quick-btn" onclick="chatQuick('Wie viele Transaktionen ohne Rechnung gibt es?')">Abgleich-Status</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-bubble assistant">Hallo! Ich bin dein TGV-Assistent. Du kannst mir Fragen stellen oder Korrekturen anfordern, z.B.:<br><br>• &ldquo;BVG bestätigen privat Mobilität&rdquo;<br>• &ldquo;Zeig mir alle offenen Docs April&rdquo;<br>• &ldquo;Vercel → c3 Server-Hosting&rdquo;</div>
+  </div>
+  <div class="chat-input-area">
+    <textarea id="chat-input" placeholder="Nachricht eingeben..." rows="1" onkeydown="chatKeydown(event)"></textarea>
+    <button id="chat-send" onclick="sendChat()">Senden</button>
   </div>
 </div>
 
@@ -1228,22 +1338,6 @@ table th.num, table td.num { text-align: right !important; }
       </div>
     </div>
 
-    <!-- CHAT BANNER -->
-    <div id="tgv-chat-banner" style="
-      background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;
-      padding:12px 16px;margin:8px 16px 0;
-      display:flex;align-items:center;justify-content:space-between;font-size:14px;
-    ">
-      <span>
-        💬 <strong>TGV Assistant</strong> verfügbar —
-        Bestätigen, Suchen, Buchhalter-Versand per Chat:
-        <a href="https://claude.ai" target="_blank" style="color:#2563EB;">Claude.ai öffnen →</a>
-      </span>
-      <button onclick="dismissChatBanner()" style="
-        background:none;border:none;cursor:pointer;font-size:18px;color:#6B7280;padding:0 4px;
-      ">×</button>
-    </div>
-
     <!-- ═══════════════════════════════════════════════
          PAGE: ÜBERSICHT
     ════════════════════════════════════════════════ -->
@@ -1264,27 +1358,27 @@ table th.num, table td.num { text-align: right !important; }
         <div class="card-body">
           <div class="wf-status-grid">
             <div class="wf-card">
-              <div class="wf-icon">⏸</div>
+              <div class="wf-icon">✅</div>
               <div class="wf-info">
-                <div class="wf-name">WF A2 Mail Intake</div>
-                <div class="wf-detail">v01.25 · fx9POuhD3ybynhat</div>
-                <div class="wf-status wf-status-warn">INAKTIV</div>
+                <div class="wf-name">WF A — IMAP Scanner</div>
+                <div class="wf-detail">v11.8 · Schedule 15min</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
               </div>
             </div>
             <div class="wf-card">
-              <div class="wf-icon">⏸</div>
+              <div class="wf-icon">✅</div>
               <div class="wf-info">
                 <div class="wf-name">WF B — Drive Scanner</div>
-                <div class="wf-detail">V3 · c7B4trQwfyRFVm8m</div>
-                <div class="wf-status wf-status-warn">INAKTIV</div>
+                <div class="wf-detail">V3 · h10xxRpvo4V9BUja · aktiv seit 18.04.2026</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
               </div>
             </div>
             <div class="wf-card">
-              <div class="wf-icon">⏸</div>
+              <div class="wf-icon">✅</div>
               <div class="wf-info">
                 <div class="wf-name">WF E — Buchhalter-Versand</div>
-                <div class="wf-detail">v1.4 · YvTqsmvC4lpgylDH</div>
-                <div class="wf-status wf-status-warn">INAKTIV</div>
+                <div class="wf-detail">v1.4 · 1. des Monats 08:00</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
               </div>
             </div>
             <div class="wf-card">
@@ -1427,7 +1521,7 @@ table th.num, table td.num { text-align: right !important; }
         <button class="fin-tab" onclick="showFinTab('cashflow', this)">Cashflow</button>
         <button class="fin-tab" onclick="showFinTab('transaktionen', this)">Transaktionen</button>
         <button class="fin-tab" onclick="showFinTab('dokumente-fin', this)">Dokumente</button>
-        <button class="fin-tab" onclick="showFinTab('abgleich', this)">🔗 Abgleich <span class="inbox-tab-badge" id="abgleich-badge" style="display:none">0</span></button>
+        <button class="fin-tab" onclick="showFinTab('abgleich', this)" id="fin-tab-abgleich">🔗 Abgleich <span id="abgleich-badge" style="display:none;background:var(--red);color:#fff;border-radius:9999px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">0</span></button>
       </div>
 
       <!-- DRILLDOWN -->
@@ -1458,39 +1552,6 @@ table th.num, table td.num { text-align: right !important; }
         </div>
       </div>
 
-      <!-- ABGLEICH -->
-      <div class="fin-panel" id="fin-abgleich">
-        <div class="card">
-          <div class="card-head"><h2>🔗 Rechnungs-Abgleich</h2></div>
-          <div class="filter-row" id="abgleich-filter-row" style="padding:12px 16px;gap:8px;display:flex;flex-wrap:wrap;align-items:center">
-            <select id="abgleich-entity" style="padding:6px 10px;border-radius:6px;border:1px solid var(--s3);background:var(--s2);color:var(--tx1);font-size:13px">
-              <option value="">Alle Entitäten</option>
-              <option value="privat">PRIV</option>
-              <option value="c3-convis-gmbh">C3</option>
-              <option value="c4-convis-sarl">C4</option>
-            </select>
-            <select id="abgleich-month" style="padding:6px 10px;border-radius:6px;border:1px solid var(--s3);background:var(--s2);color:var(--tx1);font-size:13px">
-              <option value="">Alle Monate</option>
-              <option value="2026-01">Jan 2026</option>
-              <option value="2026-02">Feb 2026</option>
-              <option value="2026-03">Mär 2026</option>
-              <option value="2026-04">Apr 2026</option>
-              <option value="2026-05">Mai 2026</option>
-            </select>
-            <button onclick="renderAbgleich()" style="padding:6px 14px;border-radius:6px;background:var(--teal);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600">Aktualisieren</button>
-          </div>
-          <div id="abgleich-kpi-row" style="display:flex;gap:12px;padding:0 16px 12px;flex-wrap:wrap"></div>
-          <div style="padding:0 16px 8px;display:flex;gap:8px">
-            <button class="fin-tab active" id="abgleich-subtab-a" onclick="showAbgleichSubtab('a')" style="font-size:12px;padding:4px 12px">Tab A — Txn ohne Rechnung</button>
-            <button class="fin-tab" id="abgleich-subtab-b" onclick="showAbgleichSubtab('b')" style="font-size:12px;padding:4px 12px">Tab B — Rechnungen ohne Txn</button>
-          </div>
-          <div class="card-body no-pad">
-            <div id="abgleich-table-a"></div>
-            <div id="abgleich-table-b" style="display:none"></div>
-          </div>
-        </div>
-      </div>
-
       <!-- DOKUMENTE FIN -->
       <div class="fin-panel" id="fin-dokumente-fin">
         <div class="card">
@@ -1504,7 +1565,68 @@ table th.num, table td.num { text-align: right !important; }
         </div>
       </div>
     </div>
-
+      <!-- ABGLEICH -->
+      <div class="fin-panel" id="fin-abgleich">
+        <!-- Filter-Zeile -->
+        <div class="abgleich-filter-row">
+          <label>Entität</label>
+          <select id="abgleich-entity-sel" onchange="renderAbgleich()">
+            <option value="all">Alle</option>
+            <option value="priv">PRIV</option>
+            <option value="c3">C3</option>
+            <option value="c4">C4</option>
+          </select>
+          <label style="margin-left:12px">Monat</label>
+          <select id="abgleich-month-sel" onchange="renderAbgleich()">
+            <option value="all">Alle</option>
+            <option value="2026-05">Mai 2026</option>
+            <option value="2026-04">Apr 2026</option>
+            <option value="2026-03">Mär 2026</option>
+            <option value="2026-02">Feb 2026</option>
+            <option value="2026-01">Jan 2026</option>
+          </select>
+          <button class="btn-sm btn-open" onclick="loadAbgleich()" style="margin-left:auto;font-size:11px;padding:5px 12px">🔄 Aktualisieren</button>
+        </div>
+        <!-- KPI-Zeile -->
+        <div class="abgleich-kpi-row" id="abgleich-kpi-row">
+          <div class="abgleich-kpi warn">
+            <div class="ak-lbl">Txn ohne Rechnung</div>
+            <div class="ak-val" id="ak-txn-count">—</div>
+            <div class="ak-sub">Transaktionen unverknüpft</div>
+          </div>
+          <div class="abgleich-kpi err">
+            <div class="ak-lbl">Rechnungen ohne Txn</div>
+            <div class="ak-val" id="ak-doc-count">—</div>
+            <div class="ak-sub">Dokumente unverknüpft</div>
+          </div>
+          <div class="abgleich-kpi ok">
+            <div class="ak-lbl">Verknüpfte Paare</div>
+            <div class="ak-val" id="ak-linked-count">—</div>
+            <div class="ak-sub">Txn + Rechnung verbunden</div>
+          </div>
+        </div>
+        <!-- Zwei-Spalten-Ansicht -->
+        <div class="abgleich-split">
+          <!-- Tab A: Transaktionen ohne Rechnung -->
+          <div class="card">
+            <div class="card-head"><h2>💳 Transaktionen ohne Rechnung</h2></div>
+            <div class="card-body no-pad">
+              <div id="abgleich-txn-wrap">
+                <div class="spinner-wrap"><div class="spinner"></div> Lade…</div>
+              </div>
+            </div>
+          </div>
+          <!-- Tab B: Rechnungen ohne Transaktion -->
+          <div class="card">
+            <div class="card-head"><h2>📄 Rechnungen ohne Transaktion</h2></div>
+            <div class="card-body no-pad">
+              <div id="abgleich-doc-wrap">
+                <div class="spinner-wrap"><div class="spinner"></div> Lade…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     <!-- ═══════════════════════════════════════════════
          PAGE: VERTRÄGE
     ═══════════════════════════════════════════════ -->
@@ -1616,16 +1738,6 @@ table th.num, table td.num { text-align: right !important; }
         <div class="card-body no-pad">
           <div id="mailrules-content">
             <div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PATTERNS CARD -->
-      <div class="card" style="margin-top:16px;">
-        <div class="card-head"><h2>🧠 mail_processing_patterns</h2></div>
-        <div class="card-body no-pad">
-          <div id="patterns-content">
-            <div class="spinner-wrap"><div class="spinner"></div> Lade Patterns…</div>
           </div>
         </div>
       </div>
@@ -1746,9 +1858,9 @@ table th.num, table td.num { text-align: right !important; }
               <tr><th>Workflow</th><th>Version</th><th>Trigger</th><th>Status</th></tr>
             </thead>
             <tbody>
-              <tr><td>WF A2 Mail Intake</td><td>v01.25 · fx9POuhD3ybynhat</td><td>Webhook</td><td><span class="pill pill-pending">Inaktiv</span></td></tr>
-              <tr><td>WF B — Google Drive Scanner Intake</td><td>V3 · c7B4trQwfyRFVm8m</td><td>Schedule 15min</td><td><span class="pill pill-pending">Inaktiv</span></td></tr>
-              <tr><td>WF E — Buchhalter-Versand</td><td>v1.4 · YvTqsmvC4lpgylDH</td><td>1. des Monats 08:00</td><td><span class="pill pill-pending">Inaktiv</span></td></tr>
+              <tr><td>WF A — IMAP Scanner + Dokument-KI</td><td>v11.8</td><td>Schedule 15min</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF B — Google Drive Scanner Intake</td><td>V3 · h10xxRpvo4V9BUja</td><td>Schedule 15min</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF E — Buchhalter-Versand</td><td>v1.4</td><td>1. des Monats 08:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
               <tr><td>WF F — Contract Agent</td><td>—</td><td>—</td><td><span class="pill pill-inbox">In Entwicklung</span></td></tr>
             </tbody>
           </table>
@@ -1757,45 +1869,9 @@ table th.num, table td.num { text-align: right !important; }
     </div>
 
   </div><!-- /#main-content -->
-
-  <!-- CHAT PROMPT POPUP -->
-  <div id="chat-prompt-popup" style="
-    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
-    background:rgba(0,0,0,0.4);z-index:1000;
-    align-items:center;justify-content:center;
-  ">
-    <div style="
-      background:white;border-radius:12px;padding:24px;
-      max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);
-    ">
-      <h3 style="margin:0 0 12px;font-size:16px;">Im TGV Assistant bestätigen</h3>
-      <textarea id="chat-prompt-text" style="
-        width:100%;height:80px;border:1px solid #D1D5DB;border-radius:8px;
-        padding:8px;font-size:14px;resize:none;box-sizing:border-box;
-      "></textarea>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button id="copy-btn" onclick="copyChatPrompt()" style="
-          flex:1;padding:10px;background:#2563EB;color:white;
-          border:none;border-radius:8px;cursor:pointer;font-size:14px;
-        ">📋 Kopieren</button>
-        <a href="https://claude.ai" target="_blank" style="
-          flex:1;padding:10px;background:#F3F4F6;color:#111;
-          border:none;border-radius:8px;cursor:pointer;font-size:14px;
-          text-decoration:none;text-align:center;
-          display:flex;align-items:center;justify-content:center;
-        ">Claude.ai öffnen →</a>
-        <button onclick="document.getElementById('chat-prompt-popup').style.display='none'" style="
-          padding:10px 16px;background:none;border:1px solid #D1D5DB;
-          border-radius:8px;cursor:pointer;
-        ">✕</button>
-      </div>
-    </div>
-  </div>
 </div><!-- /#layout -->
 
-</div><!-- /#dashboard-wrapper -->
-
-<!-- TOAST CONTAINER (außerhalb des dashboard-wrapper, immer sichtbar) -->
+<!-- TOAST CONTAINER -->
 <div class="toast-container" id="toasts"></div>
 
 <!-- CONFIRM MODAL -->
@@ -1813,137 +1889,12 @@ table th.num, table td.num { text-align: right !important; }
 
 <script>
 // ═══════════════════════════════════════════════════════
-//  AUTH CONFIG
-//  Only anon key allowed here. Never use service_role in frontend.
-// ═══════════════════════════════════════════════════════
-const SUPABASE_URL      = 'https://egcdlozsvyhhvipylxky.supabase.co'; // Only anon key allowed here. Never use service_role.
-const SUPABASE_ANON_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_'; // Publishable key (legacy JWT deaktiviert 01.05.2026)
-const JC_USER_ID        = 'b942cb53-55f5-4f52-906d-2ed29c46f07a'; // Einziger zugelassener User
-
-// Supabase JS Client initialisieren (für Auth)
-const _supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// ═══════════════════════════════════════════════════════
-//  AUTH GATE LOGIC
-// ═══════════════════════════════════════════════════════
-
-/** Zeigt das Login-Gate, versteckt das Dashboard */
-function showAuthGate(view = 'login') {
-  document.getElementById('auth-gate').classList.add('visible');
-  document.getElementById('dashboard-wrapper').style.display = 'none';
-  document.getElementById('auth-login-view').style.display  = view === 'login'  ? '' : 'none';
-  document.getElementById('auth-denied-view').style.display = view === 'denied' ? '' : 'none';
-}
-
-/** Versteckt das Login-Gate, zeigt das Dashboard */
-function showDashboard() {
-  document.getElementById('auth-gate').classList.remove('visible');
-  document.getElementById('dashboard-wrapper').style.display = '';
-}
-
-/** Prüft ob der User JC ist (user_id-Whitelist) */
-function isAllowedUser(user) {
-  return user && user.id === JC_USER_ID;
-}
-
-/** Login via E-Mail + Passwort */
-async function authLogin() {
-  const email    = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const btn      = document.getElementById('auth-login-btn');
-  const errEl    = document.getElementById('auth-error-msg');
-
-  errEl.classList.remove('visible');
-  btn.disabled = true;
-  btn.textContent = 'Anmelden…';
-
-  try {
-    const { data, error } = await _supaClient.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    if (!isAllowedUser(data.user)) {
-      await _supaClient.auth.signOut();
-      showAuthGate('denied');
-    } else {
-      // Auth-Header für bestehende supa()-Funktion aktualisieren
-      _updateSupaHeaders(data.session.access_token);
-      showDashboard();
-      loadUebersicht();
-      loadMdCategories();
-    }
-  } catch (err) {
-    errEl.textContent = err.message || 'Anmeldung fehlgeschlagen.';
-    errEl.classList.add('visible');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Anmelden';
-  }
-}
-
-/** Logout */
-async function authLogout() {
-  await _supaClient.auth.signOut();
-  showAuthGate('login');
-  document.getElementById('auth-email').value    = '';
-  document.getElementById('auth-password').value = '';
-}
-
-/**
- * Aktualisiert SUPA_HEADERS mit dem JWT-Token der aktiven Session.
- * Damit nutzen alle bestehenden supa()-Aufrufe automatisch den Auth-Token.
- */
-function _updateSupaHeaders(accessToken) {
-  // SUPA_HEADERS wird im CONFIG-Block weiter unten definiert.
-  // Da initAuth() erst nach DOMContentLoaded läuft, ist SUPA_HEADERS bereits definiert.
-  // Wir patchen Authorization + apikey mit dem JWT-Token der aktiven Session.
-  if (typeof SUPA_HEADERS !== 'undefined') {
-    SUPA_HEADERS['Authorization'] = `Bearer ${accessToken}`;
-    // apikey bleibt der anon-Key (für PostgREST-Routing), Authorization trägt den User-JWT.
-  }
-}
-
-/** Session beim Laden prüfen + Auth-State beobachten */
-async function initAuth() {
-  // Localhost-Bypass: kein Login nötig bei lokalem Zugriff
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    showDashboard();
-    loadUebersicht();
-    loadMdCategories();
-    return;
-  }
-
-  // Sofort Gate anzeigen (Dashboard versteckt) bis Session geprüft
-  showAuthGate('login');
-
-  // 1. Bestehende Session prüfen
-  const { data: { session } } = await _supaClient.auth.getSession();
-  if (session && isAllowedUser(session.user)) {
-    _updateSupaHeaders(session.access_token);
-    showDashboard();
-    loadUebersicht();
-    loadMdCategories();
-  } else if (session && !isAllowedUser(session.user)) {
-    await _supaClient.auth.signOut();
-    showAuthGate('denied');
-  }
-  // else: kein Session → Login-Formular bleibt sichtbar
-
-  // 2. Auth-State-Änderungen beobachten (Token-Refresh, Logout von außen)
-  _supaClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT' || !session) {
-      showAuthGate('login');
-    } else if (event === 'TOKEN_REFRESHED' && session) {
-      _updateSupaHeaders(session.access_token);
-    }
-  });
-}
-
-// ═══════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════
 // Versionsnummer dynamisch aus dem <meta name="version">-Tag lesen
 const DASHBOARD_VERSION = document.querySelector('meta[name="version"]')?.content || '?';
 const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
-const SUPA_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnY2Rsb3pzdnloaHZpcHlseGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwOTA5ODAsImV4cCI6MjA4OTY2Njk4MH0.kDhUBdwJC1RxS9ii2jFg1AIuVWMAW2SyU580pLHxOiY';
 const SUPA_REST = `${SUPA_URL}/rest/v1`;
 const SUPA_HEADERS = {
   'apikey': SUPA_KEY,
@@ -2051,20 +2002,9 @@ const escHtml = s => {
 // ═══════════════════════════════════════════════════════
 //  SUPABASE FETCH
 // ═══════════════════════════════════════════════════════
-async function _getAuthHeaders() {
-  const h = { ...SUPA_HEADERS };
-  if (typeof _supaClient !== 'undefined') {
-    const { data: { session } } = await _supaClient.auth.getSession();
-    if (session && session.access_token) {
-      h['Authorization'] = `Bearer ${session.access_token}`;
-    }
-  }
-  return h;
-}
-
 async function supa(path) {
   const url = `${SUPA_REST}/${path}`;
-  const res = await fetch(url, { headers: await _getAuthHeaders() });
+  const res = await fetch(url, { headers: SUPA_HEADERS });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`HTTP ${res.status}: ${text}`);
@@ -2075,9 +2015,8 @@ async function supa(path) {
 async function supaCount(table, filter) {
   const q = filter ? `${table}?${filter}&select=id` : `${table}?select=id`;
   const url = `${SUPA_REST}/${q}`;
-  const h = await _getAuthHeaders();
   const res = await fetch(url, {
-    headers: { ...h, 'Prefer': 'count=exact', 'Range': '0-0' }
+    headers: { ...SUPA_HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
   });
   const ct = res.headers.get('Content-Range');
   if (ct) {
@@ -2136,7 +2075,7 @@ function showPage(pageId, btn) {
   if (pageId === 'projekte') loadProjekte();
   if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
-  if (pageId === 'mailrules') { loadMailRules(); loadPatterns(); }
+  if (pageId === 'mailrules') loadMailRules();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2184,7 +2123,7 @@ function showFinTab(tabId, btn) {
   if (tabId === 'dokumente-fin') renderDocsFinTable();
   if (tabId === 'drilldown') renderDrilldown();
   if (tabId === 'cashflow') renderCashflow();
-  if (tabId === 'abgleich') renderAbgleich();
+  if (tabId === 'abgleich') loadAbgleich();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2587,6 +2526,142 @@ async function loadDocsFin() {
   } catch (e) {
     gDocs = [];
   }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ABGLEICH (Rechnungs-Abgleich-View)
+// ═══════════════════════════════════════════════════════
+let gAbgleichTxns = [];
+let gAbgleichDocs = [];
+let gAbgleichLoaded = false;
+
+async function loadAbgleich() {
+  const entitySel = document.getElementById('abgleich-entity-sel');
+  const monthSel  = document.getElementById('abgleich-month-sel');
+  const entity = entitySel ? entitySel.value : 'all';
+  const month  = monthSel  ? monthSel.value  : 'all';
+
+  const txnWrap = document.getElementById('abgleich-txn-wrap');
+  const docWrap = document.getElementById('abgleich-doc-wrap');
+  txnWrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>';
+  docWrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>';
+
+  try {
+    // Build filters
+    let txnFilter = 'document_id=is.null&order=booking_date.desc&limit=2000';
+    let docFilter = 'txn_id=is.null&status=neq.rejected&order=invoice_date.desc.nullslast&limit=2000';
+
+    if (entity !== 'all') {
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      const eVal = entityMap[entity] || entity;
+      txnFilter += `&entity=eq.${encodeURIComponent(eVal)}`;
+      docFilter += `&entity=eq.${encodeURIComponent(eVal)}`;
+    }
+    if (month !== 'all') {
+      const [y, m] = month.split('-');
+      const start = `${y}-${m}-01`;
+      const end   = new Date(parseInt(y), parseInt(m), 0).toISOString().split('T')[0];
+      txnFilter += `&booking_date=gte.${start}&booking_date=lte.${end}`;
+      docFilter += `&invoice_date=gte.${start}&invoice_date=lte.${end}`;
+    }
+
+    const [txnData, docData] = await Promise.all([
+      supa(`txn_master?select=id,booking_date,entity,amount,counterparty_raw,purpose,document_id&${txnFilter}`),
+      supa(`documents?select=id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
+    ]);
+
+    gAbgleichTxns = (txnData || []).filter(r => !isTestData(r));
+    gAbgleichDocs = (docData || []).filter(r => !isTestData(r));
+
+    // KPI: verlinkte Paare (Txns mit document_id != null im selben Zeitraum)
+    let linkedFilter = 'document_id=is.not.null&order=booking_date.desc&limit=1';
+    if (entity !== 'all') {
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      linkedFilter = `document_id=is.not.null&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}&order=booking_date.desc&limit=1`;
+    }
+    const linkedCount = await supaCount('txn_master', 'document_id=is.not.null' + (entity !== 'all' ? `&entity=eq.${encodeURIComponent({ priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' }[entity] || entity)}` : ''));
+
+    // Update KPIs
+    const txnCountEl = document.getElementById('ak-txn-count');
+    const docCountEl = document.getElementById('ak-doc-count');
+    const linkedEl   = document.getElementById('ak-linked-count');
+    if (txnCountEl) txnCountEl.textContent = gAbgleichTxns.length;
+    if (docCountEl) docCountEl.textContent = gAbgleichDocs.length;
+    if (linkedEl)   linkedEl.textContent   = linkedCount;
+
+    // Update badge
+    const badge = document.getElementById('abgleich-badge');
+    const total = gAbgleichTxns.length + gAbgleichDocs.length;
+    if (badge) {
+      badge.textContent = total;
+      badge.style.display = total > 0 ? 'inline-block' : 'none';
+    }
+
+    renderAbgleich();
+  } catch (e) {
+    txnWrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${escHtml(e.message)}</div>`;
+    docWrap.innerHTML = '';
+  }
+}
+
+function renderAbgleich() {
+  renderAbgleichTxns();
+  renderAbgleichDocs();
+}
+
+function renderAbgleichTxns() {
+  const wrap = document.getElementById('abgleich-txn-wrap');
+  if (!wrap) return;
+  const rows = gAbgleichTxns;
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Alle Transaktionen verknüpft</p></div>';
+    return;
+  }
+  let html = '<div class="tbl-wrap"><table><thead><tr><th>Datum</th><th>Entität</th><th class="num">Betrag</th><th>Gegenseite</th><th>Aktion</th></tr></thead><tbody>';
+  for (const t of rows) {
+    const amt = parseFloat(t.amount) || 0;
+    const amtCls = amt < 0 ? 'amt-out' : amt > 0 ? 'amt-in' : 'amt-neu';
+    const counterparty = escHtml((t.counterparty_raw || '').slice(0, 40) || '—');
+    const purposeShort = escHtml((t.purpose || '').slice(0, 50));
+    html += `<tr>
+      <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
+      <td>${entityBadge(t.entity)}</td>
+      <td class="${amtCls} num" style="white-space:nowrap">${eur(amt)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose||'')}">${counterparty}</td>
+      <td><button class="ma-action-btn" onclick="openLinkedTxn('${t.id}')" title="Transaktion anzeigen">🔍 Detail</button></td>
+    </tr>`;
+  }
+  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Transaktionen ohne Rechnung</span></div>`;
+  wrap.innerHTML = html;
+}
+
+function renderAbgleichDocs() {
+  const wrap = document.getElementById('abgleich-doc-wrap');
+  if (!wrap) return;
+  const rows = gAbgleichDocs;
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Alle Rechnungen verknüpft</p></div>';
+    return;
+  }
+  let html = '<div class="tbl-wrap"><table><thead><tr><th>Datum</th><th>Provider</th><th class="num">Betrag</th><th>Kategorie</th><th>Status</th><th>Beleg</th></tr></thead><tbody>';
+  for (const d of rows) {
+    const href = d.drive_file_id
+      ? `https://drive.google.com/file/d/${encodeURIComponent(d.drive_file_id)}/view`
+      : '';
+    const belegCell = href
+      ? `<a href="${href}" target="_blank" style="font-size:11px;color:var(--blu)">📄 Beleg</a>`
+      : `<span style="color:var(--tx2);font-size:11px">—</span>`;
+    html += `<tr>
+      <td style="white-space:nowrap">${fmtDate(d.invoice_date)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.provider || '—')}</td>
+      <td class="num" style="white-space:nowrap">${d.amount != null ? eur(d.amount) : '<span style="color:var(--tx2)">—</span>'}</td>
+      <td style="font-size:11px;color:var(--tx2)">${escHtml(d.category || '—')}</td>
+      <td>${statusPill(d.status)}</td>
+      <td>${belegCell}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Rechnungen ohne Transaktion</span></div>`;
+  wrap.innerHTML = html;
 }
 
 // ─── Filtered data helpers ───
@@ -3771,9 +3846,6 @@ function renderMigrations() {
     ['011', 'hours_log billable tracking'],
     ['012', 'test_run + scope fields (18.04.2026)'],
     ['013', 'mail_routing_rules + RLS policies (19.04.2026)'],
-    ['014', 'mail_processing_patterns + 7 Seeds (01.05.2026)'],
-    ['015', 'tgv_orchestrator_memory: agent_conversations, agent_decisions, agent_events (01.05.2026)'],
-    ['016', 'gmail_filter_routing_rules: 23 Mail-Regeln (01.05.2026)'],
   ];
 
   let html = '';
@@ -3790,34 +3862,24 @@ function renderMigrations() {
 async function loadDbStats() {
   const wrap = document.getElementById('db-stats-wrap');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Statistiken…</div>`;
-  // rls=true: Tabellen die vom publishable key nicht lesbar sind (RLS-geschützt)
   const tables = [
-    ['documents',         'Dokumente',     '📄', false],
-    ['txn_master',        'Transaktionen', '💶', false],
-    ['prf_contracts',     'Verträge',      '📄', false],
-    ['prf_projects',      'Projekte',      '📋', true],
-    ['kb_suppliers',      'Lieferanten-KB','🏢', false],
-    ['agent_prompts',     'Agent Prompts', '🤖', true],
-    ['skill_definitions', 'Skills',        '⚡', true],
-    ['hours_log',         'Stunden-Log',   '⏱', false],
+    ['documents', 'Dokumente', '📄'],
+    ['txn_master', 'Transaktionen', '💶'],
+    ['prf_contracts', 'Verträge', '📄'],
+    ['prf_projects', 'Projekte', '📋'],
+    ['kb_suppliers', 'Lieferanten-KB', '🏢'],
+    ['agent_prompts', 'Agent Prompts', '🤖'],
+    ['skill_definitions', 'Skills', '⚡'],
+    ['hours_log', 'Stunden-Log', '⏱'],
   ];
 
-  const results = await Promise.allSettled(
-    tables.map(([t, , , rls]) => rls ? Promise.resolve(null) : supaCount(t))
-  );
+  const results = await Promise.allSettled(tables.map(([t]) => supaCount(t)));
 
   let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">`;
   for (let i = 0; i < tables.length; i++) {
-    const [, label, icon, rls] = tables[i];
-    let count, title;
-    if (rls) {
-      count = '🔒';
-      title = 'RLS-geschützt (nur Backend)';
-    } else {
-      count = results[i].status === 'fulfilled' ? results[i].value : '⚠️';
-      title = '';
-    }
-    html += `<div style="background:var(--s1);border-radius:6px;padding:12px;border:1px solid var(--s3)" title="${title}">
+    const [, label, icon] = tables[i];
+    const count = results[i].status === 'fulfilled' ? results[i].value : '⚠️';
+    html += `<div style="background:var(--s1);border-radius:6px;padding:12px;border:1px solid var(--s3)">
       <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">${icon} ${label}</div>
       <div style="font-size:22px;font-weight:700;color:var(--navy);margin-top:4px">${count}</div>
     </div>`;
@@ -4860,151 +4922,291 @@ async function deleteMailRule(id) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  CHAT BANNER + POPUP
+//  MCP CHAT (Feature 2)
 // ═══════════════════════════════════════════════════════
-function dismissChatBanner() {
-  document.getElementById('tgv-chat-banner').style.display = 'none';
-  localStorage.setItem('tgv_chat_banner_dismissed', '1');
-}
+// API Key wird zur Laufzeit aus Supabase agent_config geladen (kein Hardcode im Repo)
+let CLAUDE_API_KEY = null;
+const CLAUDE_MODEL   = 'claude-haiku-4-5-20251001';
+const CLAUDE_PROXY   = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy';
 
-function showChatPrompt(docId, provider, amount, entity) {
-  const text = `Bestätige Dokument #${docId} — ${provider || 'unbekannt'} ${amount ? amount + ' EUR' : ''} für ${entity || 'unbekannt'}`;
-  document.getElementById('chat-prompt-text').value = text;
-  document.getElementById('chat-prompt-popup').style.display = 'flex';
-}
+let chatHistory = []; // Session-only
+let chatOpen = false;
 
-function copyChatPrompt() {
-  const text = document.getElementById('chat-prompt-text').value;
-  navigator.clipboard.writeText(text);
-  document.getElementById('copy-btn').textContent = '✅ Kopiert!';
-  setTimeout(() => { document.getElementById('copy-btn').textContent = '📋 Kopieren'; }, 2000);
-}
+const TGV_SYSTEM_PROMPT = `Du bist der TGV-Assistent für das persönliche Finanz-Dashboard von Jean-Chris Binetti.
 
-// ═══════════════════════════════════════════════════════
-//  MAIL PROCESSING PATTERNS
-// ═══════════════════════════════════════════════════════
-async function loadPatterns() {
-  const wrap = document.getElementById('patterns-content');
-  if (!wrap) return;
-  try {
-    const rows = await supa('mail_processing_patterns?order=id');
-    if (!rows.length) { wrap.innerHTML = '<div style="padding:16px;color:var(--tx2)">Keine Patterns</div>'; return; }
-    let html = `<table class="tbl"><thead><tr>
-      <th>#</th><th>Name</th><th>Beschreibung</th><th>Aktion</th><th>Status</th><th>Von</th>
-    </tr></thead><tbody>`;
-    for (const p of rows) {
-      const isSuggested = p.status === 'suggested';
-      const isInactive  = p.status === 'inactive';
-      const rowStyle = isSuggested ? 'background:#FFFBEB' : isInactive ? 'background:#F9FAFB;color:var(--tx2)' : '';
-      const nameStyle = isInactive ? 'text-decoration:line-through' : '';
-      html += `<tr style="${rowStyle}">
-        <td>${p.id}</td>
-        <td style="${nameStyle}">${p.pattern_name || '—'}</td>
-        <td style="font-size:12px;max-width:260px">${p.detection_hint || p.description || '—'}</td>
-        <td><code style="font-size:11px;background:var(--s2);padding:2px 6px;border-radius:4px">${p.action || '—'}</code></td>
-        <td>${isSuggested ? '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:12px;font-size:11px">suggested</span>' : isInactive ? '<span style="color:var(--tx2);font-size:12px">inaktiv</span>' : '<span style="color:var(--grn);font-size:12px">aktiv</span>'}</td>
-        <td style="font-size:11px;color:var(--tx2)">${p.created_by || '—'}</td>
-      </tr>`;
+Kontext:
+- Entitäten: PRIV (privat), C3 (Convis GmbH, Deutschland), C4 (Convis SARL, Frankreich)
+- Kategorien L1: Betriebsausgaben, Personalkosten, Vorsorge, Wohnen, Mobilität, Ernährung, Freizeit, Sonstiges
+- Datenbank: Supabase — Tabellen: txn_master (Transaktionen), documents (Belege/Rechnungen)
+- Status-Werte: inbox, pending_review, approved, rejected, archived, todo_manual
+
+Vearfügbare Tools:
+1. get_pending_documents — Zeigt offene Dokumente (status=inbox oder pending_review)
+2. confirm_document — Bestätigt ein Dokument (setzt status=approved)
+3. get_tgv_next_actions — Zeigt Prioritätenliste offener Aufgaben
+
+Antworte immer auf Deutsch, präzise und hilfreich. Bei Korrekturen bestätige was geändert wurde.`;
+
+const TGV_TOOLS = [
+  {
+    name: 'get_pending_documents',
+    description: 'Gibt eine Liste aller offenen Dokumente zurück (status inbox oder pending_review)',
+    input_schema: {
+      type: 'object',
+      properties: {
+        entity: { type: 'string', description: 'Filter nach Entität: all, priv, c3, c4', enum: ['all','priv','c3','c4'] },
+        limit:  { type: 'integer', description: 'Max. Anzahl Ergebnisse (Standard: 20)' }
+      },
+      required: []
     }
-    html += `</tbody></table><div class="tbl-footer"><span>${rows.length} Patterns</span><span style="color:var(--amb)">${rows.filter(p=>p.status==='suggested').length} suggested</span></div>`;
-    wrap.innerHTML = html;
-  } catch(e) {
-    wrap.innerHTML = `<div style="padding:16px;color:var(--red)">Fehler: ${e.message}</div>`;
+  },
+  {
+    name: 'confirm_document',
+    description: 'Bestätigt ein Dokument und setzt den Status auf approved',
+    input_schema: {
+      type: 'object',
+      properties: {
+        doc_id:   { type: 'integer', description: 'Die ID des Dokuments' },
+        category: { type: 'string',  description: 'Optional: Kategorie setzen/ändern' },
+        entity:   { type: 'string',  description: 'Optional: Entität setzen (priv, c3, c4)' }
+      },
+      required: ['doc_id']
+    }
+  },
+  {
+    name: 'get_tgv_next_actions',
+    description: 'Gibt die Prioritätenliste der nächsten Aufgaben im TGV-System zurück',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: []
+    }
+  }
+];
+
+async function executeTool(toolName, toolInput) {
+  try {
+    if (toolName === 'get_pending_documents') {
+      const entity = toolInput.entity || 'all';
+      const limit  = toolInput.limit  || 20;
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      let filter = `status=in.(inbox,pending_review)&order=date_received.desc.nullslast&limit=${limit}`;
+      if (entity !== 'all') filter += `&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}`;
+      const data = await supa(`documents?select=id,invoice_date,entity,provider,amount,status&${filter}`);
+      if (!data.length) return 'Keine offenen Dokumente gefunden.';
+      const lines = data.map(d => `- ID ${d.id}: ${d.provider || '(kein Name)'} | ${d.entity} | ${d.amount != null ? eur(d.amount) : '—'} | ${d.status}`);
+      return `${data.length} offene Dokumente:\n${lines.join('\n')}`;
+    }
+
+    if (toolName === 'confirm_document') {
+      const { doc_id, category, entity } = toolInput;
+      if (!doc_id) return 'Fehler: doc_id fehlt.';
+      const body = { status: 'approved' };
+      if (category) body.category = category;
+      if (entity) {
+        const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+        body.entity = entityMap[entity] || entity;
+      }
+      const ok = await supaPatch('documents', `id=eq.${doc_id}`, body);
+      if (ok) {
+        // Cache aktualisieren
+        const doc = gDocs.find(d => d.id == doc_id);
+        if (doc) Object.assign(doc, body);
+        return `✅ Dokument ${doc_id} wurde bestätigt (status=approved)${category ? `, Kategorie: ${category}` : ''}${entity ? `, Entität: ${entity}` : ''}.`;
+      } else {
+        return `⚠️ Bestätigung fehlgeschlagen (RLS oder Verbindungsfehler).`;
+      }
+    }
+
+    if (toolName === 'get_tgv_next_actions') {
+      const [pendingDocs, pendingTxns, unlinkedTxns] = await Promise.all([
+        supaCount('documents', 'status=in.(inbox,pending_review)'),
+        supaCount('txn_master', 'review_status=eq.pending_review'),
+        supaCount('txn_master', 'document_id=is.null')
+      ]);
+      return `Nächste Aktionen im TGV-System:\n• ${pendingDocs} Dokumente offen (inbox/pending_review)\n• ${pendingTxns} Transaktionen zur Kategorie-Bestätigung\n• ${unlinkedTxns} Transaktionen ohne Rechnung (Abgleich)`;
+    }
+
+    return `Unbekanntes Tool: ${toolName}`;
+  } catch (e) {
+    return `Fehler bei Tool ${toolName}: ${e.message}`;
   }
 }
 
-// ═══════════════════════════════════════════════════════
-//  ABGLEICH
-// ═══════════════════════════════════════════════════════
-function showAbgleichSubtab(tab) {
-  document.getElementById('abgleich-subtab-a').classList.toggle('active', tab === 'a');
-  document.getElementById('abgleich-subtab-b').classList.toggle('active', tab === 'b');
-  document.getElementById('abgleich-table-a').style.display = tab === 'a' ? '' : 'none';
-  document.getElementById('abgleich-table-b').style.display = tab === 'b' ? '' : 'none';
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chat-panel');
+  const btn   = document.getElementById('chat-btn');
+  if (panel) panel.classList.toggle('open', chatOpen);
+  if (btn)   btn.classList.toggle('has-msg', chatOpen);
+  if (chatOpen) {
+    const input = document.getElementById('chat-input');
+    if (input) setTimeout(() => input.focus(), 300);
+  }
 }
 
-async function renderAbgleich() {
-  const entity = document.getElementById('abgleich-entity').value;
-  const month = document.getElementById('abgleich-month').value;
-  const kpiEl = document.getElementById('abgleich-kpi-row');
-  const wrapA = document.getElementById('abgleich-table-a');
-  const wrapB = document.getElementById('abgleich-table-b');
-  kpiEl.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade…</div>`;
-  wrapA.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade…</div>`;
-  wrapB.innerHTML = '';
+function chatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+}
 
-  const entityFilter = entity ? `&entity=eq.${entity}` : '';
-  let dateFilterTxn = '&booking_date=gte.2026-01-01';
-  let dateFilterDoc = '&date_received=gte.2026-01-01T00:00:00Z';
-  if (month) {
-    const [y, m] = month.split('-');
-    const start = `${y}-${m}-01`;
-    const endDate = new Date(+y, +m, 1);
-    const end = endDate.toISOString().split('T')[0];
-    dateFilterTxn = `&booking_date=gte.${start}&booking_date=lt.${end}`;
-    dateFilterDoc = `&date_received=gte.${start}T00:00:00Z&date_received=lt.${end}T00:00:00Z`;
+function chatQuick(text) {
+  const input = document.getElementById('chat-input');
+  if (input) input.value = text;
+  sendChat();
+}
+
+function addChatBubble(type, text) {
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+  const div = document.createElement('div');
+  div.className = `chat-bubble ${type}`;
+  div.innerHTML = text.replace(/\n/g, '<br>');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const input  = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send');
+  if (!input || !sendBtn) return;
+
+  const userText = input.value.trim();
+  if (!userText) return;
+
+  input.value = '';
+  sendBtn.disabled = true;
+
+  addChatBubble('user', escHtml(userText));
+  chatHistory.push({ role: 'user', content: userText });
+
+  const thinkingBubble = addChatBubble('thinking', '⏳ Denke nach…');
+
+  try {
+    const response = await callClaude(chatHistory);
+    if (thinkingBubble) thinkingBubble.remove();
+    await processChatResponse(response);
+  } catch (e) {
+    if (thinkingBubble) thinkingBubble.remove();
+    addChatBubble('error', `⚠️ Fehler: ${escHtml(e.message)}`);
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+async function loadClaudeApiKey() {
+  if (CLAUDE_API_KEY) return CLAUDE_API_KEY;
+  // Lade API Key aus Supabase agent_config Tabelle (falls vorhanden)
+  try {
+    const data = await supa('agent_config?select=value&key=eq.anthropic_api_key&limit=1');
+    if (data && data.length && data[0].value) {
+      CLAUDE_API_KEY = data[0].value;
+      return CLAUDE_API_KEY;
+    }
+  } catch (e) { /* ignorieren */ }
+  // Fallback: Proxy verwenden (kein direkter API-Key nötig)
+  return null;
+}
+
+async function callClaude(messages) {
+  // API Key laden (aus Supabase oder null für Proxy-Modus)
+  const apiKey = await loadClaudeApiKey();
+
+  // Versuche direkte Anthropic API (CORS kann blockieren), Fallback: n8n Proxy
+  const payload = {
+    model: CLAUDE_MODEL,
+    max_tokens: 1024,
+    system: TGV_SYSTEM_PROMPT,
+    tools: TGV_TOOLS,
+    messages: messages
+  };
+
+  // Direkte API (nur wenn API Key vorhanden)
+  if (apiKey) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-allow-browser': 'true'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) return res.json();
+      // Bei Fehler: Fallback auf Proxy
+    } catch (e) { /* Fallback auf Proxy */ }
+  }
+  // Fallback / Standard: n8n Proxy
+  const res2 = await fetch(CLAUDE_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res2.ok) throw new Error(`Chat-Proxy nicht erreichbar (${res2.status}). Bitte n8n Proxy aktivieren.`);
+  return res2.json();
+}
+
+async function processChatResponse(response) {
+  if (!response || !response.content) {
+    addChatBubble('error', '⚠️ Leere Antwort vom Modell.');
+    return;
   }
 
-  const [txnData, docData] = await Promise.all([
-    supa(`txn_master?select=id,booking_date,entity,amount,direction,merchant_normalized,counterparty_raw,purpose,document_id${entityFilter}${dateFilterTxn}&document_id=is.null&order=booking_date.desc&limit=2000`),
-    supa(`documents?select=id,date_received,provider,entity,doc_type,amount,currency,status,drive_file_name,txn_id${entityFilter}${dateFilterDoc}&txn_id=is.null&status=neq.rejected&order=date_received.desc.nullslast&limit=2000`)
-  ]);
+  let assistantText = '';
+  const toolCalls = [];
 
-  const txnRows = Array.isArray(txnData) ? txnData : [];
-  const docRows = Array.isArray(docData) ? docData : [];
-  const totalGaps = txnRows.length + docRows.length;
-
-  // KPI
-  kpiEl.innerHTML = `
-    <div style="background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:10px 16px;min-width:160px">
-      <div style="font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em">Txn ohne Rechnung</div>
-      <div style="font-size:22px;font-weight:700;color:var(--red)">${txnRows.length}</div>
-    </div>
-    <div style="background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:10px 16px;min-width:160px">
-      <div style="font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em">Rechnungen ohne Txn</div>
-      <div style="font-size:22px;font-weight:700;color:var(--amb)">${docRows.length}</div>
-    </div>
-    <div style="background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:10px 16px;min-width:160px">
-      <div style="font-size:11px;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em">Verknüpfte Paare</div>
-      <div style="font-size:22px;font-weight:700;color:var(--grn)">—</div>
-    </div>`;
-
-  // Badge
-  const badge = document.getElementById('abgleich-badge');
-  if (totalGaps > 0) { badge.textContent = totalGaps; badge.style.display = 'inline-block'; }
-  else { badge.style.display = 'none'; }
-
-  // Tab A — Txn ohne Rechnung
-  if (txnRows.length === 0) {
-    wrapA.innerHTML = `<div style="padding:24px;text-align:center;color:var(--grn);font-weight:600">✅ Alle Transaktionen verknüpft</div>`;
-  } else {
-    wrapA.innerHTML = `<table class="data-table"><thead><tr>
-      <th>Datum</th><th>Entität</th><th>Betrag</th><th>Gegenseite</th><th>Zweck</th>
-    </tr></thead><tbody>${txnRows.map(t => `<tr>
-      <td style="white-space:nowrap">${(t.booking_date||'').slice(0,10)}</td>
-      <td>${entityBadge(t.entity)}</td>
-      <td style="text-align:right;font-weight:600;color:${(t.direction||'') === 'in' ? 'var(--grn)' : 'var(--red)'}">${fmtAmt(t.amount)}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.merchant_normalized||t.counterparty_raw||'')}">${escHtml((t.merchant_normalized||t.counterparty_raw||'').slice(0,40))}</td>
-      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx2);font-size:12px" title="${escHtml(t.purpose||'')}">${escHtml((t.purpose||'').slice(0,60))}</td>
-    </tr>`).join('')}</tbody></table>`;
+  for (const block of response.content) {
+    if (block.type === 'text') {
+      assistantText += block.text;
+    } else if (block.type === 'tool_use') {
+      toolCalls.push(block);
+    }
   }
 
-  // Tab B — Rechnungen ohne Txn
-  if (docRows.length === 0) {
-    wrapB.innerHTML = `<div style="padding:24px;text-align:center;color:var(--grn);font-weight:600">✅ Alle Rechnungen verknüpft</div>`;
-  } else {
-    wrapB.innerHTML = `<table class="data-table"><thead><tr>
-      <th>Datum</th><th>Entität</th><th>Betrag</th><th>Anbieter</th><th>Datei</th>
-    </tr></thead><tbody>${docRows.map(d => `<tr>
-      <td style="white-space:nowrap">${(d.date_received||'').slice(0,10)}</td>
-      <td>${entityBadge(d.entity)}</td>
-      <td style="text-align:right;font-weight:600">${d.amount != null ? fmtAmt(d.amount) : '—'}</td>
-      <td>${escHtml(d.provider||'—')}</td>
-      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--tx2)" title="${escHtml(d.drive_file_name||'')}">${escHtml((d.drive_file_name||'').slice(0,50))}</td>
-    </tr>`).join('')}</tbody></table>`;
+  // Antwort-Text anzeigen
+  if (assistantText) {
+    addChatBubble('assistant', escHtml(assistantText));
+    chatHistory.push({ role: 'assistant', content: response.content });
   }
 
-  showAbgleichSubtab('a');
+  // Tool-Calls ausführen
+  if (toolCalls.length > 0) {
+    const toolResults = [];
+    for (const tc of toolCalls) {
+      addChatBubble('thinking', `🔧 Rufe Tool auf: ${tc.name}…`);
+      const result = await executeTool(tc.name, tc.input || {});
+      // Letztes thinking-bubble entfernen
+      const msgs = document.getElementById('chat-messages');
+      const lastThinking = msgs ? msgs.querySelector('.chat-bubble.thinking:last-child') : null;
+      if (lastThinking) lastThinking.remove();
+      addChatBubble('tool-result', `🔧 ${tc.name}:\n${escHtml(result)}`);
+      toolResults.push({
+        type: 'tool_result',
+        tool_use_id: tc.id,
+        content: result
+      });
+    }
+
+    // Tool-Ergebnisse an Claude senden für finale Antwort
+    if (!assistantText) {
+      chatHistory.push({ role: 'assistant', content: response.content });
+    }
+    chatHistory.push({ role: 'user', content: toolResults });
+
+    const followUp = await callClaude(chatHistory);
+    await processChatResponse(followUp);
+  }
+
+  // Stop-Reason: end_turn
+  if (response.stop_reason === 'end_turn' && !toolCalls.length && !assistantText) {
+    addChatBubble('assistant', '(Keine Antwort)');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -5018,15 +5220,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tvEl) tvEl.textContent = vLabel;
   if (svEl) svEl.textContent = vLabel;
 
-  // Chat Banner dismiss-state wiederherstellen
-  if (localStorage.getItem('tgv_chat_banner_dismissed') === '1') {
-    const banner = document.getElementById('tgv-chat-banner');
-    if (banner) banner.style.display = 'none';
-  }
-
-  // AUTH GATE: Session prüfen und Login-Gate initialisieren
-  // loadUebersicht() und loadMdCategories() werden erst nach erfolgreicher Auth aufgerufen
-  initAuth();
+  loadUebersicht();
+  loadMdCategories();
 });
 </script>
 </body>
