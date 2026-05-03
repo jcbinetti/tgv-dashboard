@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.14 — 2026-05-03 -->
+<!-- TGV Dashboard v11.15 — 2026-05-03 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.14">
-<title>TGV Dashboard v11.14 — Financial OS</title>
+<meta name="version" content="11.15">
+<title>TGV Dashboard v11.15 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -5163,6 +5163,8 @@ function configureChatKey() {
 
 async function callClaude(messages) {
   const apiKey = await loadClaudeApiKey();
+  if (!apiKey) throw new Error('Kein API-Key gesetzt — bitte auf 🔑 klicken und sk-ant-… eingeben');
+
   const payload = {
     model: CLAUDE_MODEL,
     max_tokens: 1024,
@@ -5171,42 +5173,24 @@ async function callClaude(messages) {
     messages: messages
   };
 
-  // Pfad A: n8n Proxy (primär — Key bleibt serverseitig)
-  try {
-    const res = await fetch(CLAUDE_PROXY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (res.ok) return res.json();
-    throw new Error(`Proxy HTTP ${res.status}`);
-  } catch (proxyErr) {
-    // Pfad B: Direkte Anthropic API als Fallback (wenn API-Key lokal gesetzt)
-    if (apiKey) {
-      let res2;
-      try {
-        res2 = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-allow-browser': 'true'
-          },
-          body: JSON.stringify(payload)
-        });
-      } catch (netErr) { res2 = null; }
-      if (res2 && res2.ok) return res2.json();
-      if (res2 && !res2.ok) {
-        let errBody = {};
-        try { errBody = await res2.json(); } catch {}
-        const msg = errBody?.error?.message || `HTTP ${res2.status}`;
-        if (res2.status === 401) throw new Error(`API-Key ungültig (401). Bitte 🔑 und gültigen sk-ant-… Key eingeben.`);
-        throw new Error(`Anthropic API Fehler ${res2.status}: ${msg}`);
-      }
-    }
-    throw new Error(`Chat-Proxy nicht erreichbar: ${proxyErr.message}`);
+  const res = await fetch(`${CLAUDE_PROXY}?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) {
+    const raw = data.error.message || '';
+    try {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) { const a = JSON.parse(m[0]); if (a.error?.message) throw new Error(a.error.message); }
+    } catch (e) { if (e.message !== raw) throw e; }
+    throw new Error(raw || 'Proxy-Fehler');
   }
+  if (data.type === 'error') throw new Error(data.error?.message || 'Anthropic-Fehler');
+  return data;
 }
 
 async function processChatResponse(response) {
