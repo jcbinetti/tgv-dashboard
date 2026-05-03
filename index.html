@@ -5162,10 +5162,7 @@ function configureChatKey() {
 }
 
 async function callClaude(messages) {
-  // API Key laden (aus Supabase oder null für Proxy-Modus)
   const apiKey = await loadClaudeApiKey();
-
-  // Versuche direkte Anthropic API (CORS kann blockieren), Fallback: n8n Proxy
   const payload = {
     model: CLAUDE_MODEL,
     max_tokens: 1024,
@@ -5174,10 +5171,11 @@ async function callClaude(messages) {
     messages: messages
   };
 
-  // Direkte API (nur wenn API Key vorhanden)
+  // Pfad A: Direkte Anthropic API (wenn API-Key vorhanden)
   if (apiKey) {
+    let res;
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -5187,18 +5185,39 @@ async function callClaude(messages) {
         },
         body: JSON.stringify(payload)
       });
-      if (res.ok) return res.json();
-      // Bei Fehler: Fallback auf Proxy
-    } catch (e) { /* Fallback auf Proxy */ }
+    } catch (netErr) {
+      // Netzwerkfehler / CORS → Pfad B (Proxy)
+      console.warn('Direkte API nicht erreichbar:', netErr.message);
+      res = null;
+    }
+    if (res && res.ok) return res.json();
+    if (res && !res.ok) {
+      // HTTP-Fehler direkt vom Anthropic-Server — auswerten, nicht still ignorieren
+      let errBody = {};
+      try { errBody = await res.json(); } catch {}
+      const msg = errBody?.error?.message || errBody?.message || `HTTP ${res.status}`;
+      if (res.status === 401) throw new Error(`API-Key ungültig (401). Bitte 🔑 klicken und gültigen sk-ant-… Key eingeben.`);
+      if (res.status === 400) throw new Error(`API-Anfrage fehlerhaft (400): ${msg}`);
+      throw new Error(`Anthropic API Fehler ${res.status}: ${msg}`);
+    }
+    // res === null → CORS/Netzwerk, weiter zu Proxy
   }
-  // Fallback / Standard: n8n Proxy
-  const res2 = await fetch(CLAUDE_PROXY, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  if (!res2.ok) throw new Error(`Chat-Proxy nicht erreichbar (${res2.status}). API-Key via 🔑 setzen oder n8n Proxy aktivieren.`);
-  return res2.json();
+
+  // Pfad B: n8n Proxy (kein API-Key oder direkter Call per Netzwerkfehler blockiert)
+  try {
+    const res2 = await fetch(CLAUDE_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res2.ok) return res2.json();
+    throw new Error(`Proxy HTTP ${res2.status}`);
+  } catch (proxyErr) {
+    if (apiKey) {
+      throw new Error(`Direkter API-Call per CORS gesperrt und n8n-Proxy nicht erreichbar. Lösung: n8n Workflow "tgv-claude-proxy" aktivieren (Codex-Task).`);
+    }
+    throw new Error(`Kein API-Key gesetzt und kein Proxy. Bitte 🔑 klicken und Anthropic API-Key (sk-ant-…) eingeben.`);
+  }
 }
 
 async function processChatResponse(response) {
