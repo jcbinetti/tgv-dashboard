@@ -2190,8 +2190,10 @@ const entityBadge = raw => {
 };
 
 const STATUS_LABELS = {
-  'inbox':          '🔄 In Verarbeitung',
+  'inbox':          '📥 Eingang',
+  'needs_review':   '⚠️ Prüfen',
   'pending_review': '⚠️ Prüfen',
+  'in_progress':    '⚙️ In Verarbeitung',
   'approved':       '✅ Freigegeben',
   'rejected':       '❌ Abgelehnt',
   'archived':       '🗂 Archiviert',
@@ -2544,9 +2546,9 @@ function renderInbox() {
   let html = `
   <div class="inbox-filter-bar">
     <span style="font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:1px">Filter</span>
-    <button class="inbox-chip ${gInboxFilter==='all'?'active':''}" onclick="setInboxFilter('all',this)" title="Alle Dokumente die noch Aktion benötigen">Alle (${total})</button>
-    <button class="inbox-chip ${gInboxFilter==='inbox'?'active':''}" onclick="setInboxFilter('inbox',this)" title="Von n8n importiert — warten auf Extraktion (Betrag, Datum) durch Skills">🔄 In Verarbeitung (${inboxCount})</button>
-    <button class="inbox-chip ${gInboxFilter==='pending_review'?'active':''}" onclick="setInboxFilter('pending_review',this)" title="Triage-Agent war unsicher — bitte Entität und Typ manuell bestätigen">⚠️ Prüfen (${reviewCount})</button>
+    <button class="inbox-chip ${gInboxFilter==='all'?'active':''}" onclick="setInboxFilter('all',this)" title="Alle Dokumente die noch deinen OK-Klick oder eine Prüfung brauchen">Alle (${total})</button>
+    <button class="inbox-chip ${gInboxFilter==='inbox'?'active':''}" onclick="setInboxFilter('inbox',this)" title="Neu von n8n importiert — Triage-Agent hat Entität+Typ gesetzt. Prüfe und klicke OK: startet automatisch den passenden Skill (RECHNUNG/STEUER → Invoice-Extraktion, VERTRAG → Vertrags-Extraktion, danach Reconcile)">📥 Eingang (${inboxCount})</button>
+    <button class="inbox-chip ${gInboxFilter==='pending_review'?'active':''}" onclick="setInboxFilter('pending_review',this)" title="Triage-Agent war unsicher (Confidence gering) — bitte Entität und Typ manuell prüfen und bestätigen, dann OK klicken">⚠️ Prüfen (${reviewCount})</button>
   </div>
   <div class="card">
     <div class="inbox-table-wrap">
@@ -2624,7 +2626,7 @@ function renderInbox() {
       <td>${statusPill(r.status)}</td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn-sm btn-approve" onclick="approveDoc('${r.id}')" title="Freigeben: speichert Entität+Typ, startet Invoice-Skill falls RECHNUNG/STEUER">&#x2705; OK</button>
+          <button class="btn-sm btn-approve" onclick="approveDoc('${r.id}')" title="Freigeben: speichert Entität+Typ → Skill Router startet automatisch (RECHNUNG/STEUER → Invoice-Extraktion + Reconcile | VERTRAG → Vertrags-Extraktion → prf_contracts | TIMETRACK → Import)">&#x2705; OK</button>
           ${!isSent ? `<button class="btn-sm btn-open" onclick="confirmSendBuchhalter('${r.id}',this)" title="ACHTUNG: Sendet sofort eine E-Mail an den Buchhalter!" style="background:#f59e0b;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:12px">&#x1F4E7;</button>` : ''}
           <button class="btn-sm btn-reject" onclick="rejectDoc('${r.id}')" title="Ablehnen: setzt Status auf rejected — kein Skill, kein Versand, bleibt in DB">&#x274C;</button>
         </div>
