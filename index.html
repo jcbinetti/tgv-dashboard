@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.18 — 2026-05-04 -->
+<!-- TGV Dashboard v11.19 — 2026-05-04 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.18">
-<title>TGV Dashboard v11.18 — Financial OS</title>
+<meta name="version" content="11.19">
+<title>TGV Dashboard v11.19 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1764,6 +1764,17 @@ body.chat-open #main-content {
         </div>
         <div id="ma-contracts-content">
           <div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>
+        </div>
+      </div>
+
+      <!-- BLOCK 3: TRANSAKTIONEN OHNE BELEG -->
+      <div class="card">
+        <div class="card-head">
+          <h2>🏦 Block 3 — Transaktionen ohne Beleg</h2>
+          <span style="font-size:12px;color:rgba(255,255,255,0.6)">Buchungen ohne verknüpfte Rechnung</span>
+        </div>
+        <div id="ma-txn-content">
+          <div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>
         </div>
       </div>
 
@@ -4785,7 +4796,8 @@ async function loadMonatsabschluss() {
 
   await Promise.all([
     loadMaBlock1(monthStart, monthEnd, selMonth),
-    loadMaBlock2(monthStart, monthEnd)
+    loadMaBlock2(monthStart, monthEnd),
+    loadMaBlock3(monthStart, monthEnd)
   ]);
 }
 
@@ -4815,10 +4827,20 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
     const missingAmt = docs.filter(d => d.amount == null && !d.skip_accountant).length;
     const missingDoc = docs.filter(d => !d.drive_file_name && !d.skip_accountant).length;
 
+    // Konto-Mapping (entity → Bank-Kürzel)
+    const KONTO_MAP = {
+      'c3-convis-gmbh': 'BV Berlin',
+      'c4-convis-sarl': 'BICS Paris',
+      'privat': 'Privat',
+      'kivisai': 'KIVISAI'
+    };
+
     // Tabelle
     let html = `<div class="tbl-wrap"><table>
       <thead><tr>
         <th>Anbieter</th>
+        <th>Rechnungsdatum</th>
+        <th>Konto</th>
         <th class="num">Betrag</th>
         <th>Quelle</th>
         <th>Beleg</th>
@@ -4897,8 +4919,11 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
         actionsCell += `</div>`;
       }
 
+      const kontoCell = `<span style="font-size:11px;color:var(--tx1)">${escHtml(KONTO_MAP[d.entity] || d.entity || '—')}</span>`;
       html += `<tr style="${rowStyle}">
-        <td><strong>${escHtml(d.provider || d.drive_file_name || '—')}</strong><br><span style="font-size:10px;color:var(--tx2)">${fmtDate(d.invoice_date || d.date_received)}</span></td>
+        <td><strong>${escHtml(d.provider || d.drive_file_name || '—')}</strong></td>
+        <td style="white-space:nowrap;font-size:12px;color:var(--tx1)">${fmtDate(d.invoice_date || d.date_received)}</td>
+        <td>${kontoCell}</td>
         <td class="num">${amtCell}</td>
         <td style="text-align:center" title="${srcTitle}">${srcIcon}</td>
         <td>${belegCell}</td>
@@ -4953,7 +4978,7 @@ async function loadMaBlock2(monthStart, monthEnd) {
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Verträge…</div>`;
 
   try {
-    let contracts = await supa(`prf_contracts?select=id,name,provider,entity,amount,frequency&status=eq.active&order=entity,name`);
+    let contracts = await supa(`prf_contracts?select=id,name,provider,entity,amount,frequency&order=entity,name`);
 
     if (gEntity !== 'all') {
       contracts = contracts.filter(c => mapEntity(c.entity) === gEntity);
@@ -5011,6 +5036,91 @@ async function loadMaBlock2(monthStart, monthEnd) {
     wrap.innerHTML = html;
   } catch(e) {
     wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${e.message}</div>`;
+  }
+}
+
+async function loadMaBlock3(monthStart, monthEnd) {
+  const wrap = document.getElementById('ma-txn-content');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>`;
+
+  try {
+    const KONTO_MAP3 = {
+      'c3-convis-gmbh': 'BV Berlin',
+      'c4-convis-sarl': 'BICS Paris',
+      'privat': 'Privat',
+      'kivisai': 'KIVISAI'
+    };
+
+    // Transaktionen ohne Beleg im Monat
+    let txns = await supa(
+      `txn_master?select=id,entity,booking_date,amount,merchant_normalized,counterparty_raw` +
+      `&booking_date=gte.${monthStart}&booking_date=lt.${monthEnd}` +
+      `&document_id=is.null&order=entity,booking_date.desc&limit=200`
+    );
+
+    // Entity-Filter
+    if (gEntity !== 'all') {
+      txns = txns.filter(t => mapEntity(t.entity) === gEntity);
+    }
+
+    // Letzte Buchung je Entity (max booking_date, kein Periodenfilter)
+    let lastImport = {};
+    try {
+      const recents = await supa(`txn_master?select=entity,booking_date&order=booking_date.desc&limit=200`);
+      recents.forEach(t => {
+        if (t.booking_date && !lastImport[t.entity]) lastImport[t.entity] = t.booking_date;
+      });
+    } catch(_) {}
+
+    if (!txns.length) {
+      wrap.innerHTML = `<div style="padding:16px"><div class="alert alert-info">✅ Alle Buchungen dieses Monats sind mit einem Beleg verknüpft</div></div>`;
+      return;
+    }
+
+    // Gruppierung nach Entity
+    const byEntity = {};
+    txns.forEach(t => {
+      const e = t.entity || 'unbekannt';
+      if (!byEntity[e]) byEntity[e] = [];
+      byEntity[e].push(t);
+    });
+
+    let html = '';
+    for (const [entity, rows] of Object.entries(byEntity)) {
+      const total = rows.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+      const konto = KONTO_MAP3[entity] || entity;
+      const lastDate = lastImport[entity] ? fmtDate(lastImport[entity]) : '?';
+
+      html += `<div style="padding:12px 16px 0">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px;border-bottom:2px solid var(--s3);margin-bottom:0">
+          <span style="font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center">${entityBadge(entity)} <span style="color:var(--tx1)">${escHtml(konto)}</span></span>
+          <span style="font-size:11px;color:var(--tx2)">Neueste Buchung im Konto: ${lastDate} &nbsp;|&nbsp; <strong style="color:var(--amb)">${rows.length} ohne Beleg</strong></span>
+        </div>
+      </div>
+      <div class="tbl-wrap" style="margin-top:0"><table>
+        <thead><tr>
+          <th>Datum</th><th>Gegenpartei</th><th class="num">Betrag</th>
+        </tr></thead><tbody>`;
+
+      for (const t of rows) {
+        const merchant = escHtml((t.merchant_normalized || t.counterparty_raw || '—').substring(0, 55));
+        const amtStyle = parseFloat(t.amount) < 0 ? 'color:var(--red)' : 'color:var(--grn)';
+        html += `<tr>
+          <td style="white-space:nowrap;font-size:12px">${fmtDate(t.booking_date)}</td>
+          <td style="font-size:13px">${merchant}</td>
+          <td class="num" style="${amtStyle};font-weight:600">${eur(t.amount)}</td>
+        </tr>`;
+      }
+
+      const totalStyle = total < 0 ? 'color:var(--red)' : 'color:var(--grn)';
+      html += `</tbody></table></div>
+      <div class="tbl-footer"><span>Gesamt: <strong style="${totalStyle}">${eur(total)}</strong></span></div>`;
+    }
+
+    wrap.innerHTML = html;
+  } catch(e) {
+    wrap.innerHTML = `<div style="padding:16px"><div class="alert alert-err">⚠️ Fehler Block 3: ${e.message}</div></div>`;
   }
 }
 
