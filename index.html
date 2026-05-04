@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.21 — 2026-05-04 -->
+<!-- TGV Dashboard v11.22 — 2026-05-04 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="version" content="11.21">
-<title>TGV Dashboard v11.21 — Financial OS</title>
+<title>TGV Dashboard v11.22 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4645,21 +4645,25 @@ async function confirmOne(id) {
     const ok = await supaPatch('txn_master', `id=eq.${id}`, patchBody);
     if (!ok) throw new Error('Webhook-Fehler');
 
-    // Learning Loop: KB updaten
+    // Learning Loop: KB via Service-Key Webhook updaten
     const pattern = merchant || (!isIBAN ? cpRaw : '');
-    if (pattern && l1 && l1 !== 'Transfers') {
-      try {
-        await fetch(SUPA_REST + '/kb_suppliers', {
-          method: 'POST',
-          headers: { ...SUPA_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify({
-            pattern, match_type: 'contains', name_normalized: merchant || pattern,
-            category_l1: l1, category_l2: l2 || null, entity: ent !== 'unbekannt' ? ent : null,
-            confidence: 88, active: true, source: 'user_confirmed',
-            times_seen: 1, last_seen: new Date().toISOString().substring(0, 10)
-          })
-        });
-      } catch(kbErr) { console.warn('KB update fehlgeschlagen:', kbErr.message); }
+    const skipKB  = !pattern || !l1 || l1 === 'Einnahmen_Transfers' || l1 === 'Transfers';
+    if (!skipKB) {
+      fetch(KB_LEARN_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pattern,
+          match_type:      'contains',
+          name_normalized: merchant || pattern,
+          category_l1:     l1,
+          category_l2:     l2 || null,
+          category_l3:     l3 || null,
+          entity:          ent !== 'unbekannt' ? ent : null,
+          confidence:      95,
+          source:          'user_confirmed'
+        })
+      }).catch(e => console.warn('KB learn:', e.message));
     }
 
     const row = document.getElementById('row-' + id);
@@ -4667,7 +4671,7 @@ async function confirmOne(id) {
     reviewData = reviewData.filter(t => t.id !== id);
     confirmedCount++;
     updateReviewStats();
-    toast(`✅ Bestätigt: ${l1} / ${ent}${pattern ? ' · KB aktualisiert' : ''}`);
+    toast(`✅ Bestätigt: ${l1} / ${ent}${!skipKB ? ' · KB gelernt ✓' : ''}`);
   } catch(e) {
     btn.disabled = false;
     btn.textContent = '✅ OK';
@@ -4711,16 +4715,43 @@ async function confirmAll() {
   let done = 0, errors = 0;
   for (const t of high) {
     const ai = tryParse(t.ai_suggestion) || {};
+    const l1  = ai.category_l1 || t.category_l1 || '';
+    const l2  = ai.category_l2 || t.category_l2 || '';
+    const l3  = ai.category_l3 || t.category_l3 || '';
+    const ent = ai.entity || t.entity || 'unbekannt';
     try {
       const ok = await supaPatch('txn_master', `id=eq.${t.id}`, {
         review_status: 'confirmed',
-        category_l1: ai.category_l1 || t.category_l1 || '',
-        category_l2: ai.category_l2 || t.category_l2 || '',
-        entity: ai.entity || t.entity || 'unbekannt'
+        category_l1: l1,
+        category_l2: l2,
+        entity: ent
       });
       if (!ok) throw new Error('Webhook-Fehler');
       done++;
       btn.textContent = `${done}/${high.length}…`;
+
+      // Learning Loop: KB via Service-Key Webhook
+      const merchant = (t.merchant_normalized || ai.merchant_normalized || '').trim();
+      const cpRaw    = (t.counterparty_raw || '').trim();
+      const isIBAN   = cpRaw.length >= 15 && /^[A-Z]{2}\d/.test(cpRaw);
+      const pattern  = merchant || (!isIBAN ? cpRaw : '');
+      if (pattern && l1 && l1 !== 'Einnahmen_Transfers' && l1 !== 'Transfers') {
+        fetch(KB_LEARN_WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pattern,
+            match_type:      'contains',
+            name_normalized: merchant || pattern,
+            category_l1:     l1,
+            category_l2:     l2 || null,
+            category_l3:     l3 || null,
+            entity:          ent !== 'unbekannt' ? ent : null,
+            confidence:      95,
+            source:          'user_confirmed'
+          })
+        }).catch(e => console.warn('KB learn (bulk):', e.message));
+      }
     } catch { errors++; }
   }
 
@@ -4757,7 +4788,8 @@ async function loadMdCategories() {
 //  MONATSABSCHLUSS
 // ═══════════════════════════════════════════════════════
 const BUCHHALTER_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-versand';
-const RECLASS_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-reclass-doc';
+const RECLASS_WEBHOOK    = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-reclass-doc';
+const KB_LEARN_WEBHOOK   = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-kb-learn';
 async function loadMonatsabschluss() {
 
   // Bug 1 Fix: Bei Zeitraum 'Alle' Hinweis anzeigen, nicht auf aktuellen Monat fallen
