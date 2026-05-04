@@ -2474,16 +2474,17 @@ async function approveDoc(id) {
       gInboxRows = gInboxRows.filter(r => String(r.id) !== String(id));
       if (!document.querySelector('#inbox-content .inbox-table tbody tr')) renderInbox();
     }, 300);
-    // Skill Router triggern falls RECHNUNG/STEUER
+    // Skill Router triggern für RECHNUNG/STEUER und VERTRAG
     const docData = gInboxRows.find(r => String(r.id) === String(id));
     const stream = docData ? docData.target_stream : null;
-    if (stream === 'RECHNUNG' || stream === 'STEUER') {
+    if (stream === 'RECHNUNG' || stream === 'STEUER' || stream === 'VERTRAG') {
       try {
         await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ doc_id: id })
         });
-        toast('⚙️ Invoice-Extraktion gestartet…', 'info');
+        const msg = stream === 'VERTRAG' ? '⚙️ Vertrag-Extraktion gestartet…' : '⚙️ Invoice-Extraktion gestartet…';
+        toast(msg, 'info');
       } catch(e) { /* Skill Router Fehler ignorieren — nicht kritisch */ }
     }
   } else {
