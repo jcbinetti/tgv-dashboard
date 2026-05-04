@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.19 — 2026-05-04 -->
+<!-- TGV Dashboard v11.20 — 2026-05-04 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.19">
-<title>TGV Dashboard v11.19 — Financial OS</title>
+<meta name="version" content="11.20">
+<title>TGV Dashboard v11.20 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4827,13 +4827,15 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
     const missingAmt = docs.filter(d => d.amount == null && !d.skip_accountant).length;
     const missingDoc = docs.filter(d => !d.drive_file_name && !d.skip_accountant).length;
 
-    // Konto-Mapping (entity → Bank-Kürzel)
-    const KONTO_MAP = {
-      'c3-convis-gmbh': 'BV Berlin',
-      'c4-convis-sarl': 'BICS Paris',
-      'privat': 'Privat',
-      'kivisai': 'KIVISAI'
-    };
+    // Batch-Lookup: txn_id → {account_id, account_name} aus txn_master
+    const txnMap = {};
+    const txnIds = docs.filter(d => d.txn_id).map(d => d.txn_id);
+    if (txnIds.length > 0) {
+      try {
+        const txnRows = await supa(`txn_master?select=id,account_id,account_name&id=in.(${txnIds.join(',')})`);
+        txnRows.forEach(t => { txnMap[t.id] = { account_id: t.account_id, account_name: t.account_name }; });
+      } catch(_) {}
+    }
 
     // Tabelle
     let html = `<div class="tbl-wrap"><table>
@@ -4919,7 +4921,10 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
         actionsCell += `</div>`;
       }
 
-      const kontoCell = `<span style="font-size:11px;color:var(--tx1)">${escHtml(KONTO_MAP[d.entity] || d.entity || '—')}</span>`;
+      const txnAcct = d.txn_id ? txnMap[d.txn_id] : null;
+      const kontoCell = txnAcct?.account_name
+        ? `<span style="font-size:11px;color:var(--tx1)" title="${escHtml(txnAcct.account_id||'')}"><strong>${escHtml(txnAcct.account_id||'')}</strong> ${escHtml(txnAcct.account_name)}</span>`
+        : `<span style="font-size:11px;color:var(--tx2)">— kein Konto</span>`;
       html += `<tr style="${rowStyle}">
         <td><strong>${escHtml(d.provider || d.drive_file_name || '—')}</strong></td>
         <td style="white-space:nowrap;font-size:12px;color:var(--tx1)">${fmtDate(d.invoice_date || d.date_received)}</td>
@@ -5045,18 +5050,11 @@ async function loadMaBlock3(monthStart, monthEnd) {
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>`;
 
   try {
-    const KONTO_MAP3 = {
-      'c3-convis-gmbh': 'BV Berlin',
-      'c4-convis-sarl': 'BICS Paris',
-      'privat': 'Privat',
-      'kivisai': 'KIVISAI'
-    };
-
-    // Transaktionen ohne Beleg im Monat
+    // Transaktionen ohne Beleg im Monat — mit echten Kontodaten
     let txns = await supa(
-      `txn_master?select=id,entity,booking_date,amount,merchant_normalized,counterparty_raw` +
+      `txn_master?select=id,entity,account_id,account_name,account_iban,booking_date,amount,merchant_normalized,counterparty_raw` +
       `&booking_date=gte.${monthStart}&booking_date=lt.${monthEnd}` +
-      `&document_id=is.null&order=entity,booking_date.desc&limit=200`
+      `&document_id=is.null&order=entity,account_id,booking_date.desc&limit=500`
     );
 
     // Entity-Filter
@@ -5064,12 +5062,15 @@ async function loadMaBlock3(monthStart, monthEnd) {
       txns = txns.filter(t => mapEntity(t.entity) === gEntity);
     }
 
-    // Letzte Buchung je Entity (max booking_date, kein Periodenfilter)
-    let lastImport = {};
+    // Letzte Buchung je account_id (über gesamten Bestand — kein Periodenfilter)
+    let lastByAccount = {};
     try {
-      const recents = await supa(`txn_master?select=entity,booking_date&order=booking_date.desc&limit=200`);
+      const recents = await supa(
+        `txn_master?select=account_id,entity,booking_date&order=booking_date.desc&limit=500`
+      );
       recents.forEach(t => {
-        if (t.booking_date && !lastImport[t.entity]) lastImport[t.entity] = t.booking_date;
+        const key = (t.entity || '') + '|' + (t.account_id || '');
+        if (t.booking_date && !lastByAccount[key]) lastByAccount[key] = t.booking_date;
       });
     } catch(_) {}
 
@@ -5078,24 +5079,38 @@ async function loadMaBlock3(monthStart, monthEnd) {
       return;
     }
 
-    // Gruppierung nach Entity
-    const byEntity = {};
+    // Gruppierung nach entity + account_id (jedes Konto einzeln)
+    const byAccount = {};
     txns.forEach(t => {
-      const e = t.entity || 'unbekannt';
-      if (!byEntity[e]) byEntity[e] = [];
-      byEntity[e].push(t);
+      const key = (t.entity || 'unbekannt') + '|' + (t.account_id || 'unknown');
+      if (!byAccount[key]) byAccount[key] = { entity: t.entity, account_id: t.account_id, account_name: t.account_name, account_iban: t.account_iban, rows: [] };
+      byAccount[key].rows.push(t);
     });
 
     let html = '';
-    for (const [entity, rows] of Object.entries(byEntity)) {
+    for (const [, grp] of Object.entries(byAccount)) {
+      const { entity, account_id, account_name, account_iban, rows } = grp;
       const total = rows.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
-      const konto = KONTO_MAP3[entity] || entity;
-      const lastDate = lastImport[entity] ? fmtDate(lastImport[entity]) : '?';
+      const totalStyle = total < 0 ? 'color:var(--red)' : 'color:var(--grn)';
+      const lastKey = (entity || '') + '|' + (account_id || '');
+      const lastDate = lastByAccount[lastKey] ? fmtDate(lastByAccount[lastKey]) : '?';
+
+      // IBAN-Anzeige: letzten 4 Stellen
+      const ibanShort = account_iban ? '···' + account_iban.slice(-4) : '';
+      const kontoLabel = account_name
+        ? `${escHtml(account_name)}${ibanShort ? ' <span style="color:var(--tx2);font-weight:400">' + ibanShort + '</span>' : ''}`
+        : escHtml(account_id || entity || '?');
 
       html += `<div style="padding:12px 16px 0">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px;border-bottom:2px solid var(--s3);margin-bottom:0">
-          <span style="font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center">${entityBadge(entity)} <span style="color:var(--tx1)">${escHtml(konto)}</span></span>
-          <span style="font-size:11px;color:var(--tx2)">Neueste Buchung im Konto: ${lastDate} &nbsp;|&nbsp; <strong style="color:var(--amb)">${rows.length} ohne Beleg</strong></span>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0 8px;border-bottom:2px solid var(--s3)">
+          <span style="font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center">
+            ${entityBadge(entity)}
+            <span style="color:var(--tx1)">${kontoLabel}</span>
+          </span>
+          <span style="font-size:11px;color:var(--tx2)">
+            Neueste Buchung: ${lastDate} &nbsp;|&nbsp;
+            <strong style="color:var(--amb)">${rows.length} ohne Beleg</strong>
+          </span>
         </div>
       </div>
       <div class="tbl-wrap" style="margin-top:0"><table>
@@ -5113,7 +5128,6 @@ async function loadMaBlock3(monthStart, monthEnd) {
         </tr>`;
       }
 
-      const totalStyle = total < 0 ? 'color:var(--red)' : 'color:var(--grn)';
       html += `</tbody></table></div>
       <div class="tbl-footer"><span>Gesamt: <strong style="${totalStyle}">${eur(total)}</strong></span></div>`;
     }
