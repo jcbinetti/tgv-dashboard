@@ -1848,26 +1848,204 @@ table th.num, table td.num { text-align: right !important; }
     <div class="page" id="page-system">
       <div class="page-header">
         <h1>⚙️ System</h1>
-        <p>Migrationen, Workflows, Datenbankstatus</p>
+        <p>TGV-Übersicht, Workflows, Skills, Prompts, Wissensbasis</p>
+      </div>
+
+      <!-- WAS IST TGV -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('tgv-about')">
+          <h2>💡 Was ist TGV?</h2>
+          <span id="tgv-about-toggle" style="font-size:18px;color:var(--tx2)">▼</span>
+        </div>
+        <div id="tgv-about" class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--s1);border-radius:8px;padding:16px;border-left:3px solid var(--navy)">
+              <div style="font-weight:700;color:var(--navy);margin-bottom:8px">🎯 Intention</div>
+              <div style="font-size:13px;color:var(--tx2);line-height:1.6">
+                TGV = <em>Temps Gaspillé de Vie</em> — Verwaltungszeit zurückgewinnen.
+                Rechnungen, Verträge, Bankbewegungen, Stunden: alles läuft automatisch
+                ein, wird klassifiziert und archiviert. Jean-Chris klickt nur noch bei
+                echten Entscheidungen.
+              </div>
+            </div>
+            <div style="background:var(--s1);border-radius:8px;padding:16px;border-left:3px solid #10b981">
+              <div style="font-weight:700;color:#10b981;margin-bottom:8px">✅ Nutzen</div>
+              <div style="font-size:13px;color:var(--tx2);line-height:1.6">
+                3 Firmen · 9 Bankkonten · ~4.700 €/Monat automatisch getrackt.<br>
+                Buchhalter-Versand per Knopfdruck · Verträge nie wieder verpassen ·
+                Rechnungen automatisch mit Transaktionen abgeglichen ·
+                Stundennachweise direkt importiert.
+              </div>
+            </div>
+            <div style="background:var(--s1);border-radius:8px;padding:16px;border-left:3px solid #f59e0b">
+              <div style="font-weight:700;color:#f59e0b;margin-bottom:8px">🏗️ Aufbau</div>
+              <div style="font-size:13px;color:var(--tx2);line-height:1.6">
+                <strong>Intake:</strong> Gmail + Google Drive → n8n<br>
+                <strong>KI-Triage:</strong> Claude Haiku klassifiziert<br>
+                <strong>Skills:</strong> Invoice · Vertrag · Reconcile · CSV<br>
+                <strong>DB:</strong> Supabase (PostgreSQL)<br>
+                <strong>UI:</strong> Dieses Dashboard + TGV-Chat
+              </div>
+            </div>
+          </div>
+          <div style="background:#f0f9ff;border-radius:8px;padding:14px;border:1px solid #bae6fd">
+            <div style="font-size:12px;color:#0369a1;font-weight:600;margin-bottom:6px">5-SCHICHTEN ARCHITEKTUR</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px">
+              <span style="background:#1e3a5f;color:#fff;padding:4px 10px;border-radius:4px">0 Chat (MCP)</span>
+              <span style="color:var(--tx2)">→</span>
+              <span style="background:#1e3a5f;color:#fff;padding:4px 10px;border-radius:4px">1 Intake (WF A2/B)</span>
+              <span style="color:var(--tx2)">→</span>
+              <span style="background:#1e3a5f;color:#fff;padding:4px 10px;border-radius:4px">2 Post-Intake</span>
+              <span style="color:var(--tx2)">→</span>
+              <span style="background:#1e3a5f;color:#fff;padding:4px 10px;border-radius:4px">3 Triage KI</span>
+              <span style="color:var(--tx2)">→</span>
+              <span style="background:#1e3a5f;color:#fff;padding:4px 10px;border-radius:4px">4 Skill Router</span>
+              <span style="color:var(--tx2)">→</span>
+              <span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:4px">5 Skills</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WAS IST DER TGV CHATBOT -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('tgv-chat-about')">
+          <h2>🤖 Was ist der TGV-Chatbot?</h2>
+          <span id="tgv-chat-about-toggle" style="font-size:18px;color:var(--tx2)">▼</span>
+        </div>
+        <div id="tgv-chat-about" class="card-body">
+          <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:8px;padding:14px;margin-bottom:16px">
+            <div style="font-size:13px;color:#6b21a8;font-weight:600;margin-bottom:4px">💬 Claude.ai + MCP = dein persönlicher CFO</div>
+            <div style="font-size:13px;color:var(--tx2);line-height:1.7">
+              Der TGV-Chatbot läuft als <strong>Claude.ai Desktop</strong> mit dem TGV MCP-Server.
+              Er hat direkten Zugriff auf Supabase (alle Daten live) und kann n8n-Skills triggern.
+              <strong>Er ersetzt dutzende Dashboard-Seiten</strong> — on demand, per natürlicher Sprache.
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Was du fragen kannst</div>
+              <ul style="font-size:12px;color:var(--tx2);line-height:2;margin:0;padding-left:16px">
+                <li>"Welche Rechnungen fehlen noch für März C3?"</li>
+                <li>"Zeig mir alle Verträge die dieses Jahr ablaufen"</li>
+                <li>"Reconcile Dokument 6945 mit Transaktion"</li>
+                <li>"Verschieb diese Datei in den richtigen Drive-Ordner"</li>
+                <li>"Was hat C4 diesen Monat ausgegeben?"</li>
+                <li>"Erstelle Monatsabschluss April für C3"</li>
+                <li>"Erkläre mir was mit diesem Screenshot passiert"</li>
+              </ul>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Was er kann / nicht kann</div>
+              <div style="font-size:12px;color:var(--tx2);line-height:1.8">
+                ✅ Screenshots lesen + analysieren<br>
+                ✅ Supabase live lesen und schreiben<br>
+                ✅ n8n Skills triggern (Invoice, Vertrag, Drive)<br>
+                ✅ Flussdiagramme und Tabellen erstellen<br>
+                ✅ Wissensbasis (agent_knowledge) abrufen<br>
+                ❌ Code ausführen (kein Python-Sandbox)<br>
+                ❌ Bilder generieren (kein DALL-E)<br>
+                ❌ Web-Suche (kein Browser-Plugin)<br>
+                ❌ Drive-API direkt (nur via n8n Skills)
+              </div>
+            </div>
+          </div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;font-size:12px;color:#166534">
+            <strong>Tipp:</strong> Starte mit "Was sind meine nächsten TGV-Aktionen?" — der Bot prüft live DB, offene Dokumente, ablaufende Verträge und gibt dir eine priorisierte Liste.
+          </div>
+        </div>
+      </div>
+
+      <!-- SKILLS (aus Supabase) -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('skills-section');loadSkills()">
+          <h2>⚡ Skills &amp; Automatisierungen</h2>
+          <span id="skills-section-toggle" style="font-size:18px;color:var(--tx2)">▶</span>
+        </div>
+        <div id="skills-section" class="card-body" style="display:none">
+          <div id="skills-wrap">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Skills…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENT PROMPTS (aus Supabase) -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('prompts-section');loadAgentPrompts()">
+          <h2>🧠 Agent System-Prompts</h2>
+          <span id="prompts-section-toggle" style="font-size:18px;color:var(--tx2)">▶</span>
+        </div>
+        <div id="prompts-section" class="card-body" style="display:none">
+          <div id="prompts-wrap">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Prompts…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WISSENSBASIS (aus Supabase) -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('knowledge-section');loadKnowledge()">
+          <h2>📚 Wissensbasis (agent_knowledge)</h2>
+          <span id="knowledge-section-toggle" style="font-size:18px;color:var(--tx2)">▶</span>
+        </div>
+        <div id="knowledge-section" class="card-body" style="display:none">
+          <div id="knowledge-wrap">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Wissensbasis…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORKFLOW IDs -->
+      <div class="card">
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('wf-section')">
+          <h2>🔗 n8n Workflow IDs</h2>
+          <span id="wf-section-toggle" style="font-size:18px;color:var(--tx2)">▶</span>
+        </div>
+        <div id="wf-section" class="card-body" style="display:none">
+          <table style="font-size:12px">
+            <thead>
+              <tr><th>Workflow</th><th>ID / Version</th><th>Trigger</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>WF A2 — IMAP Scanner + Dokument-KI</td><td>fx9POuhD3ybynhat · v01.26</td><td>2x tägl. 12:00+00:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF B — Google Drive Scanner Intake</td><td>c7B4trQwfyRFVm8m · V3</td><td>2x tägl. 12:00+00:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>TGV Post Intake</td><td>1OEdRKTJul9grsHT · v1.04</td><td>Webhook</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Triage Agent v1.0</td><td>bzbnkMvWF0FcWYI8</td><td>/webhook/tgv-triage</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Router v0.3</td><td>mvOybw4cBU7y8X5Y</td><td>/webhook/tgv-skill-router</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill PDF Invoice Extract v0.1</td><td>d3xO540JEcAu9Rol</td><td>/webhook/tgv-skill-pdf-invoice-extract</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Extract Contract PDF v0.1</td><td>5jYCxB9NzqyRMqjI</td><td>/webhook/tgv-skill-extract-contract-pdf</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Reconcile Payment v0.1</td><td>MkG0m64HF9Z7jmxK</td><td>/webhook/tgv-skill-reconcile-payment</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Classify CSV v0.1</td><td>LXB4KSgDbqFi1jc0</td><td>/webhook/tgv-skill-classify-csv</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Import Banking CSV v0.1</td><td>UvNspgnrKvQKz9Ln</td><td>/webhook/tgv-skill-import-banking-csv</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Import TimeTrack CSV v0.1</td><td>UYKD3BC6qbUzJl0d</td><td>/webhook/tgv-skill-import-timetrack-csv</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Resolve Supplier v0.1</td><td>EhYORO07kDF5u5Xn</td><td>/webhook/tgv-skill-resolve-supplier</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>Skill Store File To Drive v0.2</td><td>dT1VRLPnDdYxVIKH</td><td>/webhook/tgv-skill-store-file</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF E — Buchhalter-Versand v1.7.2</td><td>XiV614kH0syjxU1T</td><td>/webhook/tgv-buchhalter-versand</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
+              <tr><td>WF F — Contract Agent</td><td>5voxMOYoF9tcPwuL</td><td>—</td><td><span class="pill pill-inbox">In Entwicklung</span></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- MIGRATIONS -->
       <div class="card">
-        <div class="card-head"><h2>🗄️ Datenbank-Migrationen</h2></div>
-        <div class="card-body no-pad">
-          <div class="mig-table" id="mig-table">
-            <!-- rendered by JS -->
-          </div>
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('mig-section')">
+          <h2>🗄️ Datenbank-Migrationen</h2>
+          <span id="mig-section-toggle" style="font-size:18px;color:var(--tx2)">▶</span>
+        </div>
+        <div id="mig-section" class="card-body no-pad" style="display:none">
+          <div class="mig-table" id="mig-table"></div>
         </div>
       </div>
 
       <!-- DB TABLE SIZES -->
       <div class="card">
-        <div class="card-head"><h2>📊 Tabellen-Statistik</h2></div>
-        <div class="card-body">
-          <div id="db-stats-wrap">
-            <div class="spinner-wrap"><div class="spinner"></div> Lade Statistiken…</div>
-          </div>
+        <div class="card-head" style="cursor:pointer" onclick="toggleCard('db-section');loadDbStats()">
+          <h2>📊 Tabellen-Statistik</h2>
+          <span id="db-section-toggle" style="font-size:18px;color:var(--tx2)">▶</span>
+        </div>
+        <div id="db-section" class="card-body" style="display:none">
+          <div id="db-stats-wrap"></div>
           <div style="margin-top:12px">
             <button class="btn-sm btn-open" onclick="runHealthCheck()" style="font-size:12px;padding:7px 16px">
               ⚡ Health Check ausführen
@@ -1876,27 +2054,6 @@ table th.num, table td.num { text-align: right !important; }
         </div>
       </div>
 
-      <!-- WORKFLOW IDs -->
-      <div class="card">
-        <div class="card-head"><h2>🔗 n8n Workflow IDs</h2></div>
-        <div class="card-body">
-          <table style="font-size:12px">
-            <thead>
-              <tr><th>Workflow</th><th>Version</th><th>Trigger</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>WF A2 — IMAP Scanner + Dokument-KI</td><td>v01.26 · fx9POuhD3ybynhat</td><td>2x täglich 12:00+00:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>WF B — Google Drive Scanner Intake</td><td>V3 · c7B4trQwfyRFVm8m</td><td>2x täglich 12:00+00:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>WF E — Buchhalter-Versand</td><td>v1.7.2 · YvTqsmvC4lpgylDH</td><td>1. des Monats 08:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Triage Agent v1.0</td><td>bzbnkMvWF0FcWYI8</td><td>Webhook /tgv-triage</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Post Intake v1.03</td><td>1OEdRKTJul9grsHT</td><td>Webhook</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill PDF Invoice Extract v0.1</td><td>d3xO540JEcAu9Rol</td><td>Webhook /tgv-skill-pdf-invoice-extract</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Extract Contract PDF v0.1</td><td>5jYCxB9NzqyRMqjI</td><td>Webhook /tgv-skill-extract-contract-pdf</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>WF F — Contract Agent</td><td>5voxMOYoF9tcPwuL</td><td>—</td><td><span class="pill pill-inbox">In Entwicklung</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
 
   </div><!-- /#main-content -->
@@ -3923,7 +4080,100 @@ async function loadProjectHours(projectId) {
 // ═══════════════════════════════════════════════════════
 function loadSystem() {
   renderMigrations();
-  loadDbStats();
+}
+
+function toggleCard(id) {
+  const el = document.getElementById(id);
+  const tog = document.getElementById(id + '-toggle');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : '';
+  if (tog) tog.textContent = isOpen ? '▶' : '▼';
+}
+
+async function loadSkills() {
+  const wrap = document.getElementById('skills-wrap');
+  if (!wrap || wrap.dataset.loaded) return;
+  wrap.dataset.loaded = '1';
+  try {
+    const rows = await supa('skill_definitions?select=id,name,description,n8n_webhook,active&order=id.asc');
+    if (!rows.length) { wrap.innerHTML = '<p style="color:var(--tx2);font-size:13px">Keine Skills gefunden.</p>'; return; }
+    let html = '<div style="display:grid;gap:8px">';
+    for (const s of rows) {
+      const active = s.active;
+      const wh = s.n8n_webhook || '—';
+      const desc = (s.description || '').slice(0, 120);
+      html += `<div style="background:var(--s1);border-radius:6px;padding:12px;border:1px solid var(--s3);display:grid;grid-template-columns:1fr auto;gap:6px;align-items:start">
+        <div>
+          <div style="font-weight:600;font-size:13px;color:var(--navy)">${escHtml(s.name)} <span style="font-size:11px;color:var(--tx2);font-weight:400">id=${s.id}</span></div>
+          <div style="font-size:11px;color:var(--tx2);margin-top:2px">${escHtml(desc)}</div>
+          <div style="font-size:10px;color:#6b7280;margin-top:4px;font-family:monospace">${escHtml(wh)}</div>
+        </div>
+        <span class="pill ${active ? 'pill-approved' : 'pill-rejected'}" style="font-size:10px">${active ? 'Aktiv' : 'Inaktiv'}</span>
+      </div>`;
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler: ${e.message}</p>`; }
+}
+
+async function loadAgentPrompts() {
+  const wrap = document.getElementById('prompts-wrap');
+  if (!wrap || wrap.dataset.loaded) return;
+  wrap.dataset.loaded = '1';
+  try {
+    const rows = await supa('agent_prompts?select=id,agent_name,prompt_role,version,active,content&order=id.asc');
+    if (!rows.length) { wrap.innerHTML = '<p style="color:var(--tx2);font-size:13px">Keine Prompts gefunden.</p>'; return; }
+    let html = '<div style="display:grid;gap:8px">';
+    for (const p of rows) {
+      const preview = (p.content || '').slice(0, 200).replace(/\n/g, ' ');
+      html += `<div style="background:var(--s1);border-radius:6px;padding:12px;border:1px solid var(--s3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-weight:600;font-size:13px;color:var(--navy)">${escHtml(p.agent_name)}</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:var(--tx2)">v${p.version || 1} · ${p.prompt_role || 'system'}</span>
+            <span class="pill ${p.active ? 'pill-approved' : 'pill-rejected'}" style="font-size:10px">${p.active ? 'Aktiv' : 'Inaktiv'}</span>
+          </div>
+        </div>
+        <details>
+          <summary style="font-size:11px;color:#6b7280;cursor:pointer">Prompt anzeigen (${(p.content||'').length} Zeichen)</summary>
+          <pre style="margin-top:8px;font-size:11px;white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:4px;border:1px solid var(--s3);max-height:300px;overflow-y:auto;color:var(--tx2)">${escHtml(p.content || '')}</pre>
+        </details>
+      </div>`;
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler: ${e.message}</p>`; }
+}
+
+async function loadKnowledge() {
+  const wrap = document.getElementById('knowledge-wrap');
+  if (!wrap || wrap.dataset.loaded) return;
+  wrap.dataset.loaded = '1';
+  try {
+    const rows = await supa('agent_knowledge?select=id,topic,title,tags,updated_at,content&active=eq.true&order=id.asc');
+    if (!rows.length) { wrap.innerHTML = '<p style="color:var(--tx2);font-size:13px">Keine Artikel gefunden.</p>'; return; }
+    let html = '<div style="display:grid;gap:8px">';
+    for (const k of rows) {
+      const date = (k.updated_at || '').slice(0, 10);
+      const tags = (k.tags || []).map(t => `<span style="background:#e0f2fe;color:#0369a1;font-size:10px;padding:2px 6px;border-radius:3px">${escHtml(t)}</span>`).join(' ');
+      html += `<div style="background:var(--s1);border-radius:6px;padding:12px;border:1px solid var(--s3)">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+          <div>
+            <span style="font-weight:600;font-size:13px;color:var(--navy)">${escHtml(k.title)}</span>
+            <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${tags}</div>
+          </div>
+          <span style="font-size:10px;color:var(--tx2);white-space:nowrap;margin-left:8px">${date}</span>
+        </div>
+        <details>
+          <summary style="font-size:11px;color:#6b7280;cursor:pointer">Artikel lesen (topic: ${escHtml(k.topic)})</summary>
+          <pre style="margin-top:8px;font-size:11px;white-space:pre-wrap;background:#f8fafc;padding:10px;border-radius:4px;border:1px solid var(--s3);max-height:300px;overflow-y:auto;color:var(--tx2)">${escHtml(k.content || '')}</pre>
+        </details>
+      </div>`;
+    }
+    html += '</div>';
+    wrap.innerHTML = html;
+  } catch(e) { wrap.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler: ${e.message}</p>`; }
 }
 
 function renderMigrations() {
@@ -3944,6 +4194,7 @@ function renderMigrations() {
     ['014', 'mail_processing_patterns + 7 Triage-Seeds (01.05.2026)'],
     ['015', 'agent_conversations + agent_events + agent_decisions (01.05.2026)'],
     ['016', 'gmail_filter_routing_rules — 23 Regeln (01.05.2026)'],
+    ['017', 'agent_knowledge — Wissensbasis für TGV-Chatbot (04.05.2026)'],
   ];
 
   let html = '';
