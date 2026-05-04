@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.20 — 2026-05-04 -->
+<!-- TGV Dashboard v11.21 — 2026-05-04 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.20">
-<title>TGV Dashboard v11.20 — Financial OS</title>
+<meta name="version" content="11.21">
+<title>TGV Dashboard v11.21 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -899,6 +899,7 @@ tbody tr:last-child td { border-bottom: none; }
 .review-row.confirming td { background: #F0FDF4 !important; }
 .review-row.confirmed-row td { background: #D1FAE5 !important; opacity: 0.7; }
 .review-row.low-conf td { background: #FFFBEB; }
+.review-row.auto-ok-row td { background: #F0FFF4; border-left: 3px solid #10B981; }
 
 /* ─── EDITABLE SELECTS ─── */
 .cat-sel { font-size: 11px; border: 1px solid #D1D5DB; border-radius: 4px; padding: 2px 4px; background: white; max-width: 130px; }
@@ -1534,8 +1535,8 @@ body.chat-open #main-content {
           <!-- Stats-Bar -->
           <div class="sum-bar" id="review-stats">
             <div class="sum-item"><span class="sl">Geladen</span><div class="sv" id="rs-total">…</div></div>
-            <div class="sum-item"><span class="sl">Conf ≥85</span><div class="sv" id="rs-high" style="color:var(--grn)">…</div></div>
-            <div class="sum-item"><span class="sl">Conf &lt;85</span><div class="sv" id="rs-low" style="color:var(--amb)">…</div></div>
+            <div class="sum-item"><span class="sl">🟢 Auto-OK</span><div class="sv" id="rs-autook" style="color:var(--grn)">…</div></div>
+            <div class="sum-item"><span class="sl">🟡 Pending</span><div class="sv" id="rs-pending" style="color:var(--amb)">…</div></div>
             <div class="sum-item"><span class="sl">Bereits bestätigt</span><div class="sv" id="rs-done" style="color:var(--teal)">…</div></div>
           </div>
 
@@ -4483,8 +4484,8 @@ async function loadReview(mode) {
   if (btnAll) btnAll.disabled = true;
 
   try {
-    const status = isConfirmedMode ? 'confirmed' : 'pending_review';
-    const data = await supa(`txn_master?review_status=eq.${status}&select=id,booking_date,counterparty_raw,counterparty_iban,merchant_normalized,purpose,booking_text_raw,amount,direction,entity,category_l1,category_l2,category_l3,ai_suggestion,account_iban,account_name,confidence_score,review_status&order=booking_date.desc&limit=800`);
+    const statusFilter = isConfirmedMode ? 'confirmed' : 'pending_review,auto_ok';
+    const data = await supa(`txn_master?review_status=in.(${statusFilter})&select=id,booking_date,counterparty_raw,counterparty_iban,merchant_normalized,purpose,booking_text_raw,amount,direction,entity,category_l1,category_l2,category_l3,ai_suggestion,account_iban,account_name,confidence_score,review_status&order=booking_date.desc&limit=800`);
     reviewData = data.filter(r => !isTestData(r));
     renderReview();
     updateReviewStats();
@@ -4503,17 +4504,13 @@ async function loadReview(mode) {
 }
 
 function updateReviewStats() {
-  const high = reviewData.filter(t => {
-    const ai = tryParse(t.ai_suggestion);
-    const conf = parseInt((ai && ai.confidence) || t.confidence_score || 0);
-    return conf >= 85;
-  });
-  const low = reviewData.length - high.length;
+  const autoOk  = reviewData.filter(t => t.review_status === 'auto_ok');
+  const pending = reviewData.filter(t => t.review_status !== 'auto_ok');
   const el = (id) => document.getElementById(id);
-  if (el('rs-total')) el('rs-total').textContent = reviewData.length;
-  if (el('rs-high'))  el('rs-high').textContent  = high.length;
-  if (el('rs-low'))   el('rs-low').textContent   = low;
-  if (el('rs-done'))  el('rs-done').textContent  = confirmedCount;
+  if (el('rs-total'))   el('rs-total').textContent   = reviewData.length;
+  if (el('rs-autook'))  el('rs-autook').textContent  = autoOk.length;
+  if (el('rs-pending')) el('rs-pending').textContent = pending.length;
+  if (el('rs-done'))    el('rs-done').textContent    = confirmedCount;
   const badge = document.getElementById('inbox-txn-badge');
   if (badge) {
     badge.textContent = reviewData.length;
@@ -4565,7 +4562,7 @@ function renderReview() {
     // Normalisieren: 0-1 → 0-100
     const conf = confRaw <= 1 && confRaw > 0 ? Math.round(confRaw * 100) : Math.round(confRaw);
     const reasoning = esc((ai.reasoning || '').substring(0, 200));
-    const rowClass = conf >= 85 ? '' : 'low-conf';
+    const rowClass = t.review_status === 'auto_ok' ? 'auto-ok-row' : (conf >= 85 ? '' : 'low-conf');
     const l3 = (t.category_l3 || '').trim();
     // Konto: IBAN kurz + Kontoname
     const ibanShort = t.account_iban ? t.account_iban.replace(/\s/g,'').substring(0,12) + '…' : (t.account_name || '—');
@@ -5946,3 +5943,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
