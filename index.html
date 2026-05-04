@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.17 — 2026-05-04 -->
+<!-- TGV Dashboard v11.18 — 2026-05-04 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.17">
-<title>TGV Dashboard v11.17 — Financial OS</title>
+<meta name="version" content="11.18">
+<title>TGV Dashboard v11.18 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1007,6 +1007,42 @@ table th.num, table td.num { text-align: right !important; }
 }
 #chat-panel.open { transform: translateX(0); }
 
+/* Chat-Panel offen: Hauptinhalt nach links schieben statt überdecken */
+body.chat-open #main-content {
+  padding-right: 384px;
+  transition: padding-right 0.3s ease;
+}
+#main-content { transition: padding-right 0.3s ease; }
+
+/* Bild-Vorschau im Chat-Input */
+#chat-image-preview {
+  display: none;
+  padding: 6px 12px 0;
+  position: relative;
+}
+#chat-image-preview img {
+  max-height: 80px;
+  border-radius: 6px;
+  border: 1px solid var(--s3);
+}
+#chat-image-preview .remove-img {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .chat-header {
   background: var(--navy);
   color: #fff;
@@ -1259,8 +1295,12 @@ table th.num, table td.num { text-align: right !important; }
   <div class="chat-messages" id="chat-messages">
     <div class="chat-bubble assistant">Hallo! Ich bin dein TGV-Assistent. Du kannst mir Fragen stellen oder Korrekturen anfordern, z.B.:<br><br>• &ldquo;BVG bestätigen privat Mobilität&rdquo;<br>• &ldquo;Zeig mir alle offenen Docs April&rdquo;<br>• &ldquo;Vercel → c3 Server-Hosting&rdquo;</div>
   </div>
+  <div id="chat-image-preview">
+    <img id="chat-preview-img" src="" alt="Vorschau">
+    <button class="remove-img" onclick="clearChatImage()" title="Bild entfernen">✕</button>
+  </div>
   <div class="chat-input-area">
-    <textarea id="chat-input" placeholder="Nachricht eingeben..." rows="1" onkeydown="chatKeydown(event)"></textarea>
+    <textarea id="chat-input" placeholder="Nachricht eingeben… (Strg+V für Screenshot)" rows="1" onkeydown="chatKeydown(event)" onpaste="handleChatPaste(event)"></textarea>
     <button id="chat-send" onclick="sendChat()">Senden</button>
   </div>
 </div>
@@ -5282,20 +5322,64 @@ const CLAUDE_PROXY   = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy
 let chatHistory = []; // Session-only
 let chatOpen = false;
 
-const TGV_SYSTEM_PROMPT = `Du bist der TGV-Assistent für das persönliche Finanz-Dashboard von Jean-Chris Binetti.
+const TGV_SYSTEM_PROMPT = `Du bist der TGV-Assistent — persönlicher CFO-Bot von Jean-Chris Binetti (jcbinetti@gmail.com).
+Heute: ${new Date().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric'})}.
 
-Kontext:
-- Entitäten: PRIV (privat), C3 (Convis GmbH, Deutschland), C4 (Convis SARL, Frankreich)
-- Kategorien L1: Betriebsausgaben, Personalkosten, Vorsorge, Wohnen, Mobilität, Ernährung, Freizeit, Sonstiges
-- Datenbank: Supabase — Tabellen: txn_master (Transaktionen), documents (Belege/Rechnungen)
-- Status-Werte: inbox, pending_review, approved, rejected, archived, todo_manual
+=== TGV SYSTEM — 5-SCHICHTEN-ARCHITEKTUR ===
+TGV = Temps Gaspillé de Vie — Financial OS für 3 Entitäten + Privatbereich.
 
-Vearfügbare Tools:
-1. get_pending_documents — Zeigt offene Dokumente (status=inbox oder pending_review)
-2. confirm_document — Bestätigt ein Dokument (setzt status=approved)
-3. get_tgv_next_actions — Zeigt Prioritätenliste offener Aufgaben
+Schicht 1 INTAKE: WF A2 (Mails 2× tägl. via Gmail) + WF B (Google Drive Scan) legen Dokumente an.
+Schicht 2 POST-INTAKE: Dateien werden in TGV-CORE Shared Drive abgelegt.
+Schicht 3 TRIAGE AGENT: KI setzt target_stream (RECHNUNG/STEUER/VERTRAG/TIMETRACK/SONSTIGES).
+Schicht 4 SKILL ROUTER: POST /webhook/tgv-skill-router {doc_id} → routet an passenden Skill.
+Schicht 5 SKILLS: Invoice Extract, Contract Extract, Reconcile Payment, Import CSV, Resolve Supplier.
 
-Antworte immer auf Deutsch, präzise und hilfreich. Bei Korrekturen bestätige was geändert wurde.`;
+=== WANN WIRD INVOICE-EXTRACT AUSGELÖST? ===
+TRIGGER: Manueller OK-Klick im Dashboard (oder batch_skill_router.py).
+ABLAUF nach OK-Klick:
+1. Dashboard liest entity + doc_type aus Dropdown → PATCH documents (status=approved, entity, doc_type)
+2. Falls target_stream = RECHNUNG/STEUER/VERTRAG → POST /webhook/tgv-skill-router {doc_id}
+3. Skill Router → Skill PDF Invoice Extract (RECHNUNG/STEUER) oder Contract Extract (VERTRAG)
+4. Skill schreibt invoice_date, amount, invoice_number zurück in documents
+5. Danach auto: Skill Reconcile Payment sucht passende Transaktion in txn_master
+
+WARUM MANUELL? → Qualitätsgate: entity + doc_type müssen geprüft sein BEVOR der Skill läuft.
+Der Skill routet nach target_stream (gesetzt vom Triage Agent), NICHT nach doc_type.
+
+=== ENTITÄTEN ===
+privat = Jean-Chris Binetti persönlich (Wohnung: Kaiserin-Augusta-Allee 86a, Berlin — KEIN Büro!)
+c3-convis-gmbh = Convis GmbH Berlin (Büro: Auerbachstraße 10)
+c4-convis-sarl = Convis SARL Paris (Büro: Tour CIT Montparnasse)
+kivisai = KIVISAI (EU, kaum aktiv)
+
+Zuordnungsregeln (wichtigste):
+IONOS SE → c3 | IONOS SARL → c4 | Telekom → c3 | Bouygues/BTE → c4 | Vodafone → privat
+Anthropic → c3 | Vercel → c3 | n8n → privat | BICS banque → c4 | Atrium/EVI → c4
+Allianz 800€/Mon → c3 (betriebliche Vorsorge) | EUROPA Versicherung → privat
+Manus AI → c3
+
+=== DOCUMENT STATUS-WERTE ===
+inbox = neu, wartet auf OK-Klick des Users
+needs_review = Triage Agent unsicher, braucht manuelle Prüfung
+pending_review = wie needs_review (Legacy-Name)
+in_progress = Skill läuft gerade
+approved = vollständig verarbeitet
+rejected = abgelehnt (bleibt in DB, kein Skill)
+
+=== TOOLS (was du kannst) ===
+1. get_pending_documents — Alle offenen Docs (inbox + needs_review)
+2. confirm_document — Bestätigt ein Doc und triggert Skill Router falls nötig
+3. get_tgv_next_actions — Prioritätenliste offener Aufgaben
+4. search_knowledge — Sucht technische Prozessdetails in der TGV-Wissensbasis
+
+=== DEIN VERHALTEN ===
+- Antworte auf Deutsch, CFO-like, präzise
+- Bei technischen Prozessfragen (wie funktioniert X, warum passiert Y): nutze search_knowledge
+- Bei unklarer Entität: frage nach oder schlag basierend auf Lieferant-Regeln vor
+- Du kannst Dokumente per confirm_document bestätigen — das löst die komplette Pipeline aus
+- Du KANNST keine Dateien in Google Drive direkt verschieben (nur via n8n Skill Router)
+- Du KANNST keine n8n Workflows direkt starten (nur via Skill Router Webhook)`;
+
 
 const TGV_TOOLS = [
   {
@@ -5331,6 +5415,17 @@ const TGV_TOOLS = [
       properties: {},
       required: []
     }
+  },
+  {
+    name: 'search_knowledge',
+    description: 'Sucht in der TGV-Wissensbasis (agent_knowledge) nach Prozess-Artikeln. Nutze dies bei technischen Fragen über Workflows, Trigger, Skills oder Prozesse.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Suchbegriff(e), z.B. "invoice extract trigger" oder "vertrag approval flow"' }
+      },
+      required: ['query']
+    }
   }
 ];
 
@@ -5338,43 +5433,88 @@ async function executeTool(toolName, toolInput) {
   try {
     if (toolName === 'get_pending_documents') {
       const entity = toolInput.entity || 'all';
-      const limit  = toolInput.limit  || 20;
+      const limit  = toolInput.limit  || 30;
       const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
-      let filter = `status=in.(inbox,pending_review)&order=date_received.desc.nullslast&limit=${limit}`;
+      let filter = `status=in.(inbox,needs_review,pending_review)&order=date_received.desc.nullslast&limit=${limit}`;
       if (entity !== 'all') filter += `&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}`;
-      const data = await supa(`documents?select=id,invoice_date,entity,provider,amount,status&${filter}`);
+      const data = await supa(`documents?select=id,invoice_date,entity,provider,amount,status,target_stream,doc_type&${filter}`);
       if (!data.length) return 'Keine offenen Dokumente gefunden.';
-      const lines = data.map(d => `- ID ${d.id}: ${d.provider || '(kein Name)'} | ${d.entity} | ${d.amount != null ? eur(d.amount) : '—'} | ${d.status}`);
-      return `${data.length} offene Dokumente:\n${lines.join('\n')}`;
+      // Status-Zusammenfassung
+      const counts = {};
+      data.forEach(d => { counts[d.status] = (counts[d.status]||0)+1; });
+      const summary = Object.entries(counts).map(([s,n])=>`${s}=${n}`).join(', ');
+      const lines = data.map(d => {
+        const stream = d.target_stream || d.doc_type || '?';
+        return `- #${d.id} [${d.status}] ${stream} | ${d.provider || '(kein Name)'} | ${d.entity || '?'} | ${d.amount != null ? eur(d.amount) : '—'} | ${d.invoice_date ? d.invoice_date.slice(0,10) : 'kein Datum'}`;
+      });
+      return `📥 ${data.length} Dokumente warten (${summary}):\n${lines.join('\n')}`;
     }
 
     if (toolName === 'confirm_document') {
-      const { doc_id, category, entity } = toolInput;
+      const { doc_id, category, entity, doc_type } = toolInput;
       if (!doc_id) return 'Fehler: doc_id fehlt.';
+      const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
+      const resolvedEntity = entity ? (entityMap[entity] || entity) : null;
+
+      // 1. Aktuellen Zustand laden (target_stream brauchen wir für Skill Router)
+      const [docData] = await supa(`documents?select=id,target_stream,doc_type,entity&id=eq.${doc_id}`);
+      if (!docData) return `⚠️ Dokument ${doc_id} nicht gefunden.`;
+
+      // 2. PATCH setzen
       const body = { status: 'approved' };
-      if (category) body.category = category;
-      if (entity) {
-        const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
-        body.entity = entityMap[entity] || entity;
-      }
+      if (resolvedEntity) body.entity = resolvedEntity;
+      if (category)       body.category = category;
+      if (doc_type)       body.doc_type = doc_type;
+
       const ok = await supaPatch('documents', `id=eq.${doc_id}`, body);
-      if (ok) {
-        // Cache aktualisieren
-        const doc = gDocs.find(d => d.id == doc_id);
-        if (doc) Object.assign(doc, body);
-        return `✅ Dokument ${doc_id} wurde bestätigt (status=approved)${category ? `, Kategorie: ${category}` : ''}${entity ? `, Entität: ${entity}` : ''}.`;
-      } else {
-        return `⚠️ Bestätigung fehlgeschlagen (RLS oder Verbindungsfehler).`;
+      if (!ok) return `⚠️ Bestätigung fehlgeschlagen (RLS oder Verbindungsfehler).`;
+
+      // 3. Skill Router triggern falls sinnvoll
+      const stream = docData.target_stream;
+      let skillMsg = '';
+      if (stream === 'RECHNUNG' || stream === 'STEUER' || stream === 'VERTRAG') {
+        try {
+          await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router', {
+            method: 'POST', mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ doc_id })
+          });
+          const skillLabel = stream === 'VERTRAG' ? 'Vertrag-Extraktion' : 'Invoice-Extraktion';
+          skillMsg = ` → ⚙️ ${skillLabel} gestartet (n8n Skill Router).`;
+        } catch(e) {
+          skillMsg = ` (Skill Router konnte nicht erreicht werden: ${e.message})`;
+        }
       }
+
+      // Cache lokal aktualisieren
+      const cached = (gDocs || []).find(d => d.id == doc_id);
+      if (cached) Object.assign(cached, body);
+
+      return `✅ Dokument ${doc_id} bestätigt (status=approved)${resolvedEntity ? `, Entität: ${resolvedEntity}` : ''}${category ? `, Kategorie: ${category}` : ''}${skillMsg}`;
     }
 
     if (toolName === 'get_tgv_next_actions') {
       const [pendingDocs, pendingTxns, unlinkedTxns] = await Promise.all([
-        supaCount('documents', 'status=in.(inbox,pending_review)'),
+        supaCount('documents', 'status=in.(inbox,needs_review,pending_review)'),
         supaCount('txn_master', 'review_status=eq.pending_review'),
         supaCount('txn_master', 'document_id=is.null')
       ]);
-      return `Nächste Aktionen im TGV-System:\n• ${pendingDocs} Dokumente offen (inbox/pending_review)\n• ${pendingTxns} Transaktionen zur Kategorie-Bestätigung\n• ${unlinkedTxns} Transaktionen ohne Rechnung (Abgleich)`;
+      return `Nächste Aktionen im TGV-System:\n• ${pendingDocs} Dokumente offen (inbox + needs_review)\n• ${pendingTxns} Transaktionen zur Kategorie-Bestätigung\n• ${unlinkedTxns} Transaktionen ohne verknüpfte Rechnung`;
+    }
+
+    if (toolName === 'search_knowledge') {
+      const q = (toolInput.query || '').toLowerCase().trim();
+      if (!q) return 'Bitte Suchbegriff angeben.';
+      const data = await supa(`agent_knowledge?select=topic,title,content,tags&active=eq.true&order=updated_at.desc&limit=20`);
+      if (!data.length) return 'Wissensbasis ist leer.';
+      const terms = q.split(/\s+/).filter(t => t.length > 2);
+      const scored = data.map(a => {
+        const hay = `${a.topic} ${a.title} ${(a.tags||[]).join(' ')} ${a.content}`.toLowerCase();
+        const score = terms.reduce((s, t) => s + (hay.includes(t) ? 2 : 0) + (hay.split(t).length - 1), 0);
+        return { ...a, score };
+      }).filter(a => a.score > 0).sort((a,b) => b.score - a.score).slice(0, 2);
+      if (!scored.length) return `Kein Artikel gefunden für: "${q}". Verfügbare Themen: ${data.map(a=>a.topic).join(', ')}`;
+      return scored.map(a => `## ${a.title}\n${a.content}`).join('\n\n---\n\n');
     }
 
     return `Unbekanntes Tool: ${toolName}`;
@@ -5389,6 +5529,7 @@ function toggleChat() {
   const btn   = document.getElementById('chat-btn');
   if (panel) panel.classList.toggle('open', chatOpen);
   if (btn)   btn.classList.toggle('has-msg', chatOpen);
+  document.body.classList.toggle('chat-open', chatOpen);
   if (chatOpen) {
     const input = document.getElementById('chat-input');
     if (input) setTimeout(() => input.focus(), 300);
@@ -5409,15 +5550,80 @@ function chatQuick(text) {
   sendChat();
 }
 
+/* ── Markdown → safe HTML (für assistant-Bubbles) ── */
+function renderMarkdownSafe(raw) {
+  // 1. HTML escapen
+  let s = String(raw)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // 2. Inline-Code: `code`
+  s = s.replace(/`([^`\n]+)`/g,
+    '<code style="background:var(--s2);padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace">$1</code>');
+  // 3. Bold: **text**
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // 4. Italic: *text* (nicht **)
+  s = s.replace(/(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  // 5. Überschriften: ### ## #
+  s = s.replace(/^#{1,3} (.+)$/gm,
+    '<span style="font-weight:700;display:block;margin:6px 0 2px">$1</span>');
+  // 6. Aufzählung: - oder • am Zeilenanfang
+  s = s.replace(/^[-•] (.+)$/gm,
+    '<span style="display:block;padding-left:12px">• $1</span>');
+  // 7. Zeilenumbrüche
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
 function addChatBubble(type, text) {
   const msgs = document.getElementById('chat-messages');
   if (!msgs) return;
   const div = document.createElement('div');
   div.className = `chat-bubble ${type}`;
-  div.innerHTML = text.replace(/\n/g, '<br>');
+  // Nur assistant-Bubbles bekommen Markdown-Rendering
+  if (type === 'assistant') {
+    div.innerHTML = renderMarkdownSafe(text);
+  } else {
+    div.innerHTML = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  }
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   return div;
+}
+
+/* ── Bild-Paste (Screenshot ins Chat einfügen) ── */
+let pendingImage = null; // { base64, mediaType }
+
+function handleChatPaste(e) {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        const [header, base64] = dataUrl.split(',');
+        const mediaType = header.match(/:(.*?);/)[1]; // e.g. image/png
+        pendingImage = { base64, mediaType };
+        const prev = document.getElementById('chat-image-preview');
+        const img  = document.getElementById('chat-preview-img');
+        if (prev && img) {
+          img.src = dataUrl;
+          prev.style.display = 'block';
+        }
+      };
+      reader.readAsDataURL(blob);
+      return;
+    }
+  }
+}
+
+function clearChatImage() {
+  pendingImage = null;
+  const prev = document.getElementById('chat-image-preview');
+  const img  = document.getElementById('chat-preview-img');
+  if (prev) prev.style.display = 'none';
+  if (img)  img.src = '';
 }
 
 async function sendChat() {
@@ -5436,13 +5642,25 @@ async function sendChat() {
   if (!input || !sendBtn) return;
 
   const userText = input.value.trim();
-  if (!userText) return;
+  if (!userText && !pendingImage) return;
 
   input.value = '';
   sendBtn.disabled = true;
 
-  addChatBubble('user', escHtml(userText));
-  chatHistory.push({ role: 'user', content: userText });
+  // Nachricht + ggf. Bild aufbauen
+  let userContent;
+  if (pendingImage) {
+    userContent = [
+      { type: 'image', source: { type: 'base64', media_type: pendingImage.mediaType, data: pendingImage.base64 } },
+      { type: 'text', text: userText || 'Was siehst du auf diesem Screenshot?' }
+    ];
+    addChatBubble('user', `📷 ${escHtml(userText || 'Screenshot eingefügt')}`);
+    clearChatImage();
+  } else {
+    userContent = userText;
+    addChatBubble('user', escHtml(userText));
+  }
+  chatHistory.push({ role: 'user', content: userContent });
 
   const thinkingBubble = addChatBubble('thinking', '⏳ Denke nach…');
 
@@ -5545,9 +5763,9 @@ async function processChatResponse(response) {
     }
   }
 
-  // Antwort-Text anzeigen
+  // Antwort-Text anzeigen (renderMarkdownSafe ist in addChatBubble eingebaut)
   if (assistantText) {
-    addChatBubble('assistant', escHtml(assistantText));
+    addChatBubble('assistant', assistantText);
     chatHistory.push({ role: 'assistant', content: response.content });
   }
 
