@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.25 — 2026-05-05 -->
+<!-- TGV Dashboard v11.26 — 2026-05-05 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.25">
-<title>TGV Dashboard v11.25 — Financial OS</title>
+<meta name="version" content="11.26">
+<title>TGV Dashboard v11.26 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -468,9 +468,10 @@ tbody tr:last-child td { border-bottom: none; }
 .wf-info .wf-name { font-size: 13px; font-weight: 600; color: var(--tx0); }
 .wf-info .wf-detail { font-size: 11px; color: var(--tx2); margin-top: 2px; }
 .wf-info .wf-status { font-size: 10px; font-weight: 600; margin-top: 5px; }
-.wf-status-ok  { color: var(--grn); }
-.wf-status-blu { color: var(--blu); }
-.wf-status-err { color: var(--red); }
+.wf-status-ok   { color: var(--grn); }
+.wf-status-blu  { color: var(--blu); }
+.wf-status-err  { color: var(--red); }
+.wf-status-warn { color: #f59e0b; }
 
 /* ─── FINANZEN TABS ─── */
 .fin-tabs {
@@ -1452,9 +1453,25 @@ body.chat-open #main-content {
             <div class="wf-card">
               <div class="wf-icon">✅</div>
               <div class="wf-info">
-                <div class="wf-name">WF D — Reclass Doc</div>
-                <div class="wf-detail">RDA4Hv8058hqxTOf · Webhook tgv-reclass-doc</div>
+                <div class="wf-name">WF D — Reclass Doc Dispatcher</div>
+                <div class="wf-detail">v0.2.0 · RDA4Hv8058hqxTOf · routet zu Invoice/Contract Skill + KB-Learn</div>
                 <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">Skill PDF Invoice Extract</div>
+                <div class="wf-detail">d3xO540JEcAu9Rol · doc_type Default → RECHNUNG (fix 05.05.)</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">🟡</div>
+              <div class="wf-info">
+                <div class="wf-name">Skill Extract Contract PDF</div>
+                <div class="wf-detail">5jYCxB9NzqyRMqjI · SQL-Bug gefixt 05.05., Base64-Bug offen (P0)</div>
+                <div class="wf-status wf-status-warn">TEILWEISE</div>
               </div>
             </div>
             <div class="wf-card">
@@ -1962,6 +1979,16 @@ body.chat-open #main-content {
                 <strong>DB:</strong> Supabase (PostgreSQL)<br>
                 <strong>UI:</strong> Dieses Dashboard + TGV-Chat
               </div>
+            </div>
+          </div>
+          <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:14px;margin-bottom:12px">
+            <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">🆕 SESSION 2026-05-05 — Was sich geändert hat</div>
+            <div style="font-size:12px;color:var(--tx2);line-height:1.7">
+              ✅ <strong>doc_type Migration:</strong> 9 Casing-Varianten zu 5 kanonischen UPPER-Werten zusammengeführt (111 Docs)<br>
+              ✅ <strong>WF D Reclass v0.2.0:</strong> komplett neuer Dispatcher → routet zu Invoice/Contract-Skill + KB-Learn aus Diff<br>
+              ✅ <strong>Doc-Cleanup:</strong> 7 Mail-Stubs gelöscht (kein PDF an Drive uploadet) + Manus-Doc gepatcht<br>
+              ✅ <strong>Skill-Bugs:</strong> Invoice-Skill Default-Casing fix · Contract-Skill SQL-Spalte fix<br>
+              🔴 <strong>Offen (P0):</strong> Contract-Skill Build-Claude-Payload liefert ungültige Base64 → Anthropic 400
             </div>
           </div>
           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px;margin-bottom:12px">
