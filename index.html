@@ -4507,17 +4507,6 @@ const ENTITY_FOLDER_IDS = {
   'kivisai':        null,
 };
 
-function entityBadge(e) {
-  const map = {
-    'c3-convis-gmbh': {label:'C3', color:'#0EA5A4'},
-    'c4-convis-sarl': {label:'C4', color:'#6366F1'},
-    'privat':         {label:'Privat', color:'#94A3B8'},
-    'kivisai':        {label:'KIVISAI', color:'#F59E0B'},
-  };
-  const m = map[String(e||'').toLowerCase()] || {label: e || '—', color:'#9CA3AF'};
-  return `<span style="background:${m.color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">${m.label}</span>`;
-}
-
 function docTypeBadge(t) {
   const T = String(t||'').toUpperCase();
   const colors = {
@@ -4528,7 +4517,7 @@ function docTypeBadge(t) {
   return `<span style="background:${c};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">${T||'—'}</span>`;
 }
 
-function fmtDate(iso) {
+function fmtDateTime(iso) {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
@@ -4633,7 +4622,7 @@ function renderRouted(rows) {
       : `<span style="font-size:11px;color:#6B7280">📁 ${escapeHtml(d.final_path || '—')}</span>`;
     const provider = d.provider || (d.ai_suggestion && d.ai_suggestion.provider) || '—';
     return `<tr>
-      <td style="font-size:11px;color:#6B7280">${fmtDate(d.date_received)}</td>
+      <td style="font-size:11px;color:#6B7280">${fmtDateTime(d.date_received)}</td>
       <td style="font-size:12px">${fileCell}</td>
       <td style="font-size:11px">${escapeHtml(provider)}</td>
       <td>${entityBadge(d.entity)}</td>
