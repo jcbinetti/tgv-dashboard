@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.24 — 2026-05-05 -->
+<!-- TGV Dashboard v11.25 — 2026-05-05 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.24">
-<title>TGV Dashboard v11.24 — Financial OS</title>
+<meta name="version" content="11.25">
+<title>TGV Dashboard v11.25 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1450,6 +1450,30 @@ body.chat-open #main-content {
               </div>
             </div>
             <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">WF D — Reclass Doc</div>
+                <div class="wf-detail">RDA4Hv8058hqxTOf · Webhook tgv-reclass-doc</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">KB Learn (confirmOne/All)</div>
+                <div class="wf-detail">X4LH5CnG2GH1InkX · Webhook tgv-kb-learn</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
+              <div class="wf-icon">✅</div>
+              <div class="wf-info">
+                <div class="wf-name">Skill Router</div>
+                <div class="wf-detail">mvOybw4cBU7y8X5Y · Webhook tgv-skill-router</div>
+                <div class="wf-status wf-status-ok">AKTIV</div>
+              </div>
+            </div>
+            <div class="wf-card">
               <div class="wf-icon">🔵</div>
               <div class="wf-info">
                 <div class="wf-name">WF F — Contract Agent</div>
@@ -1934,10 +1958,21 @@ body.chat-open #main-content {
               <div style="font-size:13px;color:var(--tx2);line-height:1.6">
                 <strong>Intake:</strong> Gmail + Google Drive → n8n<br>
                 <strong>KI-Triage:</strong> Claude Haiku klassifiziert<br>
-                <strong>Skills:</strong> Invoice · Vertrag · Reconcile · CSV<br>
+                <strong>Skills:</strong> Invoice · Vertrag · Reconcile · CSV · Reclass<br>
                 <strong>DB:</strong> Supabase (PostgreSQL)<br>
                 <strong>UI:</strong> Dieses Dashboard + TGV-Chat
               </div>
+            </div>
+          </div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px;margin-bottom:12px">
+            <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:6px">📑 KANONISCHE DOC-TYPEN (Stand 2026-05-05)</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;font-family:monospace">
+              <span style="background:#1e3a5f;color:#fff;padding:3px 8px;border-radius:3px">RECHNUNG</span>
+              <span style="background:#1e3a5f;color:#fff;padding:3px 8px;border-radius:3px">VERTRAG</span>
+              <span style="background:#1e3a5f;color:#fff;padding:3px 8px;border-radius:3px">BANKING</span>
+              <span style="background:#1e3a5f;color:#fff;padding:3px 8px;border-radius:3px">ZAHLUNGSBELEG</span>
+              <span style="background:#1e3a5f;color:#fff;padding:3px 8px;border-radius:3px">SONSTIGES</span>
+              <span style="color:var(--tx2);margin-left:8px">→ Police-Subtyp via <code>tags=['Police']</code></span>
             </div>
           </div>
           <div style="background:#f0f9ff;border-radius:8px;padding:14px;border:1px solid #bae6fd">
@@ -3493,7 +3528,8 @@ let docFinFilter = { entity: '', doc_type: '', status: '' };
 function renderDocsFinFilters() {
   const row = document.getElementById('docs-fin-filter-row');
   const docs = gDocs;
-  const docTypes = [...new Set(docs.map(d => d.doc_type).filter(Boolean))].sort();
+  // Defensive: Casing normalisieren, doppelte Werte (Rechnung/RECHNUNG) zusammenführen
+  const docTypes = [...new Set(docs.map(d => (d.doc_type || '').toUpperCase()).filter(Boolean))].sort();
   const statuses = [...new Set(docs.map(d => d.status).filter(Boolean))].sort();
   const manualCount = docs.filter(d => d.status === 'todo_manual').length;
   const manualBadge = manualCount > 0
@@ -3530,7 +3566,7 @@ function renderDocsFinTable() {
   let rows = filteredDocs().filter(r => r.status !== 'rejected');
   const f = docFinFilter;
   if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
-  if (f.doc_type) rows = rows.filter(r => r.doc_type === f.doc_type);
+  if (f.doc_type) rows = rows.filter(r => (r.doc_type || '').toUpperCase() === f.doc_type);
   if (f.status) rows = rows.filter(r => r.status === f.status);
 
   // Sort
@@ -3983,7 +4019,7 @@ async function loadSteckbriefDoc(c) {
     if (!docRow) {
       const provNorm = (c.provider || c.name || '').replace(/[^a-zA-Z0-9]/g, '%');
       if (provNorm.length >= 3) {
-        const rows = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date&doc_type=in.(Vertrag,Versicherungspolice,Versicherungsschein)&provider=ilike.*${encodeURIComponent(c.provider || c.name || '')}*&order=invoice_date.desc.nullslast&limit=1`);
+        const rows = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date&doc_type=eq.VERTRAG&provider=ilike.*${encodeURIComponent(c.provider || c.name || '')}*&order=invoice_date.desc.nullslast&limit=1`);
         if (rows && rows.length) docRow = rows[0];
       }
     }
@@ -4027,7 +4063,7 @@ async function loadSteckbriefInvoices(c) {
     let invoices = [];
 
     if (provSearch.length >= 3) {
-      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(Rechnung,Zahlungsbeleg)&status=neq.rejected&order=invoice_date.desc.nullslast&limit=24`);
+      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(RECHNUNG,ZAHLUNGSBELEG)&status=neq.rejected&order=invoice_date.desc.nullslast&limit=24`);
     }
 
     if (!invoices || !invoices.length) {
@@ -4364,7 +4400,7 @@ const L2_OPTS = {
   'Rechtskosten':  ['Gericht','Anwalt','Sonstiges'],
 };
 const ENTITIES = ['privat','c3-convis-gmbh','c4-convis-sarl','unbekannt'];
-const DOC_TYPES = ['Rechnung','Kontoauszug','Vertrag','Lohnzettel','Steuerbescheid','Versicherungspolice','Quittung','Lieferschein','Angebot','Mahnung','Sonstiges'];
+const DOC_TYPES = ['RECHNUNG','VERTRAG','BANKING','ZAHLUNGSBELEG','SONSTIGES'];
 const DOC_ENTITY_OPTS = ['privat','c3-convis-gmbh','c4-convis-sarl'];
 
 function sel(opts, val, cls, extra) {
