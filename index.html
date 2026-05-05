@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.27 — 2026-05-06 — Contract-Skill v0.2 (Iter 2): executive_summary 8-10 DE Saetze, cancellation hardening, filename propagation, apikey-header cleanup -->
+<!-- TGV Dashboard v11.28 — 2026-05-06 — Inbox: Tab "Zuletzt einsortiert" + Manual WF B Trigger Button -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.27">
-<title>TGV Dashboard v11.27 — Financial OS</title>
+<meta name="version" content="11.28">
+<title>TGV Dashboard v11.28 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1530,16 +1530,25 @@ body.chat-open #main-content {
           💶 Transaktionen Review
           <span class="inbox-tab-badge" id="inbox-txn-badge" style="display:none">0</span>
         </button>
+        <button class="inbox-tab" id="inbox-tab-routed" onclick="showInboxTab('routed', this)">
+          📂 Zuletzt einsortiert
+          <span class="inbox-tab-badge" id="inbox-routed-badge" style="display:none">0</span>
+        </button>
       </div>
 
       <!-- TAB: DOKUMENTE -->
       <div class="inbox-panel active" id="inbox-panel-docs">
-        <!-- Upload-Button -->
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <!-- Upload + Manuell verarbeiten -->
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px;flex-wrap:wrap">
           <a href="https://drive.google.com/drive/folders/1wH4pl4uguwvIYbZrMU0QlJtjVpaaL7bF" target="_blank"
              class="btn-sm btn-approve" style="padding:7px 16px;text-decoration:none;display:inline-flex;align-items:center;gap:6px">
             📎 Hochladen (Google Drive INBOX)
           </a>
+          <button class="btn-sm btn-approve" id="btn-trigger-wfb"
+                  style="padding:7px 16px;display:inline-flex;align-items:center;gap:6px;background:#0EA5A4"
+                  onclick="triggerWFB()" title="WF B sofort starten — INBOX wird verarbeitet">
+            ⚡ INBOX jetzt verarbeiten
+          </button>
         </div>
         <div id="inbox-content">
           <div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>
@@ -1616,6 +1625,54 @@ body.chat-open #main-content {
           </div>
 
         </div><!-- /#txn-review-content -->
+      </div>
+
+      <!-- TAB: ZULETZT EINSORTIERT (v11.28) -->
+      <div class="inbox-panel" id="inbox-panel-routed">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <div class="filters" id="routed-filters">
+            <button class="fb on" onclick="filterRouted('7d',this)">7 Tage</button>
+            <button class="fb" onclick="filterRouted('30d',this)">30 Tage</button>
+            <button class="fb" onclick="filterRouted('today',this)">Heute</button>
+            <button class="fb" onclick="filterRouted('all',this)">Alle</button>
+          </div>
+          <button class="btn-sm btn-approve" onclick="loadRouted()" style="padding:6px 14px">↺ Neu laden</button>
+        </div>
+
+        <div class="sum-bar" id="routed-stats">
+          <div class="sum-item"><span class="sl">Geladen</span><div class="sv" id="routed-total">…</div></div>
+          <div class="sum-item"><span class="sl">📁 C3</span><div class="sv" id="routed-c3">…</div></div>
+          <div class="sum-item"><span class="sl">📁 C4</span><div class="sv" id="routed-c4">…</div></div>
+          <div class="sum-item"><span class="sl">📁 Privat</span><div class="sv" id="routed-priv">…</div></div>
+          <div class="sum-item"><span class="sl">⚠️ ohne Pfad</span><div class="sv" id="routed-nopath" style="color:var(--amb)">…</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>📂 Zuletzt einsortierte Dokumente</h2>
+            <span style="font-size:11px;color:rgba(255,255,255,0.6)">Klick auf 📄 öffnet die Datei, Klick auf 📁 öffnet den Zielordner</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:120px">Eingang</th>
+                  <th>Dateiname</th>
+                  <th style="width:140px">Anbieter</th>
+                  <th style="width:90px">Entity</th>
+                  <th style="width:100px">Typ</th>
+                  <th style="width:90px">Rechn.-Datum</th>
+                  <th class="num" style="width:90px">Betrag</th>
+                  <th>Speicherort</th>
+                  <th style="width:100px">Status</th>
+                </tr>
+              </thead>
+              <tbody id="routed-tbody">
+                <tr><td colspan="9" class="spinner-wrap"><div class="spinner"></div> Lade Verlauf…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -4403,6 +4460,196 @@ function showInboxTab(tab, btn) {
   btn.classList.add('active');
   document.getElementById('inbox-panel-' + tab).classList.add('active');
   if (tab === 'txn') loadReview();
+  if (tab === 'routed') loadRouted();
+}
+
+// ═══════════════════════════════════════════════════════
+//  v11.28: Manual WF B Trigger + Routed History
+// ═══════════════════════════════════════════════════════
+const WFB_TRIGGER_URL = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-wfb-trigger';
+
+async function triggerWFB() {
+  const btn = document.getElementById('btn-trigger-wfb');
+  if (!btn) return;
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Läuft …';
+  try {
+    const r = await fetch(WFB_TRIGGER_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({source:'dashboard', triggered_at:new Date().toISOString()}) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    btn.innerHTML = '✅ Gestartet';
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      // Switch to routed tab so user sees results
+      const routedBtn = document.getElementById('inbox-tab-routed');
+      if (routedBtn) showInboxTab('routed', routedBtn);
+    }, 2500);
+  } catch (e) {
+    btn.innerHTML = '❌ Fehler';
+    console.error('WF B trigger failed:', e);
+    setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 3000);
+  }
+}
+
+let routedFilter = '7d';
+function filterRouted(period, btn) {
+  routedFilter = period;
+  document.querySelectorAll('#routed-filters .fb').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  loadRouted();
+}
+
+const ENTITY_FOLDER_IDS = {
+  'c3-convis-gmbh': '1ALXA_DssxDwUBEf0HCKC_omyaKgimSMp',
+  'c4-convis-sarl': '1aDVmY3_GVAHLzskT7DuAeX-_R2jClq64',
+  'privat':         '1o_5FhjdIfnP9yev4LXGRogd0p22Hpqtk',
+  'kivisai':        null,
+};
+
+function entityBadge(e) {
+  const map = {
+    'c3-convis-gmbh': {label:'C3', color:'#0EA5A4'},
+    'c4-convis-sarl': {label:'C4', color:'#6366F1'},
+    'privat':         {label:'Privat', color:'#94A3B8'},
+    'kivisai':        {label:'KIVISAI', color:'#F59E0B'},
+  };
+  const m = map[String(e||'').toLowerCase()] || {label: e || '—', color:'#9CA3AF'};
+  return `<span style="background:${m.color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">${m.label}</span>`;
+}
+
+function docTypeBadge(t) {
+  const T = String(t||'').toUpperCase();
+  const colors = {
+    'RECHNUNG':'#3B82F6','VERTRAG':'#8B5CF6','BANKING':'#0EA5A4',
+    'ZAHLUNGSBELEG':'#10B981','SONSTIGES':'#9CA3AF','STEUER':'#EF4444'
+  };
+  const c = colors[T] || '#9CA3AF';
+  return `<span style="background:${c};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">${T||'—'}</span>`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}) + ' ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  } catch { return iso; }
+}
+function fmtDateOnly(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}); } catch { return iso; }
+}
+function fmtAmount(a, c) {
+  if (a == null || a === 0) return '—';
+  try { return Number(a).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' ' + (c||'EUR'); } catch { return a; }
+}
+
+function statusBadge(d) {
+  if (d.txn_id) return '<span style="color:var(--grn);font-weight:600">✅ Reconciled</span>';
+  if (d.status === 'approved') return '<span style="color:var(--teal)">✓ Approved</span>';
+  if (d.status === 'inbox' || !d.status) return '<span style="color:#6B7280">📦 Stored</span>';
+  return `<span style="color:#6B7280">${d.status}</span>`;
+}
+
+function folderLinkFromPath(d) {
+  // Prefer drive_folder_id if present, else derive parent from final_path via entity map
+  if (d.drive_folder_id) {
+    return `https://drive.google.com/drive/folders/${d.drive_folder_id}`;
+  }
+  const eid = ENTITY_FOLDER_IDS[String(d.entity||'').toLowerCase()];
+  if (eid) return `https://drive.google.com/drive/folders/${eid}`;
+  return null;
+}
+
+async function loadRouted() {
+  const tbody = document.getElementById('routed-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" class="spinner-wrap"><div class="spinner"></div> Lade Verlauf…</td></tr>';
+
+  // Time window
+  let sinceFilter = '';
+  const now = new Date();
+  if (routedFilter === '7d') sinceFilter = new Date(now - 7*86400000).toISOString();
+  else if (routedFilter === '30d') sinceFilter = new Date(now - 30*86400000).toISOString();
+  else if (routedFilter === 'today') { const d = new Date(now); d.setHours(0,0,0,0); sinceFilter = d.toISOString(); }
+
+  // Query: documents with final_path set, ordered by date_received desc
+  let url = `${SUPA_REST}/documents?select=id,drive_file_id,drive_file_name,drive_folder_id,final_path,entity,doc_type,provider,amount,currency,invoice_date,date_received,status,txn_id,ai_suggestion,gmail_id&final_path=not.is.null&order=date_received.desc&limit=100`;
+  if (sinceFilter) url += `&date_received=gte.${encodeURIComponent(sinceFilter)}`;
+
+  try {
+    const r = await fetch(url, { headers: SUPA_HEADERS });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const rows = await r.json();
+    renderRouted(rows);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);text-align:center;padding:20px">Fehler beim Laden: ${e.message}</td></tr>`;
+  }
+}
+
+function renderRouted(rows) {
+  const tbody = document.getElementById('routed-tbody');
+  if (!tbody) return;
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280">Keine einsortierten Dokumente in diesem Zeitraum.</td></tr>';
+    document.getElementById('routed-total').textContent = '0';
+    document.getElementById('routed-c3').textContent = '0';
+    document.getElementById('routed-c4').textContent = '0';
+    document.getElementById('routed-priv').textContent = '0';
+    document.getElementById('routed-nopath').textContent = '0';
+    document.getElementById('inbox-routed-badge').style.display = 'none';
+    return;
+  }
+
+  // Stats
+  const stats = { c3:0, c4:0, priv:0, kivi:0, nopath:0 };
+  rows.forEach(d => {
+    const e = String(d.entity||'').toLowerCase();
+    if (e === 'c3-convis-gmbh') stats.c3++;
+    else if (e === 'c4-convis-sarl') stats.c4++;
+    else if (e === 'privat') stats.priv++;
+    else if (e === 'kivisai') stats.kivi++;
+    if (!d.final_path) stats.nopath++;
+  });
+  document.getElementById('routed-total').textContent = rows.length;
+  document.getElementById('routed-c3').textContent = stats.c3;
+  document.getElementById('routed-c4').textContent = stats.c4;
+  document.getElementById('routed-priv').textContent = stats.priv;
+  document.getElementById('routed-nopath').textContent = stats.nopath;
+  const badge = document.getElementById('inbox-routed-badge');
+  badge.textContent = rows.length;
+  badge.style.display = '';
+
+  // Rows
+  const html = rows.map(d => {
+    const fileName = d.drive_file_name || d.gmail_id || '—';
+    const fileLink = d.drive_file_id ? `https://drive.google.com/file/d/${d.drive_file_id}/view` : null;
+    const folderLink = folderLinkFromPath(d);
+    const fileCell = fileLink
+      ? `<a href="${fileLink}" target="_blank" title="Datei in Drive öffnen" style="color:var(--navy);text-decoration:none">📄 ${escapeHtml(fileName)}</a>`
+      : `<span title="kein drive_file_id">📄 ${escapeHtml(fileName)}</span>`;
+    const folderCell = folderLink
+      ? `<a href="${folderLink}" target="_blank" title="Ordner in Drive öffnen" style="color:#0EA5A4;text-decoration:none;font-size:11px">📁 ${escapeHtml(d.final_path || '—')}</a>`
+      : `<span style="font-size:11px;color:#6B7280">📁 ${escapeHtml(d.final_path || '—')}</span>`;
+    const provider = d.provider || (d.ai_suggestion && d.ai_suggestion.provider) || '—';
+    return `<tr>
+      <td style="font-size:11px;color:#6B7280">${fmtDate(d.date_received)}</td>
+      <td style="font-size:12px">${fileCell}</td>
+      <td style="font-size:11px">${escapeHtml(provider)}</td>
+      <td>${entityBadge(d.entity)}</td>
+      <td>${docTypeBadge(d.doc_type)}</td>
+      <td style="font-size:11px">${fmtDateOnly(d.invoice_date)}</td>
+      <td class="num" style="font-size:11px">${fmtAmount(d.amount, d.currency)}</td>
+      <td>${folderCell}</td>
+      <td style="font-size:11px">${statusBadge(d)}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 // ═══════════════════════════════════════════════════════
