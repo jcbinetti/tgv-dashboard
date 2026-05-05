@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.22 — 2026-05-04 -->
+<!-- TGV Dashboard v11.23 — 2026-05-05 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.22">
-<title>TGV Dashboard v11.22 — Financial OS</title>
+<meta name="version" content="11.23">
+<title>TGV Dashboard v11.23 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4347,10 +4347,12 @@ function showInboxTab(tab, btn) {
 // ═══════════════════════════════════════════════════════
 const L1_CATS = ['Versicherung','Vorsorge','Wohnen','Betrieb','Mobilitaet','Alltag','Steuern','Einnahmen','Transfers','Familie','Freizeit','Gesundheit'];
 const L2_OPTS = {
+  'Finanzen':      ['Bank-/Kontogebühren','Transfer','VISA','Dividende','Zinsen','Vorschuss','Weiterberechnung','Kreditkartenabrechnung','Sonstiges'],
   'Versicherung':  ['Krankenversicherung','Haftpflicht','Lebensversicherung','Berufsunfähigkeit','KFZ','Hausrat','Sonstiges'],
   'Vorsorge':      ['Altersvorsorge','Rentenversicherung','Investition','Sonstiges'],
   'Wohnen':        ['Miete','Nebenkosten','Haushaltsversicherung','Reparatur','Sonstiges'],
   'Betrieb':       ['Bank-/Kontogebühren','Beratung','Bewirtung','Buchhaltung','Büromaterial','IT-Infrastruktur','Kommunikation','Marketing','Miete','Personal','Reisekosten','Software/SaaS','Steuerberater','Steuern','Telekommunikation','Versicherung','Sonstiges'],
+  'Immobilien':    ['Hausverwaltung','Sanierung','Kauf','Miete','Nebenkosten','Sonstiges'],
   'Mobilitaet':    ['KFZ','Tankstelle','ÖPNV','Fahrrad','Parkgebühren','Sonstiges'],
   'Alltag':        ['Bekleidung','Drogerie','Haushalt','Kosmetik','Lebensmittel','Online-Shopping','Post/Versand','Restaurant','Supermarkt','Sonstiges'],
   'Steuern':       ['Einkommensteuer','Körperschaftsteuer','USt','Gewerbesteuer','Sonstiges'],
@@ -4359,6 +4361,7 @@ const L2_OPTS = {
   'Familie':       ['Julien','Lorenzo','Marc','Sébastien','Schule/Kita','Unterhalt','Geschenk','Sonstiges'],
   'Freizeit':      ['Bücher','Hotel/Urlaub','Kino/Events','Kultur','Restaurant/Ausgehen','Sport','Streaming','Wein','Sonstiges'],
   'Gesundheit':    ['Apotheke','Arzt','KK-Beitrag','Krankenhaus','Physiotherapie','Therapie','Zahnarzt','Sonstiges'],
+  'Rechtskosten':  ['Gericht','Anwalt','Sonstiges'],
 };
 const ENTITIES = ['privat','c3-convis-gmbh','c4-convis-sarl','unbekannt'];
 const DOC_TYPES = ['Rechnung','Kontoauszug','Vertrag','Lohnzettel','Steuerbescheid','Versicherungspolice','Quittung','Lieferschein','Angebot','Mahnung','Sonstiges'];
