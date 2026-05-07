@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TGV — Costs (Iter 7.5)</title>
+<style>
+  body{font:14px/1.45 system-ui,Segoe UI,sans-serif;margin:24px;color:#1f2937;background:#f9fafb;}
+  h1{margin:0 0 16px;font-size:22px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .card h2{margin:0 0 8px;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:.05em;}
+  .big{font-size:28px;font-weight:600;color:#111827;}
+  .sub{color:#6b7280;font-size:12px;margin-top:4px;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;margin-left:6px;}
+  .ok{background:#d1fae5;color:#065f46;}
+  .warn{background:#fef3c7;color:#92400e;}
+  .alarm{background:#fee2e2;color:#991b1b;}
+  table{width:100%;border-collapse:collapse;margin-top:8px;}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;}
+  th{color:#6b7280;font-weight:500;}
+  .muted{color:#9ca3af;font-size:11px;}
+  a{color:#2563eb;text-decoration:none;}
+  a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<h1>TGV Costs <span class="muted">— Iter 7.5 MVP, audit_only</span></h1>
+<p class="muted"><a href="./pattern-health.html">→ Pattern Health</a> | <a href="./index.html">← Dashboard</a></p>
+<div class="grid" id="cards"></div>
+
+<script>
+const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
+const SUPA_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
+const H = { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY };
+
+function pill(level){ return level ? `<span class="pill ${level}">${level}</span>` : '';}
+function levelFor(value, warn, alarm){
+  const v = Number(value);
+  if (alarm != null && v >= Number(alarm)) return 'alarm';
+  if (warn  != null && v >= Number(warn))  return 'warn';
+  return 'ok';
+}
+
+(async () => {
+  const root = document.getElementById('cards');
+
+  const [metrics, thresholds, alarms] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/cost_metrics?order=collected_at.desc&limit=200`, {headers:H}).then(r=>r.json()),
+    fetch(`${SUPA_URL}/rest/v1/cost_thresholds?active=eq.true`, {headers:H}).then(r=>r.json()),
+    fetch(`${SUPA_URL}/rest/v1/agent_events?event_type=in.(cost.warn,cost.alarm)&order=created_at.desc&limit=20`, {headers:H}).then(r=>r.json()),
+  ]);
+
+  const thMap = Object.fromEntries(thresholds.map(t => [`${t.source}|${t.metric_name}`, t]));
+  const latest = {};
+  for (const m of metrics) {
+    const k = `${m.source}|${m.metric_name}`;
+    if (!latest[k] || m.collected_at > latest[k].collected_at) latest[k] = m;
+  }
+
+  function card(title, source, metric, formatter){
+    const m = latest[`${source}|${metric}`];
+    const t = thMap[`${source}|${metric}`];
+    const v = m ? Number(m.value) : null;
+    const lvl = (v != null && t) ? levelFor(v, t.warn_at, t.alarm_at) : null;
+    const display = (v != null) ? formatter(v) : '—';
+    const collected = m ? new Date(m.collected_at).toLocaleString('de-DE') : '—';
+    return `<div class="card"><h2>${title} ${pill(lvl)}</h2>
+      <div class="big">${display}</div>
+      <div class="sub">${m ? `${source}.${metric}` : 'no data'} · ${collected}</div>
+      ${t ? `<div class="muted">warn ≥ ${t.warn_at}${t.unit} · alarm ≥ ${t.alarm_at}${t.unit}</div>` : ''}
+    </div>`;
+  }
+
+  root.innerHTML = ''
+    + card('Anthropic — Daily Cost (EUR)', 'anthropic', 'daily_cost_eur', v => `€ ${v.toFixed(3)}`)
+    + card('Anthropic — Orchestrator Calls 24h', 'anthropic', 'orchestrator_calls_24h', v => v.toLocaleString('de-DE'))
+    + card('n8n — Quota %', 'n8n', 'quota_pct', v => `${v.toFixed(1)} %`)
+    + card('n8n — Executions Today', 'n8n', 'executions_today', v => v.toLocaleString('de-DE'))
+    + card('Supabase — DB Storage (GB)', 'supabase', 'db_storage_gb', v => `${v.toFixed(4)} GB`)
+    + card('Supabase — DB Storage %', 'supabase', 'db_storage_pct', v => `${v.toFixed(1)} %`);
+
+  const alarmRows = alarms.map(a => `
+    <tr>
+      <td>${new Date(a.created_at).toLocaleString('de-DE')}</td>
+      <td><span class="pill ${a.event_type === 'cost.alarm' ? 'alarm':'warn'}">${a.event_type}</span></td>
+      <td>${(a.content || '').replace(/</g,'&lt;')}</td>
+    </tr>`).join('') || '<tr><td colspan="3" class="muted">keine Alarme</td></tr>';
+
+  root.insertAdjacentHTML('beforeend',
+    `<div class="card" style="grid-column:1/-1"><h2>Alarm-Liste (letzte 20)</h2>
+      <table><thead><tr><th>Zeit</th><th>Typ</th><th>Inhalt</th></tr></thead><tbody>${alarmRows}</tbody></table>
+    </div>`);
+})().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="color:red">${e.message}</pre>`); });
+</script>
+</body>
+</html>
