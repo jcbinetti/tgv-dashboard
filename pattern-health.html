@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TGV — Pattern Health (Iter 7.5)</title>
+<style>
+  body{font:14px/1.45 system-ui,Segoe UI,sans-serif;margin:24px;color:#1f2937;background:#f9fafb;}
+  h1{margin:0 0 16px;font-size:22px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .card h2{margin:0 0 8px;font-size:14px;color:#374151;text-transform:uppercase;letter-spacing:.05em;}
+  table{width:100%;border-collapse:collapse;}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;}
+  th{color:#6b7280;font-weight:500;}
+  .muted{color:#9ca3af;font-size:11px;}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;}
+  .candidate{background:#f3f4f6;color:#6b7280;}
+  .hint{background:#dbeafe;color:#1e40af;}
+  .verified{background:#d1fae5;color:#065f46;}
+  .shortcut{background:#fef3c7;color:#92400e;}
+  code{background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:11px;}
+  a{color:#2563eb;text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .stage-bar{display:flex;height:24px;border-radius:4px;overflow:hidden;margin-top:8px;border:1px solid #e5e7eb;}
+  .stage-bar > div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;min-width:8px;}
+</style>
+</head>
+<body>
+<h1>TGV Pattern Health <span class="muted">— Iter 7.5 MVP, read-only</span></h1>
+<p class="muted"><a href="./costs.html">→ Costs</a> | <a href="./index.html">← Dashboard</a></p>
+<div class="grid" id="root"></div>
+
+<script>
+const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
+const SUPA_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
+const H = { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY };
+
+function pill(stage){ return `<span class="pill ${stage}">${stage}</span>`; }
+function fmtJson(v){ return `<code>${JSON.stringify(v).slice(0,140)}</code>`; }
+
+(async () => {
+  const root = document.getElementById('root');
+
+  const [view, conflicts, orphans, promoteLog] = await Promise.all([
+    fetch(`${SUPA_URL}/rest/v1/v_pattern_rules?select=*&active=is.true&limit=2000`, {headers:H}).then(r=>r.json()),
+    fetch(`${SUPA_URL}/rest/v1/v_pattern_rules?conflict_count=gt.0&active=is.true&order=conflict_count.desc&limit=10`, {headers:H}).then(r=>r.json()),
+    fetch(`${SUPA_URL}/rest/v1/pattern_rules_seed?verification_count=lt.2&order=created_at.asc&limit=20`, {headers:H}).then(r=>r.json()),
+    fetch(`${SUPA_URL}/rest/v1/agent_events?event_type=eq.pattern.promoted&order=created_at.desc&limit=20`, {headers:H}).then(r=>r.json()),
+  ]);
+
+  const stages = {candidate:0, hint:0, verified:0, shortcut:0};
+  const sources = {};
+  for (const r of view) {
+    stages[r.stage] = (stages[r.stage] || 0) + 1;
+    sources[r.source] = (sources[r.source] || 0) + 1;
+  }
+  const total = view.length;
+
+  const stageColors = {candidate:'#9ca3af', hint:'#3b82f6', verified:'#10b981', shortcut:'#f59e0b'};
+  const stageBar = Object.entries(stages).map(([s,n]) => {
+    const pct = total ? (n/total)*100 : 0;
+    return `<div style="background:${stageColors[s]};width:${pct}%" title="${s}: ${n}">${pct>6?n:''}</div>`;
+  }).join('');
+
+  root.insertAdjacentHTML('beforeend', `
+    <div class="card" style="grid-column:1/-1"><h2>Stage-Verteilung (${total} aktive Regeln)</h2>
+      <div class="stage-bar">${stageBar}</div>
+      <div class="muted" style="margin-top:6px">
+        ${pill('candidate')} ${stages.candidate||0} &nbsp;
+        ${pill('hint')} ${stages.hint||0} &nbsp;
+        ${pill('verified')} ${stages.verified||0} &nbsp;
+        ${pill('shortcut')} ${stages.shortcut||0}
+        &middot; nach Quelle: ${Object.entries(sources).map(([s,n])=>`${s}=${n}`).join(', ')}
+      </div>
+    </div>
+  `);
+
+  const conflictRows = conflicts.map(r => `
+    <tr><td><code>${r.rule_id}</code></td><td>${pill(r.stage)}</td>
+        <td>${r.source}</td><td style="text-align:right">${r.conflict_count}</td>
+        <td style="text-align:right">${r.verification_count}</td>
+        <td>${fmtJson(r.match_condition)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">keine Konflikte</td></tr>';
+  root.insertAdjacentHTML('beforeend', `
+    <div class="card" style="grid-column:1/-1"><h2>Top-10 Conflict-Regeln</h2>
+      <table><thead><tr><th>Rule</th><th>Stage</th><th>Source</th><th>Conflicts</th><th>Verified</th><th>Match</th></tr></thead>
+      <tbody>${conflictRows}</tbody></table></div>
+  `);
+
+  const orphanRows = orphans.map(r => `
+    <tr><td>seed:${r.id}</td><td>${pill(r.stage)}</td><td>${r.source}</td>
+        <td>${new Date(r.created_at).toLocaleDateString('de-DE')}</td>
+        <td>${(r.description||'').replace(/</g,'&lt;')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">keine Orphans</td></tr>';
+  root.insertAdjacentHTML('beforeend', `
+    <div class="card"><h2>Orphan-Liste (vc&lt;2, nicht verifiziert)</h2>
+      <table><thead><tr><th>Rule</th><th>Stage</th><th>Source</th><th>Erzeugt</th><th>Beschreibung</th></tr></thead>
+      <tbody>${orphanRows}</tbody></table></div>
+  `);
+
+  const promoteRows = promoteLog.map(e => `
+    <tr><td>${new Date(e.created_at).toLocaleString('de-DE')}</td>
+        <td>${(e.content||'').replace(/</g,'&lt;')}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">noch keine Promotions (kommt in Iter 10)</td></tr>';
+  root.insertAdjacentHTML('beforeend', `
+    <div class="card"><h2>Auto-Promote-Log (letzte 20)</h2>
+      <table><thead><tr><th>Zeit</th><th>Inhalt</th></tr></thead>
+      <tbody>${promoteRows}</tbody></table></div>
+  `);
+})().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="color:red">${e.message}</pre>`); });
+</script>
+</body>
+</html>
