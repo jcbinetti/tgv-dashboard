@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.35 — 2026-05-08 — Fix: supaPatch nur direct-PATCH (toter Webhook entfernt) + diagnostische Fehlerausgabe -->
+<!-- TGV Dashboard v11.36 — 2026-05-08 — Fix: DOC_TYPES Title-Case (matcht documents_doc_type_canonical Constraint), CSS uppercased die Anzeige -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.35">
-<title>TGV Dashboard v11.35 — Financial OS</title>
+<meta name="version" content="11.36">
+<title>TGV Dashboard v11.36 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -827,6 +827,7 @@ tbody tr:last-child td { border-bottom: none; }
   width: 100%;
 }
 .inbox-edit-sel:focus { border-color: var(--teal); outline: none; }
+#page-inbox select[id^="sel-doctype-"] { text-transform: uppercase; }
 .inbox-filter-bar {
   display: flex;
   gap: 6px;
@@ -5267,7 +5268,9 @@ const L2_OPTS = {
   'Rechtskosten':  ['Gericht','Anwalt','Sonstiges'],
 };
 const ENTITIES = ['privat','c3-convis-gmbh','c4-convis-sarl','unbekannt'];
-const DOC_TYPES = ['RECHNUNG','VERTRAG','BANKING','ZAHLUNGSBELEG','SONSTIGES'];
+// Title-Case erforderlich von documents_doc_type_canonical CHECK (Mig 032).
+// Anzeige wird via CSS text-transform: uppercase visuell uppercased.
+const DOC_TYPES = ['Rechnung','Vertrag','Banking-CSV','Steuer','Zahlungsbeleg','Sonstiges'];
 const DOC_ENTITY_OPTS = ['privat','c3-convis-gmbh','c4-convis-sarl'];
 
 function sel(opts, val, cls, extra) {
