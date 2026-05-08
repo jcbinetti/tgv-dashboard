@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.36 — 2026-05-08 — Fix: DOC_TYPES Title-Case (matcht documents_doc_type_canonical Constraint), CSS uppercased die Anzeige -->
+<!-- TGV Dashboard v11.37 — 2026-05-08 — UX: approveDoc Row-Flash (green 600ms) + Fade-Out (400ms) damit User die Bestätigung visuell wahrnimmt -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.36">
-<title>TGV Dashboard v11.36 — Financial OS</title>
+<meta name="version" content="11.37">
+<title>TGV Dashboard v11.37 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3174,13 +3174,17 @@ async function approveDoc(id) {
   }
   if (ok) {
     toast('✅ Freigegeben — ' + finalPath);
-    row.style.transition = 'opacity 0.3s';
-    row.style.opacity = '0';
+    // UX: erst grün flashen (600 ms), dann sanft ausblenden (400 ms), dann entfernen.
+    row.querySelectorAll('td').forEach(td => td.classList.add('flash-green'));
+    setTimeout(() => {
+      row.style.transition = 'opacity 0.4s ease';
+      row.style.opacity = '0';
+    }, 600);
     setTimeout(() => {
       row.remove();
       gInboxRows = gInboxRows.filter(r => String(r.id) !== String(id));
       if (!document.querySelector('#inbox-content .inbox-table tbody tr')) renderInbox();
-    }, 300);
+    }, 1000);
     // Skill Router triggern für RECHNUNG/STEUER und VERTRAG
     const docData = gInboxRows.find(r => String(r.id) === String(id));
     const stream = docData ? docData.target_stream : null;
