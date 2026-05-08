@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.34 — 2026-05-08 — Fix: approveDoc try/catch + supaPatch direct-PATCH zuerst (authenticated-RLS), Webhook nur Fallback -->
+<!-- TGV Dashboard v11.35 — 2026-05-08 — Fix: supaPatch nur direct-PATCH (toter Webhook entfernt) + diagnostische Fehlerausgabe -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.34">
-<title>TGV Dashboard v11.34 — Financial OS</title>
+<meta name="version" content="11.35">
+<title>TGV Dashboard v11.35 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2735,46 +2735,26 @@ async function supaCount(table, filter) {
 const APPROVE_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-approve-webhook';
 
 async function supaPatch(table, filter, body) {
-  // Iter 9.5+: authenticated User hat via RLS Vollzugriff → direkter PATCH.
-  // Webhook bleibt nur Fallback (z.B. unauthenticated MCP-Aufrufe).
-  let isAuthenticated = false;
+  // Iter 9.5+: authenticated User hat via RLS Vollzugriff → direkter PATCH ist
+  // jetzt der einzige Pfad. Der alte n8n Approve-Webhook ist 404 (Stand 2026-05-08).
+  const url = `${SUPA_REST}/${table}?${filter}`;
+  const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' });
+
+  // Auth-Session-Sanity: ohne JWT würde RLS-Default-Deny zuschlagen
+  if (headers['Authorization'] === `Bearer ${SUPA_KEY}`) {
+    throw new Error('Keine Auth-Session — bitte neu einloggen.');
+  }
+
+  let res;
   try {
-    if (typeof _supaClient !== 'undefined') {
-      const { data: { session } } = await _supaClient.auth.getSession();
-      isAuthenticated = !!(session && session.access_token);
-    }
-  } catch(e) { /* keine Session → Fallback nutzen */ }
-
-  // Versuch 1: direkter Supabase PATCH (authenticated-RLS)
-  if (isAuthenticated) {
-    try {
-      const url = `${SUPA_REST}/${table}?${filter}`;
-      const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' });
-      const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
-      if (res.ok) return true;
-      const err = await res.json().catch(() => ({}));
-      console.warn(`supaPatch direct ${res.status} (${err.message || ''}) — Webhook-Fallback`);
-    } catch(e) {
-      console.warn('supaPatch direct fehlgeschlagen:', e.message);
-    }
+    res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
+  } catch (e) {
+    throw new Error(`Netzwerkfehler PATCH ${table}: ${e.message}`);
   }
-
-  // Versuch 2: n8n Approve-Webhook (Service-Key serverseitig)
-  if (APPROVE_WEBHOOK) {
-    try {
-      const res = await fetch(APPROVE_WEBHOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table, filter, body })
-      });
-      if (res.ok) return true;
-      const text = await res.text().catch(() => '');
-      throw new Error(`Webhook HTTP ${res.status}: ${text.slice(0, 200)}`);
-    } catch(e) {
-      throw new Error(`Schreibzugriff fehlgeschlagen: ${e.message}`);
-    }
-  }
-  throw new Error('Schreibzugriff fehlgeschlagen: weder Auth-Session noch Webhook verfügbar.');
+  if (res.ok) return true;
+  const errPayload = await res.json().catch(() => ({}));
+  const detail = errPayload.message || errPayload.error || JSON.stringify(errPayload).slice(0, 200) || `HTTP ${res.status}`;
+  throw new Error(`PATCH ${res.status}: ${detail}`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3186,7 +3166,9 @@ async function approveDoc(id) {
   try {
     ok = await supaPatch('documents', `id=eq.${id}`, patchBody);
   } catch (e) {
+    console.error('approveDoc fail', { id, patchBody, error: e });
     toast('❌ Freigabe fehlgeschlagen: ' + e.message, 'err');
+    if (e.message && e.message.length > 60) alert('Freigabe fehlgeschlagen:\n\n' + e.message);
     return;
   }
   if (ok) {
