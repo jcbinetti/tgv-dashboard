@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.29 — 2026-05-08 — Iter 9.5 Auth-Reactivation: Supabase Login-Gate + dynamische Headers -->
+<!-- TGV Dashboard v11.30 — 2026-05-08 — Iter 9.5 Auth-Reactivation: Supabase Login-Gate + dynamische Headers + Migrations-Liste 018-032 -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.29">
-<title>TGV Dashboard v11.29 — Financial OS</title>
+<meta name="version" content="11.30">
+<title>TGV Dashboard v11.30 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4665,6 +4665,22 @@ function renderMigrations() {
     ['015', 'agent_conversations + agent_events + agent_decisions (01.05.2026)'],
     ['016', 'gmail_filter_routing_rules — 23 Regeln (01.05.2026)'],
     ['017', 'agent_knowledge — Wissensbasis für TGV-Chatbot (04.05.2026)'],
+    ['018', 'skill_definitions seed (Iter 7)'],
+    ['019', 'skill_input_mapping (Iter 7)'],
+    ['019b', 'skill_requires_inputs_align'],
+    ['020', 'documents.extracted_text_snippet'],
+    ['021', 'system_config + Master-Switch'],
+    ['022', 'documents.contract_id FK'],
+    ['023', 'pattern_rules foundation (Iter 7.5)'],
+    ['024', 'cost_metrics (Iter 7.5 Cost-Telemetry)'],
+    ['025', 'pattern_seed_data + view'],
+    ['026', 'documents routing-engine'],
+    ['027', 'tax_filings (Iter 8 Steuer)'],
+    ['028', 'rag schema (Iter 8 RAG)'],
+    ['029', 'rag_to_public bridge'],
+    ['030', 'rag_chunks grants'],
+    ['031', 'periodic_jobs (Iter 9 Periodic-Engine)'],
+    ['032', 'RLS authenticated_only (Iter 9.5 Auth-Reactivation, 08.05.2026)'],
   ];
 
   let html = '';
