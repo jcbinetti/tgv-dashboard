@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.33 — 2026-05-08 — Iter 9.7 UI-Hygiene: Migrations + WFs aus DB, Costs + Pattern-Health als System-Sub-Tabs -->
+<!-- TGV Dashboard v11.34 — 2026-05-08 — Fix: approveDoc try/catch + supaPatch direct-PATCH zuerst (authenticated-RLS), Webhook nur Fallback -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.33">
-<title>TGV Dashboard v11.33 — Financial OS</title>
+<meta name="version" content="11.34">
+<title>TGV Dashboard v11.34 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2735,7 +2735,31 @@ async function supaCount(table, filter) {
 const APPROVE_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-approve-webhook';
 
 async function supaPatch(table, filter, body) {
-  // Versuch 1: n8n Approve-Webhook (Service-Key serverseitig)
+  // Iter 9.5+: authenticated User hat via RLS Vollzugriff → direkter PATCH.
+  // Webhook bleibt nur Fallback (z.B. unauthenticated MCP-Aufrufe).
+  let isAuthenticated = false;
+  try {
+    if (typeof _supaClient !== 'undefined') {
+      const { data: { session } } = await _supaClient.auth.getSession();
+      isAuthenticated = !!(session && session.access_token);
+    }
+  } catch(e) { /* keine Session → Fallback nutzen */ }
+
+  // Versuch 1: direkter Supabase PATCH (authenticated-RLS)
+  if (isAuthenticated) {
+    try {
+      const url = `${SUPA_REST}/${table}?${filter}`;
+      const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' });
+      const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
+      if (res.ok) return true;
+      const err = await res.json().catch(() => ({}));
+      console.warn(`supaPatch direct ${res.status} (${err.message || ''}) — Webhook-Fallback`);
+    } catch(e) {
+      console.warn('supaPatch direct fehlgeschlagen:', e.message);
+    }
+  }
+
+  // Versuch 2: n8n Approve-Webhook (Service-Key serverseitig)
   if (APPROVE_WEBHOOK) {
     try {
       const res = await fetch(APPROVE_WEBHOOK, {
@@ -2744,26 +2768,13 @@ async function supaPatch(table, filter, body) {
         body: JSON.stringify({ table, filter, body })
       });
       if (res.ok) return true;
-      console.warn(`supaPatch webhook ${res.status} — versuche direkten Supabase-Call`);
+      const text = await res.text().catch(() => '');
+      throw new Error(`Webhook HTTP ${res.status}: ${text.slice(0, 200)}`);
     } catch(e) {
-      console.warn('supaPatch webhook nicht erreichbar:', e.message);
+      throw new Error(`Schreibzugriff fehlgeschlagen: ${e.message}`);
     }
   }
-  // Versuch 2: direkter Supabase PATCH (klappt wenn authenticated-RLS Schreibzugriff erlaubt)
-  try {
-    const url = `${SUPA_REST}/${table}?${filter}`;
-    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' });
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(body)
-    });
-    if (res.ok) return true;
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `HTTP ${res.status}`);
-  } catch(e) {
-    throw new Error(`Schreibzugriff fehlgeschlagen: ${e.message}. Approve-Webhook aktivieren.`);
-  }
+  throw new Error('Schreibzugriff fehlgeschlagen: weder Auth-Session noch Webhook verfügbar.');
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3171,7 +3182,13 @@ async function approveDoc(id) {
   if (newEntity)  patchBody.entity   = newEntity;
   if (newDocType) patchBody.doc_type = newDocType;
 
-  const ok = await supaPatch('documents', `id=eq.${id}`, patchBody);
+  let ok = false;
+  try {
+    ok = await supaPatch('documents', `id=eq.${id}`, patchBody);
+  } catch (e) {
+    toast('❌ Freigabe fehlgeschlagen: ' + e.message, 'err');
+    return;
+  }
   if (ok) {
     toast('✅ Freigegeben — ' + finalPath);
     row.style.transition = 'opacity 0.3s';
