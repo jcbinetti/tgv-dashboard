@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.31 — 2026-05-08 — Iter 9.5: Migrations 018-037 (Iter-10-032 Konflikt aufgelöst, Auth-Migration → 037) -->
+<!-- TGV Dashboard v11.32 — 2026-05-08 — Iter 9.6 Security-Hygiene: Migration 038 (security_invoker=on auf 19 Views) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.31">
-<title>TGV Dashboard v11.31 — Financial OS</title>
+<meta name="version" content="11.32">
+<title>TGV Dashboard v11.32 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4686,6 +4686,7 @@ function renderMigrations() {
     ['035', 'contract_id candidates backfill (Iter 10)'],
     ['036', 'contract_id final backfill (Iter 10)'],
     ['037', 'RLS authenticated_only (Iter 9.5 Auth-Reactivation, 08.05.2026)'],
+    ['038', 'security_invoker=on auf 19 Views (Iter 9.6 Security-Hygiene, 08.05.2026)'],
   ];
 
   let html = '';
