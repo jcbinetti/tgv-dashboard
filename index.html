@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.30 — 2026-05-08 — Iter 9.5 Auth-Reactivation: Supabase Login-Gate + dynamische Headers + Migrations-Liste 018-032 -->
+<!-- TGV Dashboard v11.31 — 2026-05-08 — Iter 9.5: Migrations 018-037 (Iter-10-032 Konflikt aufgelöst, Auth-Migration → 037) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.30">
-<title>TGV Dashboard v11.30 — Financial OS</title>
+<meta name="version" content="11.31">
+<title>TGV Dashboard v11.31 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4680,7 +4680,12 @@ function renderMigrations() {
     ['029', 'rag_to_public bridge'],
     ['030', 'rag_chunks grants'],
     ['031', 'periodic_jobs (Iter 9 Periodic-Engine)'],
-    ['032', 'RLS authenticated_only (Iter 9.5 Auth-Reactivation, 08.05.2026)'],
+    ['032', 'doc_type canonical Title-Case + Constraint (Iter 10)'],
+    ['033', 'target_stream backfill (Iter 10)'],
+    ['034', 'documents.contract_id reverse-fill (Iter 10)'],
+    ['035', 'contract_id candidates backfill (Iter 10)'],
+    ['036', 'contract_id final backfill (Iter 10)'],
+    ['037', 'RLS authenticated_only (Iter 9.5 Auth-Reactivation, 08.05.2026)'],
   ];
 
   let html = '';
