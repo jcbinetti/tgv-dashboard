@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.37 — 2026-05-08 — UX: approveDoc Row-Flash (green 600ms) + Fade-Out (400ms) damit User die Bestätigung visuell wahrnimmt -->
+<!-- TGV Dashboard v11.38 — 2026-05-08 — Iter 13: Costs-View Tile-Redesign (Used Quota %, nächste Recharge, Burn-Rate-Hochrechnung) + Hash-Routing #system -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.37">
-<title>TGV Dashboard v11.37 — Financial OS</title>
+<meta name="version" content="11.38">
+<title>TGV Dashboard v11.38 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2340,13 +2340,15 @@ body.chat-open #main-content {
 
       </div><!-- /sys-panel-main -->
 
-      <!-- ───────────── COSTS SUB-TAB (Iter 9.7) ───────────── -->
+      <!-- ───────────── COSTS SUB-TAB (Iter 9.7 → Iter 13 redesigned) ───────────── -->
       <div class="inbox-panel" id="sys-panel-costs">
         <div class="card">
-          <div class="card-head"><h2>💰 Cost-Telemetrie <span style="font-size:11px;color:var(--tx2);font-weight:400">— audit_only</span></h2></div>
+          <div class="card-head">
+            <h2>💰 Kosten-Telemetrie <span style="font-size:11px;color:var(--tx2);font-weight:400">— Used Quota in % vor nächster Recharge</span></h2>
+          </div>
           <div class="card-body">
-            <div class="kpi-grid" id="costs-cards">
-              <div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div> Lade Costs…</div>
+            <div id="costs-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+              <div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div> Lade Kosten…</div>
             </div>
           </div>
         </div>
@@ -2774,6 +2776,10 @@ function showPage(pageId, btn) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + pageId).classList.add('active');
   if (btn) btn.classList.add('active');
+  else {
+    const navBtn = document.querySelector(`.nav-item[onclick*="'${pageId}'"]`);
+    if (navBtn) navBtn.classList.add('active');
+  }
 
   // Lazy load
   if (pageId === 'uebersicht') loadUebersicht();
@@ -2785,6 +2791,16 @@ function showPage(pageId, btn) {
   if (pageId === 'system') loadSystem();
   if (pageId === 'mailrules') loadMailRules();
 }
+
+// Deep-link via hash: #system, #inbox, #finanzen, etc.
+function applyHashRoute() {
+  const h = (window.location.hash || '').replace(/^#/, '');
+  if (!h) return;
+  const valid = ['uebersicht','inbox','finanzen','vertraege','projekte','monatsabschluss','mailrules','system'];
+  if (valid.includes(h)) showPage(h, null);
+}
+window.addEventListener('hashchange', applyHashRoute);
+window.addEventListener('DOMContentLoaded', applyHashRoute);
 
 // ═══════════════════════════════════════════════════════
 //  ENTITY + PERIOD FILTER
@@ -4652,17 +4668,17 @@ function showSysTab(tabId, btn) {
 }
 
 // ═══════════════════════════════════════════════════════
-//  COSTS VIEW (System sub-tab)
+//  COSTS VIEW (Iter 13 redesign — Tile layout + recharge logic)
 // ═══════════════════════════════════════════════════════
 let _costsLoaded = false;
 async function loadCostsView() {
   if (_costsLoaded) return;
   _costsLoaded = true;
-  const cards = document.getElementById('costs-cards');
+  const tiles = document.getElementById('costs-tiles');
   const alarms = document.getElementById('costs-alarms');
   try {
     const [metrics, thresholds, alarmEvents] = await Promise.all([
-      supa('cost_metrics?order=collected_at.desc&limit=200'),
+      supa('cost_metrics?order=collected_at.desc&limit=400'),
       supa('cost_thresholds?active=eq.true'),
       supa('agent_events?event_type=in.(cost.warn,cost.alarm)&order=created_at.desc&limit=20'),
     ]);
@@ -4674,36 +4690,188 @@ async function loadCostsView() {
       if (!latest[k] || m.collected_at > latest[k].collected_at) latest[k] = m;
     }
 
+    const colorOk    = '#10b981';
+    const colorWarn  = '#f59e0b';
+    const colorAlarm = '#ef4444';
+    const colorBgOk    = '#ecfdf5';
+    const colorBgWarn  = '#fef3c7';
+    const colorBgAlarm = '#fee2e2';
+
     const levelFor = (v, warn, alarm) => {
       const n = Number(v);
       if (alarm != null && n >= Number(alarm)) return 'alarm';
       if (warn  != null && n >= Number(warn))  return 'warn';
       return 'ok';
     };
-    const levelColor = lvl => lvl === 'alarm' ? '#ef4444' : lvl === 'warn' ? '#f59e0b' : '#10b981';
-    const levelBg    = lvl => lvl === 'alarm' ? '#fee2e2' : lvl === 'warn' ? '#fef3c7' : '#d1fae5';
+    const colorFor = lvl => lvl === 'alarm' ? colorAlarm : lvl === 'warn' ? colorWarn : colorOk;
+    const bgFor    = lvl => lvl === 'alarm' ? colorBgAlarm : lvl === 'warn' ? colorBgWarn : colorBgOk;
 
-    function card(title, source, metric, fmt) {
-      const m = latest[`${source}|${metric}`];
-      const t = thMap[`${source}|${metric}`];
-      const v = m ? Number(m.value) : null;
-      const lvl = (v != null && t) ? levelFor(v, t.warn_at, t.alarm_at) : 'ok';
-      const display = (v != null) ? fmt(v) : '—';
-      const collected = m ? new Date(m.collected_at).toLocaleString('de-DE') : '—';
-      const pill = (v != null && t) ? `<span style="background:${levelBg(lvl)};color:${levelColor(lvl)};padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;margin-left:6px">${lvl}</span>` : '';
-      return `<div class="kpi-card"><div class="kpi-label">${escHtml(title)}${pill}</div>
-        <div class="kpi-value">${display}</div>
-        <div class="kpi-foot">${m ? `${escHtml(source)}.${escHtml(metric)}` : 'no data'} · ${collected}${t ? ` · warn≥${t.warn_at}${t.unit||''} · alarm≥${t.alarm_at}${t.unit||''}` : ''}</div>
+    // ─── Time helpers for "next recharge" ─────────────────────────────
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dayOfMonth = now.getDate();
+    const daysToMonthEnd = daysInMonth - dayOfMonth;  // until next monthly recharge
+    const nextMonthRecharge = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextDailyRecharge = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+    function tile({title, valueDisplay, percent, level, foot, subtitle, recharge, projection, source}) {
+      const c = colorFor(level);
+      const bg = bgFor(level);
+      const pct = percent != null ? Math.min(percent, 110) : null;
+      const barWidth = pct != null ? Math.min(pct, 100) : 0;
+
+      return `<div style="background:#fff;border:1px solid var(--s3);border-left:4px solid ${c};border-radius:8px;padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:.04em">${escHtml(title)}</div>
+            ${subtitle ? `<div style="font-size:11px;color:var(--tx2);margin-top:2px">${escHtml(subtitle)}</div>` : ''}
+          </div>
+          ${level ? `<span style="background:${bg};color:${c};padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase">${level}</span>` : ''}
+        </div>
+        <div style="font-size:28px;font-weight:700;color:#111827;margin:8px 0 2px">${valueDisplay}</div>
+        ${pct != null ? `
+          <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;margin-top:6px">
+            <div style="width:${barWidth}%;height:100%;background:${c};transition:width .4s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx2);margin-top:4px">
+            <span>${percent.toFixed(1)} % verbraucht</span>
+            <span>${recharge ? `nächste Recharge: ${recharge}` : ''}</span>
+          </div>
+        ` : ''}
+        ${projection ? `<div style="font-size:11px;color:${c};margin-top:6px;font-weight:600">📈 ${escHtml(projection)}</div>` : ''}
+        ${foot ? `<div style="font-size:11px;color:var(--tx2);margin-top:6px">${escHtml(foot)}</div>` : ''}
       </div>`;
     }
 
-    cards.innerHTML =
-        card('Anthropic — Daily Cost (EUR)',     'anthropic', 'daily_cost_eur',         v => `€ ${v.toFixed(3)}`)
-      + card('Anthropic — Orchestrator Calls 24h','anthropic','orchestrator_calls_24h',v => v.toLocaleString('de-DE'))
-      + card('n8n — Quota %',                    'n8n',       'quota_pct',              v => `${v.toFixed(1)} %`)
-      + card('n8n — Executions Today',           'n8n',       'executions_today',       v => v.toLocaleString('de-DE'))
-      + card('Supabase — DB Storage (GB)',       'supabase',  'db_storage_gb',          v => `${v.toFixed(4)} GB`)
-      + card('Supabase — DB Storage %',          'supabase',  'db_storage_pct',         v => `${v.toFixed(1)} %`);
+    function lastUpdated(m) {
+      if (!m) return 'keine Daten';
+      const t = new Date(m.collected_at);
+      const ageMin = Math.round((now - t) / 60000);
+      if (ageMin < 60) return `vor ${ageMin} min`;
+      if (ageMin < 1440) return `vor ${Math.round(ageMin/60)} h`;
+      return `vor ${Math.round(ageMin/1440)} d`;
+    }
+
+    const out = [];
+
+    // ── n8n monthly quota tile ─────────────────────────────────────────
+    {
+      const quotaPctM = latest['n8n|quota_pct'];
+      const execMonth = latest['n8n|executions_month'];
+      const quotaTotal = latest['n8n|quota_total'];
+      const t = thMap['n8n|quota_pct'];
+      const v = quotaPctM ? Number(quotaPctM.value) : null;
+      const used = execMonth ? Number(execMonth.value) : null;
+      const cap  = quotaTotal ? Number(quotaTotal.value) : 2500;
+      const lvl  = (v != null && t) ? levelFor(v, t.warn_at, t.alarm_at) : 'ok';
+      // Burn rate projection
+      let projection = null;
+      if (used != null && dayOfMonth > 0) {
+        const dailyBurn = used / dayOfMonth;
+        const projected = Math.round(dailyBurn * daysInMonth);
+        const projectedPct = (projected / cap) * 100;
+        projection = `Hochrechnung Monatsende: ${projected.toLocaleString('de-DE')} (${projectedPct.toFixed(0)} % der Quota)`;
+      }
+      out.push(tile({
+        title: 'n8n Cloud — Monats-Quota',
+        subtitle: 'Executions seit Monatsanfang',
+        valueDisplay: used != null
+          ? `${used.toLocaleString('de-DE')} <span style="font-size:14px;color:var(--tx2);font-weight:500">/ ${cap.toLocaleString('de-DE')}</span>`
+          : '—',
+        percent: v,
+        level: lvl,
+        recharge: `${daysToMonthEnd} d (${nextMonthRecharge.toLocaleDateString('de-DE')})`,
+        projection,
+        foot: `Stand ${lastUpdated(quotaPctM)}`,
+      }));
+    }
+
+    // ── n8n executions today ──────────────────────────────────────────
+    {
+      const execToday = latest['n8n|executions_today'];
+      const v = execToday ? Number(execToday.value) : null;
+      out.push(tile({
+        title: 'n8n — Executions heute',
+        subtitle: 'Tageszähler (reset um 00:00)',
+        valueDisplay: v != null ? v.toLocaleString('de-DE') : '—',
+        percent: null,
+        level: null,
+        foot: `Stand ${lastUpdated(execToday)} · nächster Reset in ${Math.round((nextDailyRecharge-now)/3600000)} h`,
+      }));
+    }
+
+    // ── Anthropic daily cost ─────────────────────────────────────────
+    {
+      const m = latest['anthropic|daily_cost_eur'];
+      const t = thMap['anthropic|daily_cost_eur'];
+      const v = m ? Number(m.value) : null;
+      const cap = t ? Number(t.alarm_at) : null;
+      const pct = (v != null && cap) ? (v / cap) * 100 : null;
+      const lvl = (v != null && t) ? levelFor(v, t.warn_at, t.alarm_at) : 'ok';
+      out.push(tile({
+        title: 'Anthropic — Tageskosten',
+        subtitle: 'API-Cost (EUR) heute',
+        valueDisplay: v != null ? `€ ${v.toFixed(3)}` : '—',
+        percent: pct,
+        level: lvl,
+        recharge: `Tageslimit ${cap ? `€${cap}` : '—'}`,
+        foot: `Stand ${lastUpdated(m)}`,
+      }));
+    }
+
+    // ── Anthropic orchestrator calls ─────────────────────────────────
+    {
+      const m = latest['anthropic|orchestrator_calls_24h'];
+      const v = m ? Number(m.value) : null;
+      out.push(tile({
+        title: 'Anthropic — Orchestrator Calls (24h)',
+        subtitle: 'agent_events count',
+        valueDisplay: v != null ? v.toLocaleString('de-DE') : '—',
+        percent: null,
+        level: null,
+        foot: `Stand ${lastUpdated(m)}`,
+      }));
+    }
+
+    // ── Supabase storage ─────────────────────────────────────────────
+    {
+      const mp = latest['supabase|db_storage_pct'];
+      const mg = latest['supabase|db_storage_gb'];
+      const t = thMap['supabase|db_storage_pct'];
+      const vp = mp ? Number(mp.value) : null;
+      const vg = mg ? Number(mg.value) : null;
+      const lvl = (vp != null && t) ? levelFor(vp, t.warn_at, t.alarm_at) : 'ok';
+      out.push(tile({
+        title: 'Supabase — DB Storage',
+        subtitle: 'Free-Plan Limit 0,5 GB',
+        valueDisplay: vg != null ? `${vg.toFixed(3)} GB` : '—',
+        percent: vp,
+        level: lvl,
+        recharge: 'kein Recharge — Limit fix',
+        foot: `Stand ${lastUpdated(mp)}`,
+      }));
+    }
+
+    // ── GitHub Actions ───────────────────────────────────────────────
+    {
+      const mp = latest['github|actions_min_pct'];
+      const mu = latest['github|actions_minutes_used'];
+      const t = thMap['github|actions_min_pct'];
+      const vp = mp ? Number(mp.value) : null;
+      const vu = mu ? Number(mu.value) : null;
+      const lvl = (vp != null && t) ? levelFor(vp, t.warn_at, t.alarm_at) : 'ok';
+      out.push(tile({
+        title: 'GitHub Actions — Minuten',
+        subtitle: 'Free-Plan 2.000 min/Monat',
+        valueDisplay: vu != null ? `${vu.toLocaleString('de-DE')} min` : '—',
+        percent: vp,
+        level: lvl,
+        recharge: `${daysToMonthEnd} d (${nextMonthRecharge.toLocaleDateString('de-DE')})`,
+        foot: `Stand ${lastUpdated(mp)}`,
+      }));
+    }
+
+    tiles.innerHTML = out.join('');
 
     if (!alarmEvents.length) {
       alarms.innerHTML = '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— keine Alarme</span></div>';
@@ -4715,7 +4883,7 @@ async function loadCostsView() {
       </div>`).join('');
     }
   } catch(e) {
-    cards.innerHTML = `<p style="color:#ef4444;font-size:13px;grid-column:1/-1">Fehler beim Laden: ${e.message}</p>`;
+    tiles.innerHTML = `<p style="color:#ef4444;font-size:13px;grid-column:1/-1">Fehler beim Laden: ${e.message}</p>`;
   }
 }
 
