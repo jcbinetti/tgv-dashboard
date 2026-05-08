@@ -1,14 +1,15 @@
-<!-- TGV Dashboard v11.28 — 2026-05-06 — Inbox: Tab "Zuletzt einsortiert" + Manual WF B Trigger Button -->
+<!-- TGV Dashboard v11.29 — 2026-05-08 — Iter 9.5 Auth-Reactivation: Supabase Login-Gate + dynamische Headers -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.28">
-<title>TGV Dashboard v11.28 — Financial OS</title>
+<meta name="version" content="11.29">
+<title>TGV Dashboard v11.29 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root {
   --navy: #001F3F;
@@ -48,6 +49,53 @@ body {
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* ─── LOGIN GATE (Iter 9.5) ─── */
+#auth-gate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--navy);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+#auth-gate.visible { display: flex; }
+.auth-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+}
+.auth-logo { text-align: center; margin-bottom: 28px; }
+.auth-logo h1 { font-size: 28px; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; }
+.auth-logo p { font-size: 13px; color: var(--tx2); margin-top: 4px; }
+.auth-field { margin-bottom: 16px; }
+.auth-field label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--tx1);
+  margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.auth-field input {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--s3); border-radius: 8px;
+  font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.2s; box-sizing: border-box;
+}
+.auth-field input:focus { border-color: var(--teal); }
+.auth-btn {
+  width: 100%; padding: 12px; background: var(--navy); color: #fff; border: none;
+  border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+  margin-top: 8px; transition: background 0.2s; font-family: inherit;
+}
+.auth-btn:hover { background: var(--teal); }
+.auth-btn:disabled { background: var(--tx2); cursor: not-allowed; }
+.auth-error {
+  margin-top: 14px; padding: 10px 14px; background: var(--red-bg); border: 1px solid var(--red-bd);
+  border-radius: 8px; color: var(--red); font-size: 13px; display: none;
+}
+.auth-error.visible { display: block; }
+.auth-denied { text-align: center; padding: 20px 0; }
+.auth-denied p { color: var(--red); font-weight: 600; margin-bottom: 16px; }
 
 /* ─── TOPBAR ─── */
 #topbar {
@@ -1263,6 +1311,70 @@ body.chat-open #main-content {
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════════════════
+     AUTH GATE — Login-Formular (Iter 9.5)
+     Wird durch initAuth() gesteuert. Dashboard bleibt versteckt bis Auth OK.
+     ═══════════════════════════════════════════════════════ -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div id="auth-login-view">
+      <div class="auth-logo">
+        <h1>TGV</h1>
+        <p>Financial OS — Bitte anmelden</p>
+      </div>
+      <form id="auth-form" action="#" method="post" onsubmit="authLogin();return false;" autocomplete="on">
+        <div class="auth-field">
+          <label for="auth-email">E-Mail</label>
+          <input type="email" id="auth-email" name="email" placeholder="jc@example.com"
+                 autocomplete="username" required>
+        </div>
+        <div class="auth-field">
+          <label for="auth-password">Passwort</label>
+          <input type="password" id="auth-password" name="password" placeholder="••••••••"
+                 autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="auth-btn" id="auth-login-btn">Anmelden</button>
+      </form>
+      <div class="auth-error" id="auth-error-msg"></div>
+      <div style="text-align:center;margin-top:14px;font-size:12px">
+        <a href="#" id="auth-forgot-link" onclick="authForgotPassword();return false;" style="color:var(--teal);text-decoration:none">Passwort vergessen?</a>
+      </div>
+      <div class="auth-error" id="auth-info-msg" style="background:var(--grn-bg,#E8F5E9);border-color:var(--grn,#166534);color:var(--grn,#166534);margin-top:8px"></div>
+    </div>
+    <div id="auth-denied-view" style="display:none">
+      <div class="auth-logo"><h1>TGV</h1></div>
+      <div class="auth-denied">
+        <p>Kein Zugriff für diesen Account.</p>
+        <button class="auth-btn" onclick="authLogout()">Abmelden</button>
+      </div>
+    </div>
+    <!-- RECOVERY VIEW (zeigt sich automatisch bei PASSWORD_RECOVERY-Event) -->
+    <div id="auth-recovery-view" style="display:none">
+      <div class="auth-logo">
+        <h1>TGV</h1>
+        <p>Neues Passwort setzen</p>
+      </div>
+      <form id="auth-recovery-form" onsubmit="authSetNewPassword();return false;" autocomplete="on">
+        <div class="auth-field">
+          <label for="auth-new-password">Neues Passwort</label>
+          <input type="password" id="auth-new-password" name="new-password"
+                 placeholder="mindestens 8 Zeichen" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="auth-field">
+          <label for="auth-new-password2">Passwort bestätigen</label>
+          <input type="password" id="auth-new-password2" name="new-password-confirm"
+                 placeholder="nochmal eingeben" autocomplete="new-password" minlength="8" required>
+        </div>
+        <button type="submit" class="auth-btn" id="auth-set-pwd-btn">Passwort speichern</button>
+      </form>
+      <div class="auth-error" id="auth-recovery-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD WRAPPER (sichtbar erst nach Auth) -->
+<div id="dashboard-wrapper" style="display:none">
+
 <!-- TOPBAR -->
 <div id="topbar">
   <button id="sidebar-toggle" onclick="toggleSidebar()" title="Sidebar ein/ausblenden">☰</button>
@@ -1274,6 +1386,7 @@ body.chat-open #main-content {
     <span class="topbar-version" id="topbar-version">v?</span>
     <button id="chat-btn" onclick="toggleChat()" title="TGV Chat — Ad-hoc Korrekturen">💬 Chat</button>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
+    <button id="auth-logout-btn" onclick="authLogout()" title="Abmelden" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.8);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:6px">🔒 Abmelden</button>
   </div>
 </div>
 
@@ -2248,12 +2361,194 @@ body.chat-open #main-content {
 
 <script>
 // ═══════════════════════════════════════════════════════
+//  AUTH GATE (Iter 9.5) — vor CONFIG, weil supa() den Client braucht
+// ═══════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://egcdlozsvyhhvipylxky.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
+const JC_USER_ID        = 'b942cb53-55f5-4f52-906d-2ed29c46f07a';
+
+const _supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function showAuthGate(view = 'login') {
+  document.getElementById('auth-gate').classList.add('visible');
+  document.getElementById('dashboard-wrapper').style.display = 'none';
+  document.getElementById('auth-login-view').style.display    = view === 'login'    ? '' : 'none';
+  document.getElementById('auth-denied-view').style.display   = view === 'denied'   ? '' : 'none';
+  const rec = document.getElementById('auth-recovery-view');
+  if (rec) rec.style.display = view === 'recovery' ? '' : 'none';
+}
+
+async function authSetNewPassword() {
+  const p1 = document.getElementById('auth-new-password').value;
+  const p2 = document.getElementById('auth-new-password2').value;
+  const errEl = document.getElementById('auth-recovery-error');
+  const btn = document.getElementById('auth-set-pwd-btn');
+  errEl.classList.remove('visible');
+  if (p1.length < 8) {
+    errEl.textContent = 'Passwort muss mindestens 8 Zeichen haben.';
+    errEl.classList.add('visible');
+    return;
+  }
+  if (p1 !== p2) {
+    errEl.textContent = 'Die beiden Passwörter stimmen nicht überein.';
+    errEl.classList.add('visible');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Speichern…';
+  try {
+    const { error } = await _supaClient.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    // History säubern, damit Recovery-Hash weg ist
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    await _supaClient.auth.signOut();
+    showAuthGate('login');
+    const okEl = document.getElementById('auth-info-msg');
+    if (okEl) {
+      okEl.textContent = 'Passwort gespeichert. Bitte mit neuem Passwort anmelden.';
+      okEl.classList.add('visible');
+    }
+  } catch (err) {
+    errEl.textContent = err.message || 'Konnte Passwort nicht setzen.';
+    errEl.classList.add('visible');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Passwort speichern';
+  }
+}
+
+function showDashboard() {
+  document.getElementById('auth-gate').classList.remove('visible');
+  document.getElementById('dashboard-wrapper').style.display = '';
+}
+
+function isAllowedUser(user) {
+  return user && user.id === JC_USER_ID;
+}
+
+async function authLogin() {
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn      = document.getElementById('auth-login-btn');
+  const errEl    = document.getElementById('auth-error-msg');
+  errEl.classList.remove('visible');
+  btn.disabled = true;
+  btn.textContent = 'Anmelden…';
+  try {
+    const { data, error } = await _supaClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    if (!isAllowedUser(data.user)) {
+      await _supaClient.auth.signOut();
+      showAuthGate('denied');
+    } else {
+      showDashboard();
+      loadUebersicht();
+      loadMdCategories();
+    }
+  } catch (err) {
+    errEl.textContent = err.message || 'Anmeldung fehlgeschlagen.';
+    errEl.classList.add('visible');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Anmelden';
+  }
+}
+
+async function authLogout() {
+  await _supaClient.auth.signOut();
+  showAuthGate('login');
+  const e = document.getElementById('auth-email'); if (e) e.value = '';
+  const p = document.getElementById('auth-password'); if (p) p.value = '';
+}
+
+async function authForgotPassword() {
+  const email = document.getElementById('auth-email').value.trim();
+  const errEl = document.getElementById('auth-error-msg');
+  const okEl  = document.getElementById('auth-info-msg');
+  errEl.classList.remove('visible');
+  okEl.classList.remove('visible');
+  if (!email) {
+    errEl.textContent = 'Bitte zuerst E-Mail eintragen, dann auf "Passwort vergessen?" klicken.';
+    errEl.classList.add('visible');
+    return;
+  }
+  try {
+    const { error } = await _supaClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) throw error;
+    okEl.textContent = 'Reset-Mail gesendet. Bitte Posteingang prüfen.';
+    okEl.classList.add('visible');
+  } catch (err) {
+    errEl.textContent = err.message || 'Reset fehlgeschlagen.';
+    errEl.classList.add('visible');
+  }
+}
+
+async function initAuth() {
+  // Localhost-Bypass: kein Login nötig bei lokalem Zugriff (Dev-Komfort)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    showDashboard();
+    loadUebersicht();
+    loadMdCategories();
+    return;
+  }
+
+  // Recovery-Hash-Failsafe: wenn der URL-Hash type=recovery enthält, IMMER Recovery-View zeigen
+  const isRecovery = window.location.hash.includes('type=recovery');
+
+  // Listener ZUERST registrieren — sonst verpassen wir PASSWORD_RECOVERY beim Hash-Parse
+  _supaClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      showAuthGate('recovery');
+    } else if (event === 'SIGNED_OUT' || !session) {
+      if (!isRecovery) showAuthGate('login');
+    }
+    // TOKEN_REFRESHED braucht keine Aktion — supa() liest Session bei jedem Call
+  });
+
+  if (isRecovery) {
+    showAuthGate('recovery');
+    return; // Session-Check skippen — der User soll Passwort setzen, nicht ins Dashboard
+  }
+
+  showAuthGate('login');
+  const { data: { session } } = await _supaClient.auth.getSession();
+  if (session && isAllowedUser(session.user)) {
+    showDashboard();
+    loadUebersicht();
+    loadMdCategories();
+  } else if (session && !isAllowedUser(session.user)) {
+    await _supaClient.auth.signOut();
+    showAuthGate('denied');
+  }
+}
+
+// Header-Helper: liest pro Call die aktuelle Session und setzt Authorization auf User-JWT
+async function _supaAuthHeaders(extra) {
+  const h = Object.assign({}, SUPA_HEADERS, extra || {});
+  if (typeof _supaClient !== 'undefined') {
+    try {
+      const { data: { session } } = await _supaClient.auth.getSession();
+      if (session && session.access_token) {
+        h['Authorization'] = 'Bearer ' + session.access_token;
+      }
+    } catch (e) {
+      console.warn('_supaAuthHeaders: session lookup failed', e);
+    }
+  }
+  return h;
+}
+
+// ═══════════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════════
 // Versionsnummer dynamisch aus dem <meta name="version">-Tag lesen
 const DASHBOARD_VERSION = document.querySelector('meta[name="version"]')?.content || '?';
-const SUPA_URL = 'https://egcdlozsvyhhvipylxky.supabase.co';
-const SUPA_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
+const SUPA_URL = SUPABASE_URL;
+const SUPA_KEY = SUPABASE_ANON_KEY;
 const SUPA_REST = `${SUPA_URL}/rest/v1`;
 const SUPA_HEADERS = {
   'apikey': SUPA_KEY,
@@ -2365,7 +2660,8 @@ const escHtml = s => {
 // ═══════════════════════════════════════════════════════
 async function supa(path) {
   const url = `${SUPA_REST}/${path}`;
-  const res = await fetch(url, { headers: SUPA_HEADERS });
+  const headers = await _supaAuthHeaders();
+  const res = await fetch(url, { headers });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`HTTP ${res.status}: ${text}`);
@@ -2376,9 +2672,8 @@ async function supa(path) {
 async function supaCount(table, filter) {
   const q = filter ? `${table}?${filter}&select=id` : `${table}?select=id`;
   const url = `${SUPA_REST}/${q}`;
-  const res = await fetch(url, {
-    headers: { ...SUPA_HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
-  });
+  const headers = await _supaAuthHeaders({ 'Prefer': 'count=exact', 'Range': '0-0' });
+  const res = await fetch(url, { headers });
   const ct = res.headers.get('Content-Range');
   if (ct) {
     const m = ct.match(/\/(\d+)$/);
@@ -2407,12 +2702,13 @@ async function supaPatch(table, filter, body) {
       console.warn('supaPatch webhook nicht erreichbar:', e.message);
     }
   }
-  // Versuch 2: direkter Supabase PATCH (klappt wenn RLS anon-Schreibzugriff erlaubt)
+  // Versuch 2: direkter Supabase PATCH (klappt wenn authenticated-RLS Schreibzugriff erlaubt)
   try {
     const url = `${SUPA_REST}/${table}?${filter}`;
+    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' });
     const res = await fetch(url, {
       method: 'PATCH',
-      headers: { ...SUPA_HEADERS, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      headers,
       body: JSON.stringify(body)
     });
     if (res.ok) return true;
@@ -4567,7 +4863,7 @@ async function loadRouted() {
   if (sinceFilter) url += `&date_received=gte.${encodeURIComponent(sinceFilter)}`;
 
   try {
-    const r = await fetch(url, { headers: SUPA_HEADERS });
+    const r = await fetch(url, { headers: await _supaAuthHeaders() });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const rows = await r.json();
     renderRouted(rows);
@@ -4699,11 +4995,12 @@ function handleL2New(sel) {
   sel.insertBefore(opt, sel.lastElementChild);
   sel.value = neu;
   if (l1) {
+    _supaAuthHeaders({ 'Prefer': 'resolution=ignore-duplicates,return=minimal' }).then(headers =>
     fetch(SUPA_REST + '/md_categories', {
       method: 'POST',
-      headers: { ...SUPA_HEADERS, 'Prefer': 'resolution=ignore-duplicates,return=minimal' },
+      headers,
       body: JSON.stringify({ l1, l2: neu })
-    }).then(r => {
+    })).then(r => {
       if (r.ok) toast(`✅ "${neu}" dauerhaft gespeichert`);
       else toast('Warnung: L2 lokal gesetzt aber nicht in DB gespeichert', 'err');
     }).catch(() => toast('Warnung: L2 lokal gesetzt aber nicht in DB gespeichert', 'err'));
@@ -5730,7 +6027,7 @@ async function saveMailRule() {
       // INSERT via direct Supabase call (anon key has write policy)
       const res = await fetch(`${SUPA_REST}/mail_routing_rules`, {
         method: 'POST',
-        headers: { ...SUPA_HEADERS, 'Prefer': 'return=representation' },
+        headers: await _supaAuthHeaders({ 'Prefer': 'return=representation' }),
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -5755,7 +6052,7 @@ async function deleteMailRule(id) {
     async () => {
       const res = await fetch(`${SUPA_REST}/mail_routing_rules?id=eq.${id}`, {
         method: 'DELETE',
-        headers: SUPA_HEADERS
+        headers: await _supaAuthHeaders()
       });
       if (res.ok) {
         mailRulesData = mailRulesData.filter(r => r.id !== id);
@@ -6271,10 +6568,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (tvEl) tvEl.textContent = vLabel;
   if (svEl) svEl.textContent = vLabel;
 
-  loadUebersicht();
-  loadMdCategories();
+  // AUTH GATE (Iter 9.5) — initAuth() ruft loadUebersicht/loadMdCategories nach Login
+  initAuth();
 });
 </script>
+</div><!-- /#dashboard-wrapper -->
 </body>
 </html>
 
