@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.32 — 2026-05-08 — Iter 9.6 Security-Hygiene: Migration 038 (security_invoker=on auf 19 Views) -->
+<!-- TGV Dashboard v11.33 — 2026-05-08 — Iter 9.7 UI-Hygiene: Migrations + WFs aus DB, Costs + Pattern-Health als System-Sub-Tabs -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.32">
-<title>TGV Dashboard v11.32 — Financial OS</title>
+<meta name="version" content="11.33">
+<title>TGV Dashboard v11.33 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1514,7 +1514,11 @@ body.chat-open #main-content {
       <div class="card">
         <div class="card-head"><h2>🔧 System Status — n8n Workflows</h2></div>
         <div class="card-body">
-          <div class="wf-status-grid">
+          <div class="wf-status-grid" id="ueb-wf-grid">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Workflows…</div>
+          </div>
+          <!-- legacy hardcoded grid (Iter 9.7: ersetzt durch ueb-wf-grid) -->
+          <div style="display:none">
             <div class="wf-card">
               <div class="wf-icon">✅</div>
               <div class="wf-info">
@@ -1612,6 +1616,7 @@ body.chat-open #main-content {
               </div>
             </div>
           </div>
+          <!-- /legacy -->
         </div>
       </div>
 
@@ -2114,6 +2119,15 @@ body.chat-open #main-content {
         <p>TGV-Übersicht, Workflows, Skills, Prompts, Wissensbasis</p>
       </div>
 
+      <!-- SYSTEM SUB-TABS (Iter 9.7) -->
+      <div class="inbox-tabs">
+        <button class="inbox-tab active" id="sys-tab-main"     onclick="showSysTab('main', this)">⚙️ System</button>
+        <button class="inbox-tab"        id="sys-tab-costs"    onclick="showSysTab('costs', this)">💰 Costs</button>
+        <button class="inbox-tab"        id="sys-tab-patterns" onclick="showSysTab('patterns', this)">🩺 Pattern Health</button>
+      </div>
+
+      <div class="inbox-panel active" id="sys-panel-main">
+
       <!-- WAS IST TGV -->
       <div class="card">
         <div class="card-head" style="cursor:pointer" onclick="toggleCard('tgv-about')">
@@ -2152,13 +2166,12 @@ body.chat-open #main-content {
             </div>
           </div>
           <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:14px;margin-bottom:12px">
-            <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">🆕 SESSION 2026-05-05 — Was sich geändert hat</div>
+            <div style="font-size:12px;color:#065f46;font-weight:600;margin-bottom:6px">🆕 SESSION 2026-05-08 — Iter 9.7 UI-Hygiene</div>
             <div style="font-size:12px;color:var(--tx2);line-height:1.7">
-              ✅ <strong>doc_type Migration:</strong> 9 Casing-Varianten zu 5 kanonischen UPPER-Werten zusammengeführt (111 Docs)<br>
-              ✅ <strong>WF D Reclass v0.2.0:</strong> komplett neuer Dispatcher → routet zu Invoice/Contract-Skill + KB-Learn aus Diff<br>
-              ✅ <strong>Doc-Cleanup:</strong> 7 Mail-Stubs gelöscht (kein PDF an Drive uploadet) + Manus-Doc gepatcht<br>
-              ✅ <strong>Skill-Bugs:</strong> Invoice-Skill Default-Casing fix · Contract-Skill SQL-Spalte fix<br>
-              🔴 <strong>Offen (P0):</strong> Contract-Skill Build-Claude-Payload liefert ungültige Base64 → Anthropic 400
+              ✅ <strong>Costs + Pattern-Health</strong> als Sub-Tabs im System-Tab (vorher Standalone-HTML)<br>
+              ✅ <strong>Migrations-Liste dynamisch</strong> — fetch aus <code>tgv_migrations</code> (Migration 042)<br>
+              ✅ <strong>Workflow-Status dynamisch</strong> — Übersicht-Grid + System-Tabelle laden aus <code>n8n_workflows</code><br>
+              ✅ <strong>Folder-Drift bereinigt</strong> — leere <code>06_DASHBOARD/</code> + <code>04_RULES/</code> entfernt
             </div>
           </div>
           <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px;margin-bottom:12px">
@@ -2291,21 +2304,7 @@ body.chat-open #main-content {
               <tr><th>Workflow</th><th>ID / Version</th><th>Trigger</th><th>Status</th></tr>
             </thead>
             <tbody>
-              <tr><td>WF A2 — IMAP Scanner + Dokument-KI</td><td>fx9POuhD3ybynhat · v01.26</td><td>2x tägl. 12:00+00:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>WF B — Google Drive Scanner Intake</td><td>c7B4trQwfyRFVm8m · V3</td><td>2x tägl. 12:00+00:00</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>TGV Post Intake</td><td>1OEdRKTJul9grsHT · v1.04</td><td>Webhook</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Triage Agent v1.0</td><td>bzbnkMvWF0FcWYI8</td><td>/webhook/tgv-triage</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Router v0.3</td><td>mvOybw4cBU7y8X5Y</td><td>/webhook/tgv-skill-router</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill PDF Invoice Extract v0.1</td><td>d3xO540JEcAu9Rol</td><td>/webhook/tgv-skill-pdf-invoice-extract</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Extract Contract PDF v0.2 (Iter 2)</td><td>5jYCxB9NzqyRMqjI</td><td>/webhook/tgv-skill-extract-contract-pdf</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Reconcile Payment v0.1</td><td>MkG0m64HF9Z7jmxK</td><td>/webhook/tgv-skill-reconcile-payment</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Classify CSV v0.1</td><td>LXB4KSgDbqFi1jc0</td><td>/webhook/tgv-skill-classify-csv</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Import Banking CSV v0.1</td><td>UvNspgnrKvQKz9Ln</td><td>/webhook/tgv-skill-import-banking-csv</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Import TimeTrack CSV v0.1</td><td>UYKD3BC6qbUzJl0d</td><td>/webhook/tgv-skill-import-timetrack-csv</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Resolve Supplier v0.1</td><td>EhYORO07kDF5u5Xn</td><td>/webhook/tgv-skill-resolve-supplier</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>Skill Store File To Drive v0.2</td><td>dT1VRLPnDdYxVIKH</td><td>/webhook/tgv-skill-store-file</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>WF E — Buchhalter-Versand v1.7.2</td><td>XiV614kH0syjxU1T</td><td>/webhook/tgv-buchhalter-versand</td><td><span class="pill pill-approved">Aktiv</span></td></tr>
-              <tr><td>WF F — Contract Agent</td><td>5voxMOYoF9tcPwuL</td><td>—</td><td><span class="pill pill-inbox">In Entwicklung</span></td></tr>
+              <tr><td colspan="4" style="color:var(--tx2);font-size:12px;padding:12px">Lade Workflows…</td></tr>
             </tbody>
           </table>
         </div>
@@ -2334,6 +2333,54 @@ body.chat-open #main-content {
             <button class="btn-sm btn-open" onclick="runHealthCheck()" style="font-size:12px;padding:7px 16px">
               ⚡ Health Check ausführen
             </button>
+          </div>
+        </div>
+      </div>
+
+      </div><!-- /sys-panel-main -->
+
+      <!-- ───────────── COSTS SUB-TAB (Iter 9.7) ───────────── -->
+      <div class="inbox-panel" id="sys-panel-costs">
+        <div class="card">
+          <div class="card-head"><h2>💰 Cost-Telemetrie <span style="font-size:11px;color:var(--tx2);font-weight:400">— audit_only</span></h2></div>
+          <div class="card-body">
+            <div class="kpi-grid" id="costs-cards">
+              <div class="spinner-wrap" style="grid-column:1/-1"><div class="spinner"></div> Lade Costs…</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>🚨 Alarm-Log (letzte 20)</h2></div>
+          <div class="card-body" style="padding:0">
+            <div id="costs-alarms" class="mig-table"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ───────────── PATTERN HEALTH SUB-TAB (Iter 9.7) ───────────── -->
+      <div class="inbox-panel" id="sys-panel-patterns">
+        <div class="card">
+          <div class="card-head"><h2>🩺 Pattern Stage-Verteilung</h2></div>
+          <div class="card-body">
+            <div id="ph-overview"><div class="spinner-wrap"><div class="spinner"></div> Lade Pattern Health…</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>⚠️ Top-10 Conflict-Regeln</h2></div>
+          <div class="card-body" style="padding:0">
+            <div id="ph-conflicts"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>🪺 Orphan-Liste (vc&lt;2)</h2></div>
+          <div class="card-body" style="padding:0">
+            <div id="ph-orphans"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>📈 Auto-Promote-Log (letzte 20)</h2></div>
+          <div class="card-body" style="padding:0">
+            <div id="ph-promotions"></div>
           </div>
         </div>
       </div>
@@ -2801,6 +2848,40 @@ function showFinTab(tabId, btn) {
 async function loadUebersicht() {
   loadKPIs();
   loadLetzteEingaenge();
+  loadWfStatusGrid();
+}
+
+// ═══════════════════════════════════════════════════════
+//  WORKFLOW STATUS GRID (Übersicht) — Iter 9.7
+// ═══════════════════════════════════════════════════════
+async function loadWfStatusGrid() {
+  const grid = document.getElementById('ueb-wf-grid');
+  if (!grid) return;
+  try {
+    const rows = await supa('n8n_workflows?select=id,name,category,version,trigger_type,status,notes&order=display_order.asc');
+    if (!rows.length) {
+      grid.innerHTML = '<p style="color:var(--tx2);font-size:13px">Keine Workflows registriert. Backfill via Migration 042.</p>';
+      return;
+    }
+    const iconFor = st => st === 'active' ? '✅' : st === 'partial' ? '🟡' : st === 'dev' ? '🔵' : st === 'archived' ? '📦' : '⚪';
+    const labelFor = st => st === 'active' ? 'AKTIV' : st === 'partial' ? 'TEILWEISE' : st === 'dev' ? 'IN ENTWICKLUNG' : st === 'archived' ? 'ARCHIVIERT' : 'INAKTIV';
+    const clsFor   = st => st === 'active' ? 'wf-status-ok' : st === 'partial' ? 'wf-status-warn' : st === 'dev' ? 'wf-status-blu' : 'wf-status-warn';
+    let html = '';
+    for (const r of rows) {
+      const detail = [r.version, r.trigger_type, r.notes].filter(Boolean).join(' · ');
+      html += `<div class="wf-card">
+        <div class="wf-icon">${iconFor(r.status)}</div>
+        <div class="wf-info">
+          <div class="wf-name">${escHtml(r.name)}</div>
+          <div class="wf-detail">${escHtml(detail) || '—'}</div>
+          <div class="wf-status ${clsFor(r.status)}">${labelFor(r.status)}</div>
+        </div>
+      </div>`;
+    }
+    grid.innerHTML = html;
+  } catch(e) {
+    grid.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler: ${e.message}</p>`;
+  }
 }
 
 async function loadKPIs() {
@@ -4550,6 +4631,160 @@ async function loadProjectHours(projectId) {
 // ═══════════════════════════════════════════════════════
 function loadSystem() {
   renderMigrations();
+  renderWfTable();
+}
+
+// ═══════════════════════════════════════════════════════
+//  SYSTEM SUB-TABS (Iter 9.7)
+// ═══════════════════════════════════════════════════════
+function showSysTab(tabId, btn) {
+  document.querySelectorAll('#page-system > .inbox-tabs > .inbox-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#page-system > .inbox-panel').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('sys-panel-' + tabId);
+  if (panel) panel.classList.add('active');
+  if (tabId === 'costs')    loadCostsView();
+  if (tabId === 'patterns') loadPatternHealthView();
+}
+
+// ═══════════════════════════════════════════════════════
+//  COSTS VIEW (System sub-tab)
+// ═══════════════════════════════════════════════════════
+let _costsLoaded = false;
+async function loadCostsView() {
+  if (_costsLoaded) return;
+  _costsLoaded = true;
+  const cards = document.getElementById('costs-cards');
+  const alarms = document.getElementById('costs-alarms');
+  try {
+    const [metrics, thresholds, alarmEvents] = await Promise.all([
+      supa('cost_metrics?order=collected_at.desc&limit=200'),
+      supa('cost_thresholds?active=eq.true'),
+      supa('agent_events?event_type=in.(cost.warn,cost.alarm)&order=created_at.desc&limit=20'),
+    ]);
+
+    const thMap = Object.fromEntries(thresholds.map(t => [`${t.source}|${t.metric_name}`, t]));
+    const latest = {};
+    for (const m of metrics) {
+      const k = `${m.source}|${m.metric_name}`;
+      if (!latest[k] || m.collected_at > latest[k].collected_at) latest[k] = m;
+    }
+
+    const levelFor = (v, warn, alarm) => {
+      const n = Number(v);
+      if (alarm != null && n >= Number(alarm)) return 'alarm';
+      if (warn  != null && n >= Number(warn))  return 'warn';
+      return 'ok';
+    };
+    const levelColor = lvl => lvl === 'alarm' ? '#ef4444' : lvl === 'warn' ? '#f59e0b' : '#10b981';
+    const levelBg    = lvl => lvl === 'alarm' ? '#fee2e2' : lvl === 'warn' ? '#fef3c7' : '#d1fae5';
+
+    function card(title, source, metric, fmt) {
+      const m = latest[`${source}|${metric}`];
+      const t = thMap[`${source}|${metric}`];
+      const v = m ? Number(m.value) : null;
+      const lvl = (v != null && t) ? levelFor(v, t.warn_at, t.alarm_at) : 'ok';
+      const display = (v != null) ? fmt(v) : '—';
+      const collected = m ? new Date(m.collected_at).toLocaleString('de-DE') : '—';
+      const pill = (v != null && t) ? `<span style="background:${levelBg(lvl)};color:${levelColor(lvl)};padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;margin-left:6px">${lvl}</span>` : '';
+      return `<div class="kpi-card"><div class="kpi-label">${escHtml(title)}${pill}</div>
+        <div class="kpi-value">${display}</div>
+        <div class="kpi-foot">${m ? `${escHtml(source)}.${escHtml(metric)}` : 'no data'} · ${collected}${t ? ` · warn≥${t.warn_at}${t.unit||''} · alarm≥${t.alarm_at}${t.unit||''}` : ''}</div>
+      </div>`;
+    }
+
+    cards.innerHTML =
+        card('Anthropic — Daily Cost (EUR)',     'anthropic', 'daily_cost_eur',         v => `€ ${v.toFixed(3)}`)
+      + card('Anthropic — Orchestrator Calls 24h','anthropic','orchestrator_calls_24h',v => v.toLocaleString('de-DE'))
+      + card('n8n — Quota %',                    'n8n',       'quota_pct',              v => `${v.toFixed(1)} %`)
+      + card('n8n — Executions Today',           'n8n',       'executions_today',       v => v.toLocaleString('de-DE'))
+      + card('Supabase — DB Storage (GB)',       'supabase',  'db_storage_gb',          v => `${v.toFixed(4)} GB`)
+      + card('Supabase — DB Storage %',          'supabase',  'db_storage_pct',         v => `${v.toFixed(1)} %`);
+
+    if (!alarmEvents.length) {
+      alarms.innerHTML = '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— keine Alarme</span></div>';
+    } else {
+      alarms.innerHTML = alarmEvents.map(a => `<div class="mig-row">
+        <span class="mig-num">${new Date(a.created_at).toLocaleString('de-DE')}</span>
+        <span class="mig-name">${escHtml(a.content || '')}</span>
+        <span class="mig-status ${a.event_type === 'cost.alarm' ? 'mig-err' : 'mig-warn'}">${a.event_type}</span>
+      </div>`).join('');
+    }
+  } catch(e) {
+    cards.innerHTML = `<p style="color:#ef4444;font-size:13px;grid-column:1/-1">Fehler beim Laden: ${e.message}</p>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PATTERN HEALTH VIEW (System sub-tab)
+// ═══════════════════════════════════════════════════════
+let _phLoaded = false;
+async function loadPatternHealthView() {
+  if (_phLoaded) return;
+  _phLoaded = true;
+  const ovEl = document.getElementById('ph-overview');
+  const cfEl = document.getElementById('ph-conflicts');
+  const orEl = document.getElementById('ph-orphans');
+  const prEl = document.getElementById('ph-promotions');
+  try {
+    const [view, conflicts, orphans, promotions] = await Promise.all([
+      supa('v_pattern_rules?select=*&active=is.true&limit=2000'),
+      supa('v_pattern_rules?conflict_count=gt.0&active=is.true&order=conflict_count.desc&limit=10'),
+      supa('pattern_rules_seed?verification_count=lt.2&order=created_at.asc&limit=20'),
+      supa('agent_events?event_type=eq.pattern.promoted&order=created_at.desc&limit=20'),
+    ]);
+
+    const stages = {candidate:0, hint:0, verified:0, shortcut:0};
+    const sources = {};
+    for (const r of view) {
+      stages[r.stage] = (stages[r.stage] || 0) + 1;
+      sources[r.source] = (sources[r.source] || 0) + 1;
+    }
+    const total = view.length;
+    const stageColor = {candidate:'#9ca3af', hint:'#3b82f6', verified:'#10b981', shortcut:'#f59e0b'};
+    const stagePill = s => `<span style="background:${stageColor[s]};color:#fff;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase">${s}</span>`;
+    const stageBar = Object.entries(stages).map(([s,n]) => {
+      const pct = total ? (n/total)*100 : 0;
+      return `<div style="background:${stageColor[s]};width:${pct}%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;min-width:8px" title="${s}: ${n}">${pct>6?n:''}</div>`;
+    }).join('');
+    ovEl.innerHTML = `
+      <div style="margin-bottom:8px;font-size:13px;color:var(--tx1)">${total} aktive Regeln</div>
+      <div style="display:flex;height:24px;border-radius:4px;overflow:hidden;border:1px solid var(--s3)">${stageBar}</div>
+      <div style="margin-top:8px;font-size:12px;color:var(--tx2)">
+        ${stagePill('candidate')} ${stages.candidate||0} &nbsp;
+        ${stagePill('hint')} ${stages.hint||0} &nbsp;
+        ${stagePill('verified')} ${stages.verified||0} &nbsp;
+        ${stagePill('shortcut')} ${stages.shortcut||0}
+        &middot; nach Quelle: ${Object.entries(sources).map(([s,n])=>`${escHtml(s)}=${n}`).join(', ')}
+      </div>`;
+
+    const fmtJson = v => `<code style="background:var(--s1);padding:1px 4px;border-radius:3px;font-size:11px">${escHtml(JSON.stringify(v).slice(0,140))}</code>`;
+    cfEl.innerHTML = conflicts.length
+      ? conflicts.map(r => `<div class="mig-row">
+          <span class="mig-num">${escHtml(r.rule_id)}</span>
+          <span class="mig-name">${stagePill(r.stage)} ${escHtml(r.source)} · ${fmtJson(r.match_condition)}</span>
+          <span class="mig-status mig-warn">conflicts: ${r.conflict_count} · verified: ${r.verification_count}</span>
+        </div>`).join('')
+      : '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— keine Konflikte</span></div>';
+
+    orEl.innerHTML = orphans.length
+      ? orphans.map(r => `<div class="mig-row">
+          <span class="mig-num">seed:${r.id}</span>
+          <span class="mig-name">${stagePill(r.stage)} ${escHtml(r.source)} · ${escHtml(r.description||'')}</span>
+          <span class="mig-status">${new Date(r.created_at).toLocaleDateString('de-DE')}</span>
+        </div>`).join('')
+      : '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— keine Orphans</span></div>';
+
+    prEl.innerHTML = promotions.length
+      ? promotions.map(e => `<div class="mig-row">
+          <span class="mig-num">${new Date(e.created_at).toLocaleString('de-DE')}</span>
+          <span class="mig-name">${escHtml(e.content||'')}</span>
+          <span class="mig-status mig-ok">promoted</span>
+        </div>`).join('')
+      : '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— noch keine Promotions</span></div>';
+  } catch(e) {
+    ovEl.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler beim Laden: ${e.message}</p>`;
+  }
 }
 
 function toggleCard(id) {
@@ -4646,7 +4881,59 @@ async function loadKnowledge() {
   } catch(e) { wrap.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler: ${e.message}</p>`; }
 }
 
-function renderMigrations() {
+async function renderMigrations() {
+  const el = document.getElementById('mig-table');
+  if (!el) return;
+  el.innerHTML = `<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">Lade Migrationen…</span></div>`;
+  try {
+    const rows = await supa('tgv_migrations?select=num,name,iter,applied_at&order=num.asc&limit=200');
+    if (!rows.length) {
+      el.innerHTML = `<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">Keine Migrationen registriert.</span></div>`;
+      return;
+    }
+    el.innerHTML = rows.map(r => {
+      const dateLabel = r.applied_at ? ` · ${fmtDate(r.applied_at)}` : '';
+      const iterLabel = r.iter ? ` <span style="color:var(--tx2);font-size:10px">[${escHtml(r.iter)}]</span>` : '';
+      return `<div class="mig-row">
+        <span class="mig-num">${escHtml(r.num)}</span>
+        <span class="mig-name">${escHtml(r.name)}${iterLabel}${dateLabel}</span>
+        <span class="mig-status mig-ok">✅ Ausgeführt</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="mig-row"><span class="mig-name" style="color:#ef4444">Fehler: ${e.message}</span></div>`;
+  }
+}
+
+async function renderWfTable() {
+  const el = document.querySelector('#wf-section table tbody');
+  if (!el) return;
+  try {
+    const rows = await supa('n8n_workflows?select=id,name,category,version,trigger_type,status,notes&order=display_order.asc');
+    if (!rows.length) {
+      el.innerHTML = '<tr><td colspan="4" style="color:var(--tx2);font-size:12px;padding:12px">Keine Workflows registriert.</td></tr>';
+      return;
+    }
+    el.innerHTML = rows.map(r => {
+      const versioned = r.version ? `${escHtml(r.id)} · ${escHtml(r.version)}` : escHtml(r.id);
+      const trigger = escHtml(r.trigger_type || '—');
+      const cls = r.status === 'active' ? 'pill-approved' : r.status === 'partial' ? 'pill-warn' : r.status === 'dev' ? 'pill-inbox' : 'pill-rejected';
+      const lbl = r.status === 'active' ? 'Aktiv' : r.status === 'partial' ? 'Teilweise' : r.status === 'dev' ? 'In Entwicklung' : r.status === 'archived' ? 'Archiviert' : 'Inaktiv';
+      const noteHtml = r.notes ? `<div style="font-size:10px;color:var(--tx2);margin-top:2px">${escHtml(r.notes)}</div>` : '';
+      return `<tr>
+        <td>${escHtml(r.name)}${noteHtml}</td>
+        <td style="font-family:monospace;font-size:11px">${versioned}</td>
+        <td>${trigger}</td>
+        <td><span class="pill ${cls}">${lbl}</span></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<tr><td colspan="4" style="color:#ef4444;font-size:12px;padding:12px">Fehler: ${e.message}</td></tr>`;
+  }
+}
+
+// (Iter 9.7: tote hardcoded migrations-Liste entfernt; bleibt als Backup-Doku)
+function _renderMigrations_legacy_DELETED_iter97() {
   const migrations = [
     ['001', 'txn_master + documents base schema'],
     ['002', 'kb_suppliers + supplier enrichment'],
