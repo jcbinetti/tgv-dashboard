@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.42 — 2026-05-09 — Iter 15.2 Stage 3: echte Multi-Select-Modal + 15.8 separate skill_gap_signals Tabelle (Mig 056) -->
+<!-- TGV Dashboard v11.43 — 2026-05-09 — Iter 16.0f Fixup-Pack: B1 Pre-Selection skip done, B2 meta-version-fix, B3 Bulk per-doc selections iterate, B7 Search-by-ID #NNN -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.38">
-<title>TGV Dashboard v11.42 — Financial OS</title>
+<meta name="version" content="11.43">
+<title>TGV Dashboard v11.43 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6639,22 +6639,51 @@ function triageToggleBulk(docId) {
 
 async function triageBulkApply() {
   if (gTriageBulk.size === 0) return;
-  if (!confirm(`Cascade auf ${gTriageBulk.size} Docs ausführen? Dies triggert Skill Router pro Doc.`)) return;
-  // For Stage 1: trigger cascade-trigger webhook (no per-doc skill control)
-  // Stage 2 will add per-doc skill selection in bulk
-  try {
-    const resp = await fetch(`${SUPABASE_URL.replace('supabase.co','app.n8n.cloud').replace('https://','https://').split('.supabase.co')[0]}/webhook/tgv-cascade-trigger`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ batch_size: Math.min(gTriageBulk.size, 50), dry_run: false })
-    });
-    const data = await resp.json().catch(() => null);
-    alert(`Cascade angestoßen.\n${JSON.stringify(data, null, 2).slice(0, 400)}`);
-    triageBulkClear();
-    setTimeout(loadTriage, 2000);
-  } catch (e) {
-    alert(`Fehler: ${e.message}`);
+  // Iter 16.0f B3 — Bulk = iteriere über markierte Docs und feuere pro Doc dessen pre-selektierte Skills
+  // (vorher war's ein cascade-trigger ohne per-doc Skill-Kontrolle → User-confusion "warum nur 1 gefeuert")
+  const docIds = [...gTriageBulk];
+  // Build summary of what will fire
+  const plan = docIds.map(did => {
+    const sel = gTriageSelections.get(did);
+    return { id: did, skills: sel ? [...sel] : [] };
+  });
+  const empties = plan.filter(p => p.skills.length === 0);
+  const withSkills = plan.filter(p => p.skills.length > 0);
+  if (withSkills.length === 0) {
+    alert(`Keine Skills vorausgewählt für die ${docIds.length} markierten Docs.\nBitte erst pro Doc Skills aktivieren (Checkbox in der Card).`);
+    return;
   }
+  let preview = `Bulk-Apply auf ${withSkills.length} Doc(s):\n\n` +
+    withSkills.slice(0, 10).map(p => `  #${p.id}: ${p.skills.length} Skill(s) → ${p.skills.join(', ')}`).join('\n');
+  if (withSkills.length > 10) preview += `\n  … (+${withSkills.length - 10} weitere)`;
+  if (empties.length) preview += `\n\n⚠️ ${empties.length} Doc(s) ohne Skill-Auswahl werden übersprungen.`;
+  preview += `\n\nFortsetzen?`;
+  if (!confirm(preview)) return;
+
+  const N8N_BASE = 'https://jcbinetti.app.n8n.cloud';
+  let ok = 0, fail = 0;
+  const errors = [];
+  for (const p of withSkills) {
+    const orig = gTriageOriginalSuggested.get(p.id) || new Set();
+    try {
+      await triageLogLearning(p.id, [...orig], p.skills, 'ui-c-16.0f.bulk');
+      const resp = await fetch(`${N8N_BASE}/webhook/tgv-skill-router`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_id: p.id, _trigger: 'ui-c-16.0f.bulk', _skills_requested: p.skills })
+      });
+      if (resp.ok) ok++; else { fail++; errors.push(`#${p.id}: HTTP ${resp.status}`); }
+    } catch (e) {
+      fail++;
+      errors.push(`#${p.id}: ${e.message}`);
+    }
+  }
+  let msg = `✅ Bulk-Apply done.\n  OK: ${ok}\n  Fehler: ${fail}`;
+  if (errors.length) msg += `\n\n${errors.slice(0, 5).join('\n')}`;
+  msg += `\n\n📚 Pro Doc je 1 learning_event geloggt (source=ui-c-16.0f.bulk).`;
+  alert(msg);
+  triageBulkClear();
+  setTimeout(loadTriage, 2000);
 }
 
 // Suggest skills for a doc based on doc_type + target_stream + skills_done_versions
@@ -6699,7 +6728,9 @@ function triageSuggestSkills(doc) {
 
 function triageDocCard(doc) {
   const skills = triageSuggestSkills(doc);
-  const initialSuggested = new Set(skills.filter(s => s.suggested && s.confidence > 0).map(s => s.name));
+  // Iter 16.0f B1 — exclude already-run skills from default pre-selection (Quota-Schutz)
+  // "✓ schon gelaufen" Skills sind sichtbar aber NICHT vorausgewählt; User kann sie aktiv re-runnen
+  const initialSuggested = new Set(skills.filter(s => s.suggested && s.confidence > 0 && !s.done).map(s => s.name));
   // Snapshot system suggestion (Iter 15.3 Auto-Learning) — only on first render of this doc in session
   if (!gTriageOriginalSuggested.has(doc.id)) {
     gTriageOriginalSuggested.set(doc.id, new Set(initialSuggested));
@@ -6943,11 +6974,18 @@ async function loadTriage() {
     docs = docs.filter(r => !isTestData(r));
     if (search) {
       const term = search.toLowerCase();
-      docs = docs.filter(d =>
-        (d.provider && d.provider.toLowerCase().includes(term)) ||
-        (d.subject && d.subject.toLowerCase().includes(term)) ||
-        (d.mail_subject && d.mail_subject.toLowerCase().includes(term))
-      );
+      // Iter 16.0f B7 — Doc-ID-Suche: "#7322" oder "7322" matched id exakt
+      const idMatch = term.match(/^#?(\d+)$/);
+      if (idMatch) {
+        const wantedId = Number(idMatch[1]);
+        docs = docs.filter(d => d.id === wantedId);
+      } else {
+        docs = docs.filter(d =>
+          (d.provider && d.provider.toLowerCase().includes(term)) ||
+          (d.subject && d.subject.toLowerCase().includes(term)) ||
+          (d.mail_subject && d.mail_subject.toLowerCase().includes(term))
+        );
+      }
     }
     gTriageDocs = docs;
 
