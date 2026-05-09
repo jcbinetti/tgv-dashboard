@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.38 — 2026-05-08 — Iter 13: Costs-View Tile-Redesign (Used Quota %, nächste Recharge, Burn-Rate-Hochrechnung) + Hash-Routing #system -->
+<!-- TGV Dashboard v11.42 — 2026-05-09 — Iter 15.2 Stage 3: echte Multi-Select-Modal + 15.8 separate skill_gap_signals Tabelle (Mig 056) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="version" content="11.38">
-<title>TGV Dashboard v11.38 — Financial OS</title>
+<title>TGV Dashboard v11.42 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1439,6 +1439,12 @@ body.chat-open #main-content {
       <span class="nav-badge" id="inbox-badge" style="display:none">0</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('triage', this)" title="UI Variante C — Skill-driven Multi-Select (Iter 15.2)">
+      <span class="nav-icon">🎯</span>
+      <span class="nav-label">Triage</span>
+      <span class="nav-badge" id="triage-badge" style="display:none;background:var(--blu)">0</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('finanzen', this)">
       <span class="nav-icon">💶</span>
       <span class="nav-label">Finanzen</span>
@@ -1462,6 +1468,11 @@ body.chat-open #main-content {
     <button class="nav-item" onclick="showPage('mailrules', this)">
       <span class="nav-icon">📬</span>
       <span class="nav-label">Mail Rules</span>
+    </button>
+
+    <button class="nav-item" onclick="showPage('linkrate', this)">
+      <span class="nav-icon">🔗</span>
+      <span class="nav-label">Linkrate</span>
     </button>
 
     <button class="nav-item" onclick="showPage('system', this)">
@@ -2011,6 +2022,136 @@ body.chat-open #main-content {
     <!-- ═══════════════════════════════════════════════
          PAGE: MAIL RULES
     ════════════════════════════════════════════════ -->
+    <div class="page" id="page-triage">
+      <div class="page-header">
+        <h1>🎯 Triage <span style="font-size:13px;color:var(--tx2);font-weight:400;">— UI Variante C (Iter 15.2)</span></h1>
+        <p>Skill-driven Multi-Select für Inbox-Action-Queue. Default: Docs die noch User-Eingriff brauchen.</p>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="card" style="margin-bottom:14px;">
+        <div id="triage-filter-bar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          <span style="font-size:12px;color:var(--tx2);font-weight:600;">FILTER:</span>
+          <div id="triage-chips" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1;min-width:300px;">
+            <span style="color:var(--tx2);font-size:12px;font-style:italic;">keine Filter aktiv</span>
+          </div>
+          <button class="btn-sm" onclick="triageOpenFilterModal('entity')" style="padding:5px 11px;font-size:12px;background:transparent;border:1px dashed var(--blu);color:var(--blu);">+ Entität</button>
+          <button class="btn-sm" onclick="triageOpenFilterModal('provider')" style="padding:5px 11px;font-size:12px;background:transparent;border:1px dashed var(--blu);color:var(--blu);">+ Provider</button>
+          <button class="btn-sm" onclick="triageOpenFilterModal('doc_type')" style="padding:5px 11px;font-size:12px;background:transparent;border:1px dashed var(--blu);color:var(--blu);">+ Doc-Type</button>
+          <button class="btn-sm" onclick="triageOpenFilterModal('domain')" style="padding:5px 11px;font-size:12px;background:transparent;border:1px dashed var(--blu);color:var(--blu);">+ Domain</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;font-size:13px;">
+          <label style="color:var(--tx2);">Status:</label>
+          <select id="triage-status-filter" onchange="loadTriage()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
+            <option value="action_needed">action-needed (default)</option>
+            <option value="inbox">nur inbox</option>
+            <option value="needs_review">nur needs_review</option>
+            <option value="all_active">action-needed + approved</option>
+          </select>
+          <label style="color:var(--tx2);margin-left:10px;">Datum:</label>
+          <select id="triage-date-field" onchange="loadTriage()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
+            <option value="date_received">📥 Eingangsdatum (default)</option>
+            <option value="invoice_date">📅 Rechnungsdatum</option>
+          </select>
+          <input type="search" id="triage-search" placeholder="Volltext (Provider, Subject)…" oninput="triageDebounceLoad()" style="flex:1;min-width:200px;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
+          <button class="btn-sm" onclick="triageResetFilters()" style="padding:5px 11px;font-size:12px;background:transparent;border:1px solid var(--bdr);color:var(--tx2);">↺ Reset</button>
+          <span id="triage-counter" style="color:var(--tx2);font-size:12px;font-weight:500;">→ — Docs</span>
+        </div>
+      </div>
+
+      <!-- BULK ACTION BAR -->
+      <div id="triage-bulk-bar" style="display:none;background:var(--blu-bg);border-left:3px solid var(--blu);padding:10px 14px;border-radius:6px;margin-bottom:14px;align-items:center;gap:12px;">
+        <span style="font-weight:600;color:var(--blu);"><span id="triage-bulk-count">0</span> Docs ausgewählt</span>
+        <button class="btn-sm" onclick="triageBulkApply()" style="background:var(--blu);color:white;padding:5px 14px;">→ Skills für alle ausführen</button>
+        <button class="btn-sm" onclick="triageBulkClear()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:5px 11px;">Auswahl löschen</button>
+      </div>
+
+      <!-- DOC-CARDS GRID -->
+      <div id="triage-cards" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card" style="text-align:center;color:var(--tx2);padding:30px;">
+          <div class="spinner" style="display:inline-block;margin-right:8px;"></div> Lade Docs…
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-linkrate">
+      <div class="page-header">
+        <h1>🔗 Linkrate-Monitoring</h1>
+        <p>Reconcile-Quote pro Provider — Skill-Hardening-Backlog (Iter 15.5)</p>
+      </div>
+
+      <!-- KPI TILES -->
+      <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+        <div class="card">
+          <div style="font-size:11px; color:var(--tx2); text-transform:uppercase; letter-spacing:0.5px;">Overall Linkrate</div>
+          <div id="lr-overall-pct" style="font-size:32px; font-weight:700; margin-top:6px;">—%</div>
+          <div id="lr-overall-detail" style="font-size:12px; color:var(--tx2); margin-top:4px;">—</div>
+        </div>
+        <div class="card">
+          <div style="font-size:11px; color:var(--tx2); text-transform:uppercase;">Verlinkt</div>
+          <div id="lr-overall-linked" style="font-size:24px; font-weight:600; color:var(--grn); margin-top:6px;">—</div>
+        </div>
+        <div class="card">
+          <div style="font-size:11px; color:var(--tx2); text-transform:uppercase;">Unverlinkt</div>
+          <div id="lr-overall-unlinked" style="font-size:24px; font-weight:600; color:var(--red); margin-top:6px;">—</div>
+        </div>
+        <div class="card">
+          <div style="font-size:11px; color:var(--tx2); text-transform:uppercase;">Unverlinkter Wert</div>
+          <div id="lr-amount-unlinked" style="font-size:24px; font-weight:600; color:var(--orng); margin-top:6px;">—</div>
+        </div>
+      </div>
+
+      <!-- TOP UNLINKED PROVIDERS -->
+      <div class="card">
+        <div class="card-head">
+          <h2>📉 Top Provider mit niedriger Linkrate</h2>
+          <div style="font-size:12px; color:var(--tx2);">Sortiert: niedrigste Quote zuerst, dann höchster unverlinkter Wert</div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="lr-provider-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; background:var(--bg1); border-bottom:1px solid var(--bdr);">
+                <th style="padding:8px 12px;">Provider</th>
+                <th style="padding:8px 12px;">Entity</th>
+                <th style="padding:8px 12px; text-align:right;">Total</th>
+                <th style="padding:8px 12px; text-align:right;">Verlinkt</th>
+                <th style="padding:8px 12px; text-align:right;">Linkrate</th>
+                <th style="padding:8px 12px; text-align:right;">Unverlinkter € Wert</th>
+              </tr>
+            </thead>
+            <tbody id="lr-provider-rows">
+              <tr><td colspan="6" style="padding:16px; text-align:center; color:var(--tx2);">Lade…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MONTHLY TREND -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head">
+          <h2>📈 12-Monats-Trend</h2>
+          <div style="font-size:12px; color:var(--tx2);">Linkrate pro Monat (Rechnungs-Datum)</div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="lr-month-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; background:var(--bg1); border-bottom:1px solid var(--bdr);">
+                <th style="padding:8px 12px;">Monat</th>
+                <th style="padding:8px 12px; text-align:right;">Total</th>
+                <th style="padding:8px 12px; text-align:right;">Verlinkt</th>
+                <th style="padding:8px 12px; text-align:right;">Unverlinkt</th>
+                <th style="padding:8px 12px; text-align:right;">Linkrate</th>
+                <th style="padding:8px 12px;">Bar</th>
+              </tr>
+            </thead>
+            <tbody id="lr-month-rows">
+              <tr><td colspan="6" style="padding:16px; text-align:center; color:var(--tx2);">Lade…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-mailrules">
       <div class="page-header">
         <h1>📬 Mail Rules</h1>
@@ -2790,13 +2931,15 @@ function showPage(pageId, btn) {
   if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
   if (pageId === 'mailrules') loadMailRules();
+  if (pageId === 'linkrate') loadLinkrate();
+  if (pageId === 'triage') loadTriage();
 }
 
 // Deep-link via hash: #system, #inbox, #finanzen, etc.
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','finanzen','vertraege','projekte','monatsabschluss','mailrules','system'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
@@ -6340,6 +6483,594 @@ const ACTION_COLORS = {
 
 const MATCH_FIELD_LABELS = { sender: 'Absender', subject: 'Betreff', both: 'Beides' };
 const MATCH_TYPE_LABELS  = { contains: 'enthält', exact: 'exakt', starts_with: 'beginnt mit' };
+
+// ═══════════════════════════════════════════════════════
+//  TRIAGE TAB — UI Variante C (Iter 15.2 + 15.3 Auto-Learning)
+// ═══════════════════════════════════════════════════════
+// State
+const gTriageFilters = { entity: [], provider: [], doc_type: [], domain: [] };
+const gTriageSelections = new Map();        // doc_id -> Set(skill_name) — current user choice
+const gTriageOriginalSuggested = new Map(); // doc_id -> Set(skill_name) — system suggestion (snapshot)
+const gTriageBulk = new Set();              // doc_ids in bulk-mode
+let gTriageDocs = [];
+let gTriageSkills = [];
+let gTriageSkillStats = {};                  // skill_name -> { correct, incorrect, total }
+let gTriageDebounce = null;
+
+function triageDebounceLoad() {
+  clearTimeout(gTriageDebounce);
+  gTriageDebounce = setTimeout(loadTriage, 250);
+}
+
+function triageResetFilters() {
+  gTriageFilters.entity = []; gTriageFilters.provider = [];
+  gTriageFilters.doc_type = []; gTriageFilters.domain = [];
+  document.getElementById('triage-search').value = '';
+  document.getElementById('triage-status-filter').value = 'action_needed';
+  document.getElementById('triage-date-field').value = 'date_received';
+  loadTriage();
+}
+
+function triageRenderChips() {
+  const wrap = document.getElementById('triage-chips');
+  if (!wrap) return;
+  const all = [];
+  for (const [field, vals] of Object.entries(gTriageFilters)) {
+    for (const v of vals) {
+      const safe = String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/'/g,'&#39;');
+      all.push(`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--blu);color:white;padding:3px 10px;border-radius:12px;font-size:12px;">
+        <strong style="opacity:0.7;">${field}:</strong> ${safe}
+        <span onclick="triageRemoveChip('${field}','${safe}')" style="cursor:pointer;opacity:0.7;font-weight:bold;margin-left:4px;">×</span>
+      </span>`);
+    }
+  }
+  wrap.innerHTML = all.length ? all.join('') : '<span style="color:var(--tx2);font-size:12px;font-style:italic;">keine Filter aktiv</span>';
+}
+
+function triageRemoveChip(field, val) {
+  gTriageFilters[field] = gTriageFilters[field].filter(v => v !== val);
+  triageRenderChips();
+  loadTriage();
+}
+
+function triageOpenFilterModal(field) {
+  // Iter 15.2 Stage 3 — Echte Multi-Select-Modal (statt prompt)
+  let options = [];
+  let title = field;
+  if (field === 'entity')   { options = ['privat','c3-convis-gmbh','c4-convis-sarl','unbekannt']; title = 'Entität'; }
+  if (field === 'doc_type') { options = ['Rechnung','Vertrag','Banking-CSV','Steuer','Sonstiges','Zahlungsbeleg']; title = 'Doc-Type'; }
+  if (field === 'domain')   { options = ['core','project','shared']; title = 'Domain (CORE/PROJECT/SHARED)'; }
+  if (field === 'provider') {
+    const set = new Set();
+    gTriageDocs.forEach(d => d.provider && set.add(d.provider));
+    options = Array.from(set).sort();
+    title = 'Provider';
+  }
+
+  const current = new Set(gTriageFilters[field] || []);
+
+  // Build modal DOM
+  let modal = document.getElementById('triage-modal');
+  if (modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'triage-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  const optionsHtml = options.map(o => {
+    const safe = o.replace(/"/g, '&quot;');
+    const checked = current.has(o) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;padding:8px 12px;border-radius:5px;cursor:pointer;background:transparent;" onmouseover="this.style.background='var(--bg1)'" onmouseout="this.style.background='transparent'">
+      <input type="checkbox" value="${safe}" ${checked} class="triage-modal-cb" style="margin-right:10px;accent-color:var(--blu);">
+      <span style="font-size:13px;">${o.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+    </label>`;
+  }).join('');
+
+  modal.innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;width:480px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;font-size:16px;">Filter: ${title}</h3>
+        <span style="font-size:12px;color:var(--tx2);">${options.length} verfügbar</span>
+      </div>
+      <div style="padding:8px 14px;border-bottom:1px solid var(--bdr);">
+        <input id="triage-modal-search" type="search" placeholder="Filtern…" style="width:100%;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:4px;font-size:13px;">
+      </div>
+      <div id="triage-modal-options" style="overflow-y:auto;flex:1;padding:6px 14px;">
+        ${optionsHtml || '<div style="text-align:center;padding:20px;color:var(--tx2);">Keine Optionen.</div>'}
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end;background:var(--bg1);">
+        <button class="btn-sm" onclick="triageModalSelectAll(true)" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:5px 11px;font-size:12px;">Alle</button>
+        <button class="btn-sm" onclick="triageModalSelectAll(false)" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:5px 11px;font-size:12px;">Keine</button>
+        <span style="flex:1;"></span>
+        <button class="btn-sm" onclick="document.getElementById('triage-modal').remove()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:6px 14px;">Abbrechen</button>
+        <button class="btn-sm" onclick="triageModalApply('${field}')" style="background:var(--blu);color:white;padding:6px 14px;font-weight:500;">Anwenden</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  // Search filter
+  const search = modal.querySelector('#triage-modal-search');
+  if (search) {
+    search.focus();
+    search.oninput = () => {
+      const q = search.value.toLowerCase();
+      modal.querySelectorAll('.triage-modal-cb').forEach(cb => {
+        const lbl = cb.parentElement;
+        lbl.style.display = cb.value.toLowerCase().includes(q) ? 'flex' : 'none';
+      });
+    };
+  }
+}
+
+function triageModalSelectAll(selected) {
+  document.querySelectorAll('#triage-modal .triage-modal-cb').forEach(cb => {
+    if (cb.parentElement.style.display !== 'none') cb.checked = selected;
+  });
+}
+
+function triageModalApply(field) {
+  const sel = [...document.querySelectorAll('#triage-modal .triage-modal-cb:checked')].map(cb => cb.value);
+  gTriageFilters[field] = sel;
+  document.getElementById('triage-modal').remove();
+  triageRenderChips();
+  loadTriage();
+}
+
+function triageBulkClear() {
+  gTriageBulk.clear();
+  triageRenderBulkBar();
+  document.querySelectorAll('.triage-bulk-cb').forEach(cb => cb.checked = false);
+}
+
+function triageRenderBulkBar() {
+  const bar = document.getElementById('triage-bulk-bar');
+  const cnt = document.getElementById('triage-bulk-count');
+  if (!bar || !cnt) return;
+  cnt.textContent = gTriageBulk.size;
+  bar.style.display = gTriageBulk.size > 0 ? 'flex' : 'none';
+}
+
+function triageToggleBulk(docId) {
+  if (gTriageBulk.has(docId)) gTriageBulk.delete(docId);
+  else gTriageBulk.add(docId);
+  triageRenderBulkBar();
+}
+
+async function triageBulkApply() {
+  if (gTriageBulk.size === 0) return;
+  if (!confirm(`Cascade auf ${gTriageBulk.size} Docs ausführen? Dies triggert Skill Router pro Doc.`)) return;
+  // For Stage 1: trigger cascade-trigger webhook (no per-doc skill control)
+  // Stage 2 will add per-doc skill selection in bulk
+  try {
+    const resp = await fetch(`${SUPABASE_URL.replace('supabase.co','app.n8n.cloud').replace('https://','https://').split('.supabase.co')[0]}/webhook/tgv-cascade-trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch_size: Math.min(gTriageBulk.size, 50), dry_run: false })
+    });
+    const data = await resp.json().catch(() => null);
+    alert(`Cascade angestoßen.\n${JSON.stringify(data, null, 2).slice(0, 400)}`);
+    triageBulkClear();
+    setTimeout(loadTriage, 2000);
+  } catch (e) {
+    alert(`Fehler: ${e.message}`);
+  }
+}
+
+// Suggest skills for a doc based on doc_type + target_stream + skills_done_versions
+function triageSuggestSkills(doc) {
+  const stream = String(doc.target_stream || doc.doc_type || '').toUpperCase();
+  const done = doc.skills_done_versions || {};
+  const out = [];
+
+  function add(name, label, desc, conf, suggested = false) {
+    out.push({ name, label, desc, confidence: conf, suggested, done: !!done[name] });
+  }
+
+  // Universal: store-to-drive always at end
+  if (stream.includes('RECHNUNG') || stream === 'INVOICE') {
+    add('tgv-pdf-invoice-extract', 'Rechnung extrahieren', 'PDF → strukturierte Felder (Datum, Betrag, IBAN, Vertragsnr)', 92, true);
+    add('tgv-resolve-supplier', 'Lieferant zuordnen', 'Provider-Match in kb_suppliers / md_suppliers', 88, true);
+    add('tgv-reconcile-payment', 'Zahlung verknüpfen', 'Match in txn_master ±45 Tage', 75, true);
+  }
+  if (stream.includes('VERTRAG') || stream === 'CONTRACT') {
+    add('tgv-extract-contract-pdf', 'Vertrag extrahieren', 'Klauseln, Laufzeit, Kündigungsfrist, Renewal', 84, true);
+    add('tgv-skill-upsert-contract-from-invoice', 'Vertrag-Stub anlegen', 'prf_contracts row erzeugen oder aktualisieren', 70, true);
+  }
+  if (stream.includes('BANKING') || stream === 'BANK') {
+    add('tgv-classify-csv', 'CSV klassifizieren', 'Format-Erkennung BV_DE / BNP_FR / timetrack', 90, true);
+    add('tgv-import-banking-csv', 'Banking CSV importieren', 'Zeilen → txn_master, Dedup', 88, true);
+  }
+  if (stream.includes('STEUER') || stream.includes('TAX')) {
+    add('tgv-skill-tax-extract', 'Steuer-Beleg extrahieren', 'Klassifikation als Steuer-relevant', 82, true);
+  }
+  // Always-show option
+  if (out.length === 0) {
+    add('tgv-pdf-invoice-extract', 'Rechnung extrahieren', 'Standard-Vorschlag bei unbekanntem Doc-Type', 50, false);
+  }
+  add('tgv-store-file-to-drive', 'In Drive ablegen', 'Routing nach DOCUMENTS/{entity}/{type}/{year}/', 99, true);
+
+  // Roadmap-Slots (Iter 15.2 Workshop-Output)
+  add('tgv-skill-classify-project', 'Projekt zuordnen ⏳ @Iter 16', 'Erkennt project_code, taggt Doc — Skill in der Mache', 0, false);
+  add('tgv-skill-detect-duplicate', 'Duplikat-Detection ⏳ @Iter 16', 'Findet ähnliche Docs (Provider+Betrag+Datum)', 0, false);
+
+  return out;
+}
+
+function triageDocCard(doc) {
+  const skills = triageSuggestSkills(doc);
+  const initialSuggested = new Set(skills.filter(s => s.suggested && s.confidence > 0).map(s => s.name));
+  // Snapshot system suggestion (Iter 15.3 Auto-Learning) — only on first render of this doc in session
+  if (!gTriageOriginalSuggested.has(doc.id)) {
+    gTriageOriginalSuggested.set(doc.id, new Set(initialSuggested));
+  }
+  const sel = gTriageSelections.get(doc.id) || new Set(initialSuggested);
+  gTriageSelections.set(doc.id, sel);
+
+  const isBulk = gTriageBulk.has(doc.id);
+  const bulkChecked = isBulk ? 'checked' : '';
+
+  const skillsHtml = skills.map(s => {
+    const isFuture = s.confidence === 0;
+    const isChecked = sel.has(s.name) && !isFuture;
+    const conf = s.confidence;
+    const confColor = conf >= 80 ? 'var(--grn)' : conf >= 50 ? 'var(--orng)' : conf > 0 ? 'var(--red)' : 'var(--tx2)';
+    const barW = Math.max(2, Math.min(100, conf));
+    const showLearningPill = conf > 0 && conf < 70;
+
+    return `
+      <label class="triage-skill-row" style="display:flex;align-items:flex-start;padding:7px 10px;border-radius:5px;cursor:${isFuture?'not-allowed':'pointer'};background:${isChecked?'var(--blu-bg)':'transparent'};border:1px solid ${isChecked?'var(--blu)':'transparent'};margin-bottom:3px;${isFuture?'opacity:0.65;':''}">
+        <input type="checkbox" ${isChecked?'checked':''} ${isFuture?'disabled':''}
+               onchange="triageToggleSkill(${doc.id}, '${s.name}', this.checked)"
+               style="margin-right:9px;margin-top:3px;accent-color:var(--blu);">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;">${s.label} <code style="font-size:10px;color:var(--tx2);background:var(--bg1);padding:1px 5px;border-radius:3px;">${s.name}</code> ${s.done?'<span style="color:var(--grn);font-size:11px;margin-left:6px;">✓ schon gelaufen</span>':''}</div>
+          <div style="font-size:11px;color:var(--tx2);margin-top:2px;">${s.desc}</div>
+          ${conf > 0 ? `<div style="font-size:11px;color:var(--tx2);margin-top:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+              <span style="display:inline-block;background:var(--bg1);height:4px;width:80px;border-radius:2px;overflow:hidden;"><span style="display:block;height:100%;width:${barW}%;background:${confColor};"></span></span>
+              <span style="color:${confColor};font-weight:500;">${conf}% sicher</span>
+              ${triageStatString(s.name)}
+              ${showLearningPill?'<span style="background:var(--blu-bg);color:var(--blu);padding:1px 7px;border-radius:9px;font-size:10px;">📚 deine Korrektur lernt das System</span>':''}
+            </div>` : `<div style="font-size:11px;color:var(--orng);margin-top:4px;">Skill in der Mache — Doc kann jetzt geflaggt werden</div>`}
+        </div>
+      </label>`;
+  }).join('');
+
+  const amount = doc.amount != null ? Number(doc.amount).toLocaleString('de-DE',{style:'currency',currency:doc.currency||'EUR',maximumFractionDigits:2}) : '';
+  const stateColor = doc.processing_state === 'inbox' ? 'var(--blu)' : doc.processing_state === 'needs_review' ? 'var(--orng)' : 'var(--tx2)';
+
+  return `
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · ${doc.doc_type || '?'} · ${doc.invoice_date || doc.date_received?.slice(0,10) || ''}</div>
+          <div style="font-size:14px;font-weight:600;margin-top:2px;">${(doc.provider || '— kein Provider —').replace(/&/g,'&amp;').replace(/</g,'&lt;')} <span style="font-weight:400;color:var(--tx2);">${amount}</span></div>
+          <div style="font-size:12px;color:var(--tx2);margin-top:3px;">
+            <span style="background:var(--bg1);padding:1px 8px;border-radius:10px;">${doc.entity || '?'}</span>
+            <span style="background:var(--bg1);padding:1px 8px;border-radius:10px;margin-left:4px;color:${stateColor};">${doc.processing_state || 'pending'}</span>
+            ${doc.drive_file_id ? '<span style="margin-left:6px;color:var(--tx2);">📎 PDF</span>' : ''}
+          </div>
+        </div>
+        <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
+               onchange="triageToggleBulk(${doc.id})"
+               title="Bulk-Auswahl"
+               style="margin-top:4px;width:18px;height:18px;accent-color:var(--blu);cursor:pointer;">
+      </div>
+      <div style="font-size:12px;color:var(--tx2);font-style:italic;margin-bottom:8px;">Was soll mit diesem Doc passieren?</div>
+      <div>${skillsHtml}</div>
+      <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);align-items:center;flex-wrap:wrap;">
+        <button class="btn-sm" onclick="triageApplyDoc(${doc.id})" style="background:var(--blu);color:white;padding:6px 14px;font-weight:500;">Zuweisen + ausführen</button>
+        ${doc.drive_file_id ? `<a class="btn-sm" href="https://drive.google.com/file/d/${doc.drive_file_id}/view" target="_blank" style="background:transparent;color:var(--tx);border:1px solid var(--bdr);padding:6px 14px;text-decoration:none;">Doc öffnen ↗</a>` : ''}
+        <button class="btn-sm" onclick="triageSuggestSkillGap(${doc.id})" title="Workshop 15.8 — neuer Skill nominieren" style="background:transparent;color:var(--orng);border:1px dashed var(--orng);padding:6px 12px;font-size:12px;margin-left:auto;">💡 Diesen Skill bräuchte ich…</button>
+      </div>
+    </div>`;
+}
+
+function triageToggleSkill(docId, skillName, checked) {
+  let s = gTriageSelections.get(docId);
+  if (!s) { s = new Set(); gTriageSelections.set(docId, s); }
+  if (checked) s.add(skillName); else s.delete(skillName);
+}
+
+// Iter 15.3 — Stats-Anzeige pro Skill ("3 von 5 Mal richtig" etc.)
+function triageStatString(skillName) {
+  const s = gTriageSkillStats[skillName];
+  if (!s || s.total < 1) return '';
+  const correctPct = s.total > 0 ? Math.round(100 * s.correct / s.total) : 0;
+  const color = correctPct >= 80 ? 'var(--grn)' : correctPct >= 50 ? 'var(--orng)' : 'var(--red)';
+  return `<span style="color:${color};font-size:10px;">· ${s.correct}/${s.total} richtig (${correctPct}%)</span>`;
+}
+
+// Iter 15.3 — Log User-Korrektur in learning_events via PostgREST INSERT
+async function triageLogLearning(docId, suggestion, choice, source = 'ui-c-15.2') {
+  // suggestion + choice are arrays of skill names
+  const sugSet = new Set(suggestion || []);
+  const choSet = new Set(choice || []);
+  const added = [...choSet].filter(s => !sugSet.has(s));      // user added
+  const removed = [...sugSet].filter(s => !choSet.has(s));    // user un-checked
+  const wasCorrection = added.length > 0 || removed.length > 0;
+
+  // Don't log no-ops (user accepted suggestion as-is) — saves DB rows
+  // Actually DO log to track confirmations too (per Auto-Learning Pflicht-Constraint).
+  // Compromise: log with was_correction=false for confirmations.
+
+  const row = {
+    context_doc_id: docId,
+    skill_name: 'tgv-skill-orchestrator',  // the meta-decision was about skill SET selection
+    field: 'skill_selection',
+    system_suggestion: { suggested: [...sugSet] },
+    user_choice: { selected: [...choSet], added, removed },
+    was_correction: wasCorrection,
+    source: source,
+    notes: wasCorrection
+      ? `User changed skill selection: +${added.length} added, -${removed.length} removed`
+      : `User confirmed system suggestion as-is`,
+  };
+
+  try {
+    // Iter 15.3: use authenticated supabase client (RLS requires auth.uid())
+    const { error } = await _supaClient.from('learning_events').insert(row);
+    if (error) console.warn('learning_events log failed:', error.message);
+  } catch (e) {
+    console.warn('learning_events log error:', e);
+  }
+}
+
+// Iter 15.8 — Skill-Gap-Suggestion: User nominiert fehlenden Skill
+async function triageSuggestSkillGap(docId) {
+  const description = prompt(
+    '💡 Diesen Skill bräuchte ich… (Workshop 15.8 → skill_gap_signals)\n\n' +
+    'Beschreibe kurz was der Skill tun soll (Freitext) und optional einen Skill-Namen-Vorschlag (z.B. "tgv-skill-classify-recurring"):',
+    ''
+  );
+  if (!description) return;
+
+  const suggestedName = prompt(
+    'Optional: Skill-Name-Vorschlag (z.B. "tgv-skill-detect-currency-mismatch"). Leer lassen wenn unklar:',
+    ''
+  );
+
+  try {
+    // Iter 15.8 separate Tabelle skill_gap_signals (Mig 056) — Roadmap-Lern-Loop
+    const row = {
+      context_doc_id: docId,
+      description: description,
+      suggested_name: suggestedName?.trim() || null,
+      status: 'new',
+      raw_payload: { source: 'ui-c-15.8.gap-suggestion', user_agent: navigator.userAgent.slice(0, 100) },
+    };
+    const { error } = await _supaClient.from('skill_gap_signals').insert(row);
+    if (!error) {
+      alert(`✅ Skill-Vorschlag gespeichert.\n\n"${description}"\n\nFließt in Roadmap-Lern-Loop (siehe Iter 16 Roadmap-Tab).`);
+    } else {
+      alert(`Speichern fehlgeschlagen: ${error.message}`);
+    }
+  } catch (e) {
+    alert(`Fehler: ${e.message}`);
+  }
+}
+
+// Iter 15.3 — Aggregate skill stats from learning_events for "X/Y richtig" display
+async function triageFetchSkillStats() {
+  try {
+    // Use _supaClient for RLS-aware reads (anon may also be allowed for SELECT but client handles auth automatically)
+    const { data: rows, error } = await _supaClient
+      .from('learning_events')
+      .select('user_choice,system_suggestion,was_correction')
+      .eq('field', 'skill_selection')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    const stats = {};
+    for (const r of rows) {
+      const suggested = (r.system_suggestion && r.system_suggestion.suggested) || [];
+      const chosen = (r.user_choice && r.user_choice.selected) || [];
+      const allSkills = new Set([...suggested, ...chosen]);
+      for (const sk of allSkills) {
+        if (!stats[sk]) stats[sk] = { correct: 0, incorrect: 0, total: 0 };
+        const wasSuggested = suggested.includes(sk);
+        const wasChosen = chosen.includes(sk);
+        // Correct = system suggested AND user kept it, OR system didn't suggest AND user didn't add
+        // But meaningful only if either side had it
+        if (wasSuggested && wasChosen)     { stats[sk].correct++; stats[sk].total++; }
+        else if (wasSuggested && !wasChosen) { stats[sk].incorrect++; stats[sk].total++; }  // removed
+        else if (!wasSuggested && wasChosen) { stats[sk].incorrect++; stats[sk].total++; }  // added (system was wrong)
+      }
+    }
+    gTriageSkillStats = stats;
+  } catch (e) {
+    console.warn('triageFetchSkillStats failed:', e);
+    gTriageSkillStats = {};
+  }
+}
+
+async function triageApplyDoc(docId) {
+  const sel = gTriageSelections.get(docId);
+  if (!sel || sel.size === 0) { alert('Keine Skills ausgewählt.'); return; }
+  if (!confirm(`Cascade für Doc #${docId} starten?\nSkills: ${[...sel].join(', ')}`)) return;
+
+  // Iter 15.3 — Log user choice into learning_events BEFORE triggering router
+  const orig = gTriageOriginalSuggested.get(docId) || new Set();
+  await triageLogLearning(docId, [...orig], [...sel], 'ui-c-15.2.apply');
+
+  try {
+    const N8N_BASE = 'https://jcbinetti.app.n8n.cloud';
+    const resp = await fetch(`${N8N_BASE}/webhook/tgv-skill-router`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_id: docId, _trigger: 'ui-c-15.2', _skills_requested: [...sel] })
+    });
+    if (resp.ok) {
+      alert(`✅ Skill Router angestoßen für Doc #${docId}.\nLäuft asynchron in n8n.\n📚 Auswahl in learning_events geloggt.`);
+      setTimeout(loadTriage, 2000);
+    } else {
+      alert(`Fehler: HTTP ${resp.status}\n${(await resp.text()).slice(0,300)}`);
+    }
+  } catch (e) {
+    alert(`Fehler: ${e.message}`);
+  }
+}
+
+async function loadTriage() {
+  const box = document.getElementById('triage-cards');
+  if (!box) return;
+  box.innerHTML = '<div class="card" style="text-align:center;color:var(--tx2);padding:30px;"><div class="spinner" style="display:inline-block;margin-right:8px;"></div> Lade Docs…</div>';
+
+  // Iter 15.3 — Lazy-Load skill-stats (parallel zur doc-fetch)
+  triageFetchSkillStats();  // fire & forget, render-cycle picks it up
+
+  try {
+    const status = document.getElementById('triage-status-filter').value;
+    const dateField = document.getElementById('triage-date-field').value;
+    const search = (document.getElementById('triage-search').value || '').trim();
+
+    // Build PostgREST query
+    const fields = 'id,doc_type,target_stream,provider,entity,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,skills_done_versions,subject,mail_subject';
+    const filters = [];
+    if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review)');
+    else if (status === 'inbox') filters.push('processing_state=eq.inbox');
+    else if (status === 'needs_review') filters.push('processing_state=eq.needs_review');
+    else if (status === 'all_active') filters.push('processing_state=in.(inbox,needs_review,triaged)');
+
+    if (gTriageFilters.entity.length)   filters.push(`entity=in.(${gTriageFilters.entity.map(encodeURIComponent).join(',')})`);
+    if (gTriageFilters.provider.length) filters.push(`provider=in.(${gTriageFilters.provider.map(encodeURIComponent).join(',')})`);
+    if (gTriageFilters.doc_type.length) filters.push(`doc_type=in.(${gTriageFilters.doc_type.map(encodeURIComponent).join(',')})`);
+
+    const orderField = dateField === 'invoice_date' ? 'invoice_date.desc.nullslast' : 'date_received.desc.nullslast';
+    const url = `documents?select=${fields}&${filters.join('&')}&order=${orderField}&limit=100`;
+
+    let docs = await supa(url);
+    docs = docs.filter(r => !isTestData(r));
+    if (search) {
+      const term = search.toLowerCase();
+      docs = docs.filter(d =>
+        (d.provider && d.provider.toLowerCase().includes(term)) ||
+        (d.subject && d.subject.toLowerCase().includes(term)) ||
+        (d.mail_subject && d.mail_subject.toLowerCase().includes(term))
+      );
+    }
+    gTriageDocs = docs;
+
+    // Update counter + nav-badge
+    const counterEl = document.getElementById('triage-counter');
+    if (counterEl) counterEl.textContent = `→ ${docs.length} Docs`;
+    const badge = document.getElementById('triage-badge');
+    if (badge) {
+      badge.textContent = docs.length;
+      badge.style.display = docs.length > 0 ? 'inline-block' : 'none';
+    }
+
+    // Render cards
+    if (docs.length === 0) {
+      box.innerHTML = `<div class="card" style="text-align:center;padding:40px;color:var(--tx2);">
+        <div style="font-size:18px;margin-bottom:8px;">🎉 Inbox leer</div>
+        <div style="font-size:13px;">Keine Docs mit aktuellen Filtern. Filter ändern oder "auch approved" wählen.</div>
+      </div>`;
+    } else {
+      box.innerHTML = docs.map(triageDocCard).join('');
+    }
+
+    triageRenderChips();
+    triageRenderBulkBar();
+
+  } catch (err) {
+    console.error('loadTriage error:', err);
+    box.innerHTML = `<div class="card" style="background:var(--red-bg);color:var(--red);padding:14px;">Fehler: ${err.message || err}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LINKRATE TAB (Iter 15.5)
+// ═══════════════════════════════════════════════════════
+async function loadLinkrate() {
+  const fmtEur = v => (v == null ? '—' : Number(v).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }));
+  const fmtPct = v => (v == null ? '—' : Number(v).toFixed(1) + '%');
+
+  function colorForPct(pct) {
+    if (pct >= 80) return 'var(--grn)';
+    if (pct >= 50) return 'var(--orng)';
+    return 'var(--red)';
+  }
+
+  try {
+    // 3 parallele Calls auf die Views
+    const [overall, byProvider, byMonth] = await Promise.all([
+      supa('v_linkrate_overall?select=*'),
+      supa('v_linkrate_by_provider?select=*&limit=25'),
+      supa('v_linkrate_by_month?select=*'),
+    ]);
+
+    // KPI Tiles
+    const o = (overall && overall[0]) || {};
+    const pctEl = document.getElementById('lr-overall-pct');
+    if (pctEl) {
+      pctEl.textContent = fmtPct(o.link_pct);
+      pctEl.style.color = colorForPct(parseFloat(o.link_pct || 0));
+    }
+    const detailEl = document.getElementById('lr-overall-detail');
+    if (detailEl) detailEl.textContent = `${o.docs_linked || 0} von ${o.docs_total || 0} verlinkt`;
+    const linkEl = document.getElementById('lr-overall-linked');
+    if (linkEl) linkEl.textContent = (o.docs_linked || 0).toLocaleString('de-DE');
+    const unlinkEl = document.getElementById('lr-overall-unlinked');
+    if (unlinkEl) unlinkEl.textContent = (o.docs_unlinked || 0).toLocaleString('de-DE');
+
+    // Sum amount unlinked from provider rows (DB doesn't aggregate it in overall view)
+    const totalUnlinked = (byProvider || []).reduce((s, r) => s + Number(r.amount_unlinked_eur || 0), 0);
+    const amtEl = document.getElementById('lr-amount-unlinked');
+    if (amtEl) amtEl.textContent = fmtEur(totalUnlinked);
+
+    // Provider table
+    const provBody = document.getElementById('lr-provider-rows');
+    if (provBody) {
+      if (!byProvider || !byProvider.length) {
+        provBody.innerHTML = '<tr><td colspan="6" style="padding:16px; text-align:center; color:var(--tx2);">Keine Provider mit ≥2 Docs gefunden.</td></tr>';
+      } else {
+        provBody.innerHTML = byProvider.map(r => {
+          const pct = parseFloat(r.link_pct || 0);
+          return `
+            <tr style="border-bottom:1px solid var(--bdr);">
+              <td style="padding:8px 12px; font-weight:500;">${(r.provider || '—').replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td>
+              <td style="padding:8px 12px; color:var(--tx2);">${r.entity || '—'}</td>
+              <td style="padding:8px 12px; text-align:right;">${r.docs_total || 0}</td>
+              <td style="padding:8px 12px; text-align:right; color:var(--grn);">${r.docs_linked || 0}</td>
+              <td style="padding:8px 12px; text-align:right; font-weight:600; color:${colorForPct(pct)};">${fmtPct(r.link_pct)}</td>
+              <td style="padding:8px 12px; text-align:right; color:var(--orng);">${fmtEur(r.amount_unlinked_eur)}</td>
+            </tr>`;
+        }).join('');
+      }
+    }
+
+    // Monthly trend with mini-bar
+    const monthBody = document.getElementById('lr-month-rows');
+    if (monthBody) {
+      if (!byMonth || !byMonth.length) {
+        monthBody.innerHTML = '<tr><td colspan="6" style="padding:16px; text-align:center; color:var(--tx2);">Keine Daten.</td></tr>';
+      } else {
+        monthBody.innerHTML = byMonth.map(r => {
+          const pct = parseFloat(r.link_pct || 0);
+          const barW = Math.max(2, Math.min(100, pct));
+          return `
+            <tr style="border-bottom:1px solid var(--bdr);">
+              <td style="padding:8px 12px; font-family:monospace;">${r.month || '—'}</td>
+              <td style="padding:8px 12px; text-align:right;">${r.docs_total || 0}</td>
+              <td style="padding:8px 12px; text-align:right; color:var(--grn);">${r.docs_linked || 0}</td>
+              <td style="padding:8px 12px; text-align:right; color:var(--red);">${r.docs_unlinked || 0}</td>
+              <td style="padding:8px 12px; text-align:right; font-weight:600; color:${colorForPct(pct)};">${fmtPct(r.link_pct)}</td>
+              <td style="padding:8px 12px;">
+                <div style="background:var(--bg1); height:8px; border-radius:4px; width:120px; overflow:hidden;">
+                  <div style="height:100%; width:${barW}%; background:${colorForPct(pct)};"></div>
+                </div>
+              </td>
+            </tr>`;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('loadLinkrate failed:', err);
+    const provBody = document.getElementById('lr-provider-rows');
+    if (provBody) provBody.innerHTML = `<tr><td colspan="6" style="padding:16px; text-align:center; color:var(--red);">Fehler: ${err.message || err}</td></tr>`;
+  }
+}
 
 async function loadMailRules() {
   const wrap = document.getElementById('mailrules-content');
