@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.43 — 2026-05-09 — Iter 16.0f Fixup-Pack: B1 Pre-Selection skip done, B2 meta-version-fix, B3 Bulk per-doc selections iterate, B7 Search-by-ID #NNN -->
+<!-- TGV Dashboard v11.44 — 2026-05-09 — Iter 16.UI Polish-Pack: B4 Toast statt alert + Card-Fadeout, B5 Search-Placeholder discoverable, B8 Modal-Backdrop fix (CSS-vars aliases) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.43">
-<title>TGV Dashboard v11.43 — Financial OS</title>
+<meta name="version" content="11.44">
+<title>TGV Dashboard v11.44 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -38,6 +38,16 @@
   --sidebar-w-col: 56px;
   --topbar-h: 56px;
   --filterbar-h: 44px;
+
+  /* Iter 16.UI v11.44 — Aliases für die vielen var(--bg)/var(--tx)/var(--bdr)
+     Verwendungen im Triage-Tab (B8 Filter-Modal Transparenz Root-Cause:
+     33 undefined-var-refs renderten als no-color → durchsichtig). */
+  --bg:   var(--s0);   /* Card-/Modal-Background */
+  --bg1:  var(--s1);   /* Subtle background (filter-bar, hover) */
+  --bg2:  var(--s2);   /* Slightly darker (zebra rows) */
+  --bdr:  var(--s3);   /* Border / divider */
+  --tx:   var(--tx0);  /* Primary text */
+  --orng: #B45309;     /* Orange = --amb */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2053,7 +2063,7 @@ body.chat-open #main-content {
             <option value="date_received">📥 Eingangsdatum (default)</option>
             <option value="invoice_date">📅 Rechnungsdatum</option>
           </select>
-          <input type="search" id="triage-search" placeholder="Volltext (Provider, Subject)…" oninput="triageDebounceLoad()" style="flex:1;min-width:200px;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
+          <input type="search" id="triage-search" placeholder="🔍 Suche  (Provider, Subject, oder #7322)" oninput="triageDebounceLoad()" style="flex:1;min-width:240px;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 11px;border-radius:4px;font-size:13px;">
           <button class="btn-sm" onclick="triageResetFilters()" style="padding:5px 11px;font-size:12px;background:transparent;border:1px solid var(--bdr);color:var(--tx2);">↺ Reset</button>
           <span id="triage-counter" style="color:var(--tx2);font-size:12px;font-weight:500;">→ — Docs</span>
         </div>
@@ -6650,7 +6660,7 @@ async function triageBulkApply() {
   const empties = plan.filter(p => p.skills.length === 0);
   const withSkills = plan.filter(p => p.skills.length > 0);
   if (withSkills.length === 0) {
-    alert(`Keine Skills vorausgewählt für die ${docIds.length} markierten Docs.\nBitte erst pro Doc Skills aktivieren (Checkbox in der Card).`);
+    triageToast(`Keine Skills vorausgewählt für die ${docIds.length} markierten Docs.\nBitte erst pro Doc Skills aktivieren (Checkbox in der Card).`, 'warn');
     return;
   }
   let preview = `Bulk-Apply auf ${withSkills.length} Doc(s):\n\n` +
@@ -6678,12 +6688,16 @@ async function triageBulkApply() {
       errors.push(`#${p.id}: ${e.message}`);
     }
   }
-  let msg = `✅ Bulk-Apply done.\n  OK: ${ok}\n  Fehler: ${fail}`;
-  if (errors.length) msg += `\n\n${errors.slice(0, 5).join('\n')}`;
-  msg += `\n\n📚 Pro Doc je 1 learning_event geloggt (source=ui-c-16.0f.bulk).`;
-  alert(msg);
+  let msg = `✅ Bulk: ${ok} OK${fail ? `, ${fail} Fehler` : ''}`;
+  if (errors.length) msg += `\n${errors.slice(0, 3).join('\n')}`;
+  msg += `\n📚 ${ok} learning_event${ok === 1 ? '' : 's'} geloggt`;
+  triageToast(msg, fail ? 'warn' : 'success');
+  // Cards der erfolgreichen Docs ausfaden
+  for (const p of withSkills) {
+    if (errors.findIndex(e => e.indexOf('#' + p.id) === 0) === -1) triageFadeRemoveCard(p.id);
+  }
   triageBulkClear();
-  setTimeout(loadTriage, 2000);
+  setTimeout(loadTriage, 2200);
 }
 
 // Suggest skills for a doc based on doc_type + target_stream + skills_done_versions
@@ -6915,9 +6929,53 @@ async function triageFetchSkillStats() {
   }
 }
 
+// Iter 16.UI v11.44 — Toast helper (B4) — non-blocking, auto-dismiss, stackbar
+function triageToast(message, type) {
+  type = type || 'info';
+  let box = document.getElementById('triage-toast-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'triage-toast-box';
+    box.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:11000;display:flex;flex-direction:column;gap:8px;max-width:420px;';
+    document.body.appendChild(box);
+  }
+  const colors = {
+    info:    { bg: 'var(--blu-bg)', bd: 'var(--blu-bd)', tx: 'var(--blu)' },
+    success: { bg: 'var(--grn-bg)', bd: 'var(--grn-bd)', tx: 'var(--grn)' },
+    warn:    { bg: 'var(--amb-bg)', bd: 'var(--amb-bd)', tx: 'var(--amb)' },
+    err:     { bg: 'var(--red-bg)', bd: 'var(--red-bd)', tx: 'var(--red)' },
+  };
+  const c = colors[type] || colors.info;
+  const t = document.createElement('div');
+  t.style.cssText = `background:${c.bg};border:1px solid ${c.bd};color:${c.tx};padding:11px 16px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.18);font-size:13px;line-height:1.45;opacity:0;transform:translateY(8px);transition:opacity 180ms ease,transform 180ms ease;white-space:pre-line;`;
+  t.textContent = message;
+  box.appendChild(t);
+  requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+  setTimeout(() => {
+    t.style.opacity = '0'; t.style.transform = 'translateY(8px)';
+    setTimeout(() => t.remove(), 220);
+  }, type === 'err' ? 6000 : 3500);
+}
+
+// Card fade-out + remove (B4)
+function triageFadeRemoveCard(docId) {
+  // The card has no stable id — find via the #docId header
+  const cards = document.querySelectorAll('#triage-cards > .card');
+  for (const c of cards) {
+    if (c.textContent && c.textContent.indexOf('#' + docId) === 0 || c.innerHTML.indexOf('#' + docId + ' ·') >= 0) {
+      c.style.transition = 'opacity 250ms ease, transform 250ms ease, max-height 350ms ease';
+      c.style.opacity = '0';
+      c.style.transform = 'translateX(20px)';
+      setTimeout(() => { c.style.maxHeight = '0'; c.style.padding = '0'; c.style.margin = '0'; }, 200);
+      setTimeout(() => c.remove(), 600);
+      break;
+    }
+  }
+}
+
 async function triageApplyDoc(docId) {
   const sel = gTriageSelections.get(docId);
-  if (!sel || sel.size === 0) { alert('Keine Skills ausgewählt.'); return; }
+  if (!sel || sel.size === 0) { triageToast('Keine Skills ausgewählt.', 'warn'); return; }
   if (!confirm(`Cascade für Doc #${docId} starten?\nSkills: ${[...sel].join(', ')}`)) return;
 
   // Iter 15.3 — Log user choice into learning_events BEFORE triggering router
@@ -6929,16 +6987,20 @@ async function triageApplyDoc(docId) {
     const resp = await fetch(`${N8N_BASE}/webhook/tgv-skill-router`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doc_id: docId, _trigger: 'ui-c-15.2', _skills_requested: [...sel] })
+      body: JSON.stringify({ doc_id: docId, _trigger: 'ui-c-16.UI.apply', _skills_requested: [...sel] })
     });
     if (resp.ok) {
-      alert(`✅ Skill Router angestoßen für Doc #${docId}.\nLäuft asynchron in n8n.\n📚 Auswahl in learning_events geloggt.`);
-      setTimeout(loadTriage, 2000);
+      // B4 — Toast statt blocking alert + Card-Fadeout statt 2s wait
+      triageToast(`✅ Doc #${docId}: ${sel.size} Skill(s) gestartet.\n📚 in learning_events geloggt.`, 'success');
+      triageFadeRemoveCard(docId);
+      // Reload nach kurzem Delay damit der DB-State (status, confidence) frisch ist
+      setTimeout(loadTriage, 2200);
     } else {
-      alert(`Fehler: HTTP ${resp.status}\n${(await resp.text()).slice(0,300)}`);
+      const body = (await resp.text()).slice(0, 240);
+      triageToast(`Fehler HTTP ${resp.status}\n${body}`, 'err');
     }
   } catch (e) {
-    alert(`Fehler: ${e.message}`);
+    triageToast(`Fehler: ${e.message}`, 'err');
   }
 }
 
