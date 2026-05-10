@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.52 — 2026-05-10 — Iter 20 Block A Mental-Model auf Block-C-Basis: Confidence-3-Trennung (Doc-Felder vs Skill-Relevanz vs Trefferquote) + inbox→"neu"-Rename + ⓘ-Click-Popups + Duplicate-Stub-Banner + Skill-Aktivität-Rename. Behält Block-C: Architektur v8 Live-Hook + agent_events Stream + Pattern-Lifecycle + Buchhalter-Vorschau. -->
+<!-- TGV Dashboard v11.53 — 2026-05-10 — Iter 20 Block B auf Block-A+C-Basis: MCP-Tool-Hub Tab "🤖 Aktionen" (22 Tools in 6 Gruppen, Karten-Layout, Execute-Modal, last-3-History, Schicht-A-Injection-Schutz) + Skill-History-Vollausbau im Side-Panel (tokens/cost_eur/duration/loops/ROI/Lern-Hinweis aus pattern_rules.scope=skill_routing Mig 061) + Mail-Rules Live-Test-Button. Behält Block-A: Confidence-3-Trennung + ⓘ-Click-Popups + Duplicate-Banner. Behält Block-C: Architektur v8 Live-Hook + agent_events Stream + Pattern-Lifecycle + Buchhalter-Vorschau. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.52">
-<title>TGV Dashboard v11.52 — Financial OS</title>
+<meta name="version" content="11.53">
+<title>TGV Dashboard v11.53 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1027,6 +1027,71 @@ table th.num, table td.num { text-align: right !important; }
 .contract-row:hover td { background: #e0f2f2 !important; }
 .contract-row.selected td { background: #d0ede9 !important; border-left: 3px solid var(--teal); }
 
+/* ─── MCP-TOOL-HUB (Iter 20.2, Block B — Workshop Q3 Karten-Layout) ─── */
+.actions-group { margin-bottom: 24px; }
+.actions-group-head {
+  display: flex; align-items: baseline; gap: 8px;
+  margin: 14px 0 10px;
+  font-size: 13px; font-weight: 600; color: var(--tx);
+  border-bottom: 1px solid var(--bdr); padding-bottom: 6px;
+}
+.actions-group-head .ag-icon { font-size: 16px; }
+.actions-group-head .ag-count { font-size: 11px; color: var(--tx2); font-weight: 400; }
+.actions-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.tool-card {
+  background: var(--bg1); border: 1px solid var(--bdr); border-radius: 6px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tool-card:hover { border-color: var(--blu); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.tool-card .tc-name {
+  font-size: 12px; font-weight: 600; color: var(--tx);
+  font-family: monospace; letter-spacing: -0.2px;
+}
+.tool-card .tc-what { font-size: 11px; color: var(--tx); line-height: 1.4; }
+.tool-card .tc-when {
+  font-size: 10px; color: var(--tx2); font-style: italic;
+  border-left: 2px solid var(--bdr); padding-left: 6px; line-height: 1.35;
+}
+.tool-card .tc-actions {
+  display: flex; gap: 6px; align-items: center; margin-top: 4px;
+  border-top: 1px dashed var(--bdr); padding-top: 6px;
+}
+.tool-card .tc-run-btn {
+  background: var(--blu); color: #fff; border: 0; border-radius: 3px;
+  padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.tool-card .tc-run-btn:hover { filter: brightness(1.1); }
+.tool-card .tc-history-btn {
+  background: transparent; border: 1px solid var(--bdr); color: var(--tx2);
+  border-radius: 3px; padding: 4px 8px; font-size: 10px; cursor: pointer;
+}
+.tool-card .tc-history { font-size: 10px; color: var(--tx2); margin-top: 4px; }
+.tool-card .tc-history-row { font-family: monospace; padding: 2px 0; opacity: 0.8; }
+
+/* MCP-Run-Modal */
+#mcp-run-modal .modal-body-text { text-align: left; }
+.mrf-row { display: grid; gap: 4px; margin-bottom: 10px; }
+.mrf-row label {
+  font-size: 11px; font-weight: 600; color: var(--tx2);
+  display: flex; align-items: center; gap: 6px;
+}
+.mrf-row .mrf-help { font-size: 10px; font-weight: 400; color: var(--tx2); font-style: italic; }
+.mrf-row input, .mrf-row select, .mrf-row textarea {
+  background: var(--s1); color: var(--tx1); border: 1px solid var(--brd);
+  border-radius: 4px; padding: 6px 9px; font-size: 12px;
+}
+.mrf-row textarea { min-height: 60px; font-family: monospace; }
+#mcp-run-output {
+  background: var(--bg1); border: 1px solid var(--bdr); border-radius: 4px;
+  padding: 10px; font-family: monospace; font-size: 11px; line-height: 1.4;
+  max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  margin-top: 10px;
+}
+
 /* ─── SIDE PANEL (Iter 20.1 — Side-Panel-C Stub, Workshop Q1 b→a Pfad) ─── */
 /* Globaler Master-Detail-Container.  Triage öffnet Doc-Detail rechts;
    geplant für Inbox / Verträge / Finanzen / Monatsabschluss in Welle (a) Erweiterung.
@@ -1850,6 +1915,11 @@ body.chat-open #main-content {
       <span class="nav-label">Linkrate</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('actions', this)" title="MCP-Tool-Hub: alle 22 TGV-Tools als klickbare Karten (Lesen, Aktionen, Suche, Skill-Steuerung, Workflow, Audit). Ergänzung zum 💬 Chat — gezielt klicken statt fragen. Iter 20.2 Block B.">
+      <span class="nav-icon">🤖</span>
+      <span class="nav-label">Aktionen</span>
+    </button>
+
     <div class="sidebar-section-label" title="TGV PROJEKT — projektgetriebene Arbeit pro Entity (consulting, IT, Marketing, ai-healthy-ship, ...). Eigene Skills + Rechte + Theme. Phase 2 ab Iter 22+.">PROJEKT · Workspace</div>
 
     <button class="nav-item" disabled style="opacity:0.45;cursor:not-allowed" title="TGV-PROJEKT-Domain: Phase 2 Roadmap. Skills wie Steuerberater, Copywriter, Projektsteuer, Controller, Graphikdesigner, Reisekosten-Master in projekt-spezifischer Konfiguration. Aktiviert ab Iter 22+ (siehe Memory project_tgv_core_vs_projekt_vision).">
@@ -2632,12 +2702,45 @@ body.chat-open #main-content {
       <div class="card">
         <div class="card-head" style="display:flex;justify-content:space-between;align-items:center">
           <h2>📋 Regeln</h2>
-          <button class="btn-sm btn-approve" onclick="openMailRuleModal()" style="padding:7px 16px">➕ Neue Regel</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-sm" onclick="openMailRuleTestModal()" style="padding:7px 14px;background:var(--s2);color:var(--tx1);border:1px solid var(--s3);" title="Beispiel-Mail-Subject + Sender gegen alle aktiven Regeln matchen — zeigt was gegriffen hätte. 100% client-side, schreibt nichts.">🧪 Test mit Beispiel-Mail</button>
+            <button class="btn-sm btn-approve" onclick="openMailRuleModal()" style="padding:7px 16px">➕ Neue Regel</button>
+          </div>
         </div>
         <div class="card-body no-pad">
           <div id="mailrules-content">
             <div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIL RULE TEST MODAL (Iter 20.1b — Live-Test ohne n8n-Trigger) -->
+    <div class="modal-bg" id="mailrule-test-modal">
+      <div class="modal-box" style="max-width:560px;width:95%">
+        <div class="modal-title">🧪 Mail-Regeln testen</div>
+        <div class="modal-body-text" style="text-align:left">
+          <div style="font-size:11px;color:var(--tx2);margin-bottom:12px;">
+            Trage einen fiktiven Sender + Subject ein und sieh welche aktiven Regeln gegriffen hätten. Pure Browser-Simulation — schreibt nichts und sendet keine Mail.
+          </div>
+          <div style="display:grid;gap:10px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Sender (Beispiel)</label>
+              <input id="mrt-sender" type="text" placeholder="z.B. billing@vercel.com" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--tx2);display:block;margin-bottom:4px">Subject (Beispiel)</label>
+              <input id="mrt-subject" type="text" placeholder="z.B. Rechnung März 2026 Vercel Pro" style="width:100%;padding:7px 10px;border:1px solid var(--brd);border-radius:6px;font-size:13px;background:var(--s1);color:var(--tx1)">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:14px;">
+            <button class="btn-sm btn-approve" onclick="runMailRuleTest()" style="padding:7px 16px">▶ Match prüfen</button>
+            <button class="btn-sm" onclick="document.getElementById('mrt-sender').value='';document.getElementById('mrt-subject').value='';document.getElementById('mrt-result').innerHTML='';" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:7px 14px;">↻ Reset</button>
+          </div>
+          <div id="mrt-result" style="margin-top:14px;"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" onclick="closeMailRuleTestModal()">Schließen</button>
         </div>
       </div>
     </div>
@@ -3039,6 +3142,57 @@ body.chat-open #main-content {
                 style="width:100%;height:calc(100vh - 200px);min-height:600px;border:0;display:block;"
                 title="TGV Architektur Visualisierung v8"
                 loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: AKTIONEN (Iter 20.2 Block B — MCP-Tool-Hub)
+         22 Tools aus tgv_mcp_server.py in 6 Use-Case-Gruppen.
+         Karten-Pattern: Was/Wann/Optionen/Ausführen/History.
+         Bridge zum 💬 Chat: "frag den Chat" Button pro Karte.
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-actions">
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <h1>🤖 Aktionen <span style="font-size:11px;color:var(--tx2);font-weight:400;margin-left:8px;">MCP-Tool-Hub</span></h1>
+          <p>22 TGV-Tools als klickbare Karten — gezielt ausführen ohne Chat-Frage. Ergänzt den 💬 Chat (rechts unten), der die Tools selbst aussucht.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-sm" onclick="toggleChat()" style="background:var(--blu);color:#fff;border:0;padding:6px 12px;" title="Chat öffnen — KI sucht das passende Tool selbst aus.">💬 Chat öffnen</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-body" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--tx2);">
+          <span><strong>Gruppen:</strong></span>
+          <a href="#actions-g-read"   style="color:var(--blu);text-decoration:none;" title="Read-only Tools — DB-Status abfragen.">📊 Lesen/Status (8)</a>
+          <a href="#actions-g-write"  style="color:var(--blu);text-decoration:none;" title="Tools die DB-Inhalte ändern oder Mails verschicken.">✏️ Aktionen/Schreiben (5)</a>
+          <a href="#actions-g-search" style="color:var(--blu);text-decoration:none;" title="Volltext + Wissensbasis-Suche.">🔍 Suche (2)</a>
+          <a href="#actions-g-skill"  style="color:var(--blu);text-decoration:none;" title="Skill-Pipeline triggern für ein Doc oder die ganze Inbox.">⚙️ Skill-Steuerung (2)</a>
+          <a href="#actions-g-flow"   style="color:var(--blu);text-decoration:none;" title="n8n-Workflow-Schedule via API verändern.">🔄 Workflow-Steuerung (1)</a>
+          <a href="#actions-g-audit"  style="color:var(--blu);text-decoration:none;" title="Audit-Trail: agent_events / agent_decisions / agent_conversations.">🧠 Audit (4)</a>
+        </div>
+      </div>
+
+      <div id="actions-content">
+        <div class="spinner-wrap"><div class="spinner"></div> Initialisiere Tool-Hub…</div>
+      </div>
+    </div>
+
+    <!-- MCP-Run-Modal (Iter 20.2) -->
+    <div class="modal-bg" id="mcp-run-modal">
+      <div class="modal-box" style="max-width:640px;width:95%;text-align:left;">
+        <div class="modal-title" id="mcp-modal-title" style="font-family:monospace;">Tool ausführen</div>
+        <div class="modal-body-text">
+          <div id="mcp-modal-what" style="font-size:12px;color:var(--tx);margin-bottom:6px;"></div>
+          <div id="mcp-modal-when" style="font-size:11px;color:var(--tx2);font-style:italic;border-left:2px solid var(--bdr);padding-left:8px;margin-bottom:14px;"></div>
+          <div id="mcp-modal-form"><!-- generated --></div>
+          <div id="mcp-run-output" style="display:none;"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-sm btn-approve" id="mcp-run-go" onclick="mcpRunExecute()" style="padding:7px 16px">▶ Ausführen</button>
+          <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" onclick="mcpRunClose()">Schließen</button>
+        </div>
       </div>
     </div>
 
@@ -3679,6 +3833,7 @@ function showPage(pageId, btn) {
   if (pageId === 'linkrate') loadLinkrate();
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
+  if (pageId === 'actions') loadActions();
 }
 
 // Lazy-load Architektur-iframe nur beim ersten Anzeigen (CDN-Last vermeiden bis benötigt)
@@ -3691,7 +3846,7 @@ function loadArchitektur() {
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
@@ -8428,6 +8583,65 @@ async function saveMailRule() {
   }
 }
 
+// Iter 20.1b — Live-Test der Mail-Regeln (client-side, kein n8n-Call)
+function openMailRuleTestModal() {
+  document.getElementById('mailrule-test-modal').classList.add('open');
+  setTimeout(() => document.getElementById('mrt-sender')?.focus(), 100);
+}
+function closeMailRuleTestModal() {
+  document.getElementById('mailrule-test-modal').classList.remove('open');
+}
+function _mrtMatchOne(rule, sender, subject) {
+  const tested = [];
+  if (rule.match_field === 'sender' || rule.match_field === 'both') tested.push({ field: 'sender', val: sender });
+  if (rule.match_field === 'subject' || rule.match_field === 'both') tested.push({ field: 'subject', val: subject });
+  const mv = (rule.match_value || '').toLowerCase();
+  if (!mv) return { matched: false, why: 'leerer match_value' };
+  for (const t of tested) {
+    const v = (t.val || '').toLowerCase();
+    let hit = false;
+    if (rule.match_type === 'exact') hit = v === mv;
+    else if (rule.match_type === 'starts_with') hit = v.startsWith(mv);
+    else hit = v.includes(mv); // contains default
+    if (hit) return { matched: true, on: t.field };
+  }
+  return { matched: false };
+}
+function runMailRuleTest() {
+  const sender  = (document.getElementById('mrt-sender').value  || '').trim();
+  const subject = (document.getElementById('mrt-subject').value || '').trim();
+  const out = document.getElementById('mrt-result');
+  if (!sender && !subject) { out.innerHTML = '<div style="color:var(--red);font-size:11px;">Bitte mindestens ein Feld füllen.</div>'; return; }
+  if (!mailRulesData || !mailRulesData.length) { out.innerHTML = '<div style="color:var(--tx2);font-size:11px;">Keine Regeln geladen — erst Mail-Rules-Tab laden.</div>'; return; }
+  const active = mailRulesData.filter(r => r.active);
+  const results = active.map(r => ({ rule: r, ...(_mrtMatchOne(r, sender, subject)) }));
+  const matched = results.filter(r => r.matched).sort((a,b) => (a.rule.priority||99) - (b.rule.priority||99));
+  let html = `<div style="font-size:11px;color:var(--tx2);margin-bottom:8px;">Geprüft: ${active.length} aktive Regel${active.length===1?'':'n'} (von ${mailRulesData.length} total)</div>`;
+  if (!matched.length) {
+    html += `<div style="padding:10px;background:rgba(245,158,11,0.1);border-left:3px solid var(--orng);border-radius:3px;font-size:12px;">⚠️ Keine Regel matched — diese Mail würde durchrutschen (Default-Routing).</div>`;
+  } else {
+    html += `<div style="padding:10px;background:rgba(34,197,94,0.1);border-left:3px solid var(--grn);border-radius:3px;font-size:12px;margin-bottom:8px;">✅ ${matched.length} Regel${matched.length===1?'':'n'} matched (sortiert nach Priorität — die erste gewinnt):</div>`;
+    matched.forEach((r, idx) => {
+      const ac = ACTION_COLORS[r.rule.action] || ACTION_COLORS.forward;
+      html += `<div style="background:var(--s1);border:1px solid var(--brd);border-radius:5px;padding:8px 10px;margin-bottom:6px;${idx===0?'border-left:3px solid var(--grn);':''}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;">
+          <strong>${idx===0?'🎯 ':''}${esc(r.rule.name||'(unbenannt)')}</strong>
+          <span style="font-size:10px;color:var(--tx2);">prio ${r.rule.priority||'?'}</span>
+        </div>
+        <div style="font-size:10px;color:var(--tx2);margin-top:3px;">
+          match auf <code>${esc(r.on||'?')}</code> · ${esc(r.rule.match_type||'contains')} <code>"${esc(r.rule.match_value||'')}"</code>
+        </div>
+        <div style="margin-top:5px;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;background:${ac.bg};color:${ac.color};border:1px solid ${ac.border}">${ac.label}</span>
+          ${r.rule.entity ? entityBadge(r.rule.entity) : ''}
+          ${r.rule.tag ? `<span style="font-size:10px;color:var(--tx2);margin-left:6px;">tag=<code>${esc(r.rule.tag)}</code></span>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+  out.innerHTML = html;
+}
+
 async function deleteMailRule(id) {
   const rule = mailRulesData.find(r => r.id === id);
   const name = rule ? rule.name : `ID ${id}`;
@@ -9051,6 +9265,517 @@ async function manualQuotaRefresh(btnEl) {
 }
 
 // ═══════════════════════════════════════════════════════
+//  Iter 20.2 (Block B) — MCP-Tool-Hub Tab "🤖 Aktionen"
+//  Workshop Q3: Hub bleibt + Chat-Button bleibt, Bridge zwischen beiden.
+//  22 Tools aus tgv_mcp_server.py in 6 Use-Case-Gruppen.
+//  Karten-Pattern: Was-tut-es / Wann-brauchst-du-es / Optionen / Ausführen / History.
+//  Sicherheit: Tool-Schemas mit enums (Schicht A aus feedback_chatbot_ux_safety.md).
+// ═══════════════════════════════════════════════════════
+
+// Wiederverwendbare enums
+const _ACT_ENTITIES = ['privat','c3-convis-gmbh','c4-convis-sarl','kivisai'];
+const _ACT_DOC_TYPES = ['Rechnung','Vertrag','Lohnsteuer','Kontoauszug','Quittung','Sonstiges'];
+
+// LocalStorage-Key für letzte 3 Aufrufe pro Tool
+const _MCP_HISTORY_KEY = 'tgv_mcp_history_v1';
+
+function _mcpHistGet(toolName) {
+  try {
+    const all = JSON.parse(localStorage.getItem(_MCP_HISTORY_KEY) || '{}');
+    return all[toolName] || [];
+  } catch { return []; }
+}
+function _mcpHistPush(toolName, entry) {
+  try {
+    const all = JSON.parse(localStorage.getItem(_MCP_HISTORY_KEY) || '{}');
+    const arr = all[toolName] || [];
+    arr.unshift(entry);
+    all[toolName] = arr.slice(0, 3);
+    localStorage.setItem(_MCP_HISTORY_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+// 22 Tools-Definition + 6 Gruppen.
+// `params`: Liste der Eingabefelder. Typen: string|integer|boolean|select.
+// `default`: Default-Wert (verständliche Vorbelegung für Nicht-Coder).
+// Ausführungspfad:
+//   exec.kind='postgrest' → PostgREST GET (Read-Tools, bereits sicher escaped via params)
+//   exec.kind='postgrest_count' → PostgREST count
+//   exec.kind='webhook' → n8n-Webhook POST
+//   exec.kind='note' → Tool noch nicht im Browser ausführbar → Hinweis-Text
+const ACTION_GROUPS = [
+  {
+    id: 'read', icon: '📊', title: 'Lesen / Status',
+    desc: 'DB-Status read-only abfragen — verändert nichts.',
+    tools: [
+      { name: 'get_pending_documents', what: 'Gibt offene Dokumente zurück (status=inbox/needs_review/pending_review).',
+        when: 'Wenn du wissen willst was heute auf deinem Triage-Tisch liegt.',
+        params: [
+          { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
+          { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 30 },
+        ],
+        exec: { kind: 'postgrest', build: (p) => {
+          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+          return `documents?select=id,invoice_date,entity,provider,amount,status,doc_type&status=in.(inbox,needs_review,pending_review)&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}`;
+        }}},
+      { name: 'get_transactions', what: 'Bank-Transaktionen filtern (entity, Monat, Jahr, Reconcile-Status).',
+        when: 'Wenn du Banking-Daten checken willst — z.B. "alle pending C3 Apr 2026".',
+        params: [
+          { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
+          { key: 'month',  label: 'Monat (1-12)', type: 'integer', default: '' },
+          { key: 'year',   label: 'Jahr', type: 'integer', default: 2026 },
+          { key: 'review_status', label: 'Status', type: 'select', options: ['all','pending_review','auto_reconciled','manual_reconciled','no_match'], default: 'all' },
+          { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 30 },
+        ],
+        exec: { kind: 'postgrest', build: (p) => {
+          const filters = [];
+          if (p.entity && p.entity !== 'all') filters.push(`entity=eq.${encodeURIComponent(p.entity)}`);
+          if (p.review_status && p.review_status !== 'all') filters.push(`review_status=eq.${encodeURIComponent(p.review_status)}`);
+          if (p.month && p.year) {
+            const mm = String(p.month).padStart(2,'0');
+            const start = `${p.year}-${mm}-01`;
+            const nextMonth = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
+            filters.push(`booking_date=gte.${start}`);
+            filters.push(`booking_date=lt.${nextMonth}`);
+          }
+          return `txn_master?select=id,booking_date,entity,counterparty_raw,amount,review_status,document_id&${filters.join('&')}&order=booking_date.desc&limit=${p.limit||30}`;
+        }}},
+      { name: 'get_monthly_summary', what: 'Monatsübersicht pro Entität: Ausgaben + Doc-Count.',
+        when: 'Vor Buchhalter-Versand — Plausi-Check über Kategorien.',
+        params: [
+          { key: 'entity', label: 'Entität', type: 'select', options: _ACT_ENTITIES, default: 'c3-convis-gmbh' },
+          { key: 'month',  label: 'Monat (1-12)', type: 'integer', default: 4 },
+          { key: 'year',   label: 'Jahr', type: 'integer', default: 2026 },
+        ],
+        exec: { kind: 'postgrest', build: (p) => {
+          const mm = String(p.month).padStart(2,'0');
+          const start = `${p.year}-${mm}-01`;
+          const next = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
+          return `documents?select=category_l1,amount,doc_type,status&entity=eq.${encodeURIComponent(p.entity)}&invoice_date=gte.${start}&invoice_date=lt.${next}&order=category_l1`;
+        }}},
+      { name: 'get_contracts_expiring', what: 'Verträge die in N Tagen ablaufen (notice_deadline).',
+        when: 'Ende-Monats-Routine — was muss gekündigt werden.',
+        params: [{ key: 'days', label: 'Tage voraus', type: 'integer', default: 60 }],
+        exec: { kind: 'postgrest', build: (p) => {
+          const d = new Date(); d.setDate(d.getDate() + (+p.days||60));
+          const future = d.toISOString().slice(0,10);
+          const today = new Date().toISOString().slice(0,10);
+          return `prf_contracts?select=id,name,entity,supplier,monthly_amount,notice_deadline,end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
+        }}},
+      { name: 'get_account_status', what: 'Pro Bankkonto: letztes Buchungsdatum + frühestes + Lücke.',
+        when: 'Wenn du wissen willst, ob CSV-Imports aktuell sind.',
+        params: [{ key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' }],
+        exec: { kind: 'postgrest', build: (p) => {
+          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+          return `txn_master?select=entity,iban,booking_date&order=booking_date.desc.nullslast&limit=2000${ent}`;
+        }, format: (rows) => {
+          const byKey = {};
+          rows.forEach(r => {
+            const k = (r.entity||'?') + ' / ' + (r.iban||'?');
+            if (!byKey[k]) byKey[k] = { count: 0, last: '', first: '' };
+            byKey[k].count++;
+            if (!byKey[k].last  || r.booking_date > byKey[k].last)  byKey[k].last  = r.booking_date;
+            if (!byKey[k].first || r.booking_date < byKey[k].first) byKey[k].first = r.booking_date;
+          });
+          return Object.entries(byKey).map(([k, v]) => `${k}\n  ${v.count} Buchungen · ${v.first} → ${v.last}`).join('\n\n');
+        }}},
+      { name: 'get_skill_registry', what: 'Liste aller Skills aus skill_definitions inkl. Webhook-Status.',
+        when: 'Diagnose: welche Skills sind LIVE / welche Stub.',
+        params: [],
+        exec: { kind: 'postgrest', build: () => 'skill_definitions?select=id,skill_name,version,description,webhook_url,active,domain&order=domain,skill_name' }},
+      { name: 'get_conversation_context', what: 'Letzte Events einer Agent-Konversation (Audit-Trail).',
+        when: 'Debug: was hat der Orchestrator zuletzt für eine Doc-Pipeline gemacht.',
+        params: [
+          { key: 'conversation_key', label: 'Konversations-Key', type: 'string', default: '' },
+          { key: 'limit', label: 'Limit', type: 'integer', default: 20 },
+        ],
+        exec: { kind: 'postgrest', build: (p) => {
+          if (!p.conversation_key) throw new Error('conversation_key Pflicht');
+          return `agent_events?select=id,event_type,role,tool_name,created_at,content&conversation_id=eq.${encodeURIComponent(p.conversation_key)}&order=created_at.desc&limit=${p.limit||20}`;
+        }}},
+      { name: 'get_tgv_next_actions', what: 'Top-Prioritäten aus dem Backlog: Docs offen / Txn pending / unverlinkt.',
+        when: 'Morgens als Standortbestimmung.',
+        params: [],
+        exec: { kind: 'multi', steps: [
+          { label: 'Dokumente offen', q: 'documents?select=id&status=in.(inbox,needs_review,pending_review)' },
+          { label: 'Txn pending_review', q: 'txn_master?select=id&review_status=eq.pending_review' },
+          { label: 'Txn unverlinkt', q: 'txn_master?select=id&document_id=is.null' },
+        ]}},
+    ]
+  },
+  {
+    id: 'write', icon: '✏️', title: 'Aktionen / Schreiben',
+    desc: 'Verändert DB oder verschickt Mails — bestätige genau was passiert.',
+    tools: [
+      { name: 'confirm_document', what: 'Setzt status=approved + optional category/entity/doc_type.',
+        when: 'Nach Triage-Review wenn Doc OK ist.',
+        params: [
+          { key: 'doc_id',   label: 'Doc-ID', type: 'integer', default: '' },
+          { key: 'entity',   label: 'Entität', type: 'select', options: ['', ..._ACT_ENTITIES], default: '' },
+          { key: 'doc_type', label: 'Doc-Type', type: 'select', options: ['', ..._ACT_DOC_TYPES], default: '' },
+          { key: 'category', label: 'Kategorie L1', type: 'string', default: '' },
+        ],
+        exec: { kind: 'patch', table: 'documents', where: (p) => {
+          if (!p.doc_id) throw new Error('doc_id Pflicht');
+          return `id=eq.${+p.doc_id}`;
+        }, body: (p) => {
+          const b = { status: 'approved' };
+          if (p.entity)   b.entity = p.entity;
+          if (p.doc_type) b.doc_type = p.doc_type;
+          if (p.category) b.category = p.category;
+          return b;
+        }, confirm: 'Doc {doc_id} → status=approved setzen?' }},
+      { name: 'confirm_transaction', what: 'Setzt review_status auf einer Transaktion (manual_reconciled etc.).',
+        when: 'Nach manuellem Review einer Bank-Buchung.',
+        params: [
+          { key: 'txn_id',         label: 'Txn-ID', type: 'integer', default: '' },
+          { key: 'review_status',  label: 'Status', type: 'select', options: ['manual_reconciled','no_match','pending_review'], default: 'manual_reconciled' },
+        ],
+        exec: { kind: 'patch', table: 'txn_master', where: (p) => {
+          if (!p.txn_id) throw new Error('txn_id Pflicht');
+          return `id=eq.${+p.txn_id}`;
+        }, body: (p) => ({ review_status: p.review_status }), confirm: 'Txn {txn_id} → review_status={review_status}?' }},
+      { name: 'send_to_accountant', what: 'Triggert WF E Buchhalter-Versand für Entity+Monat (Mail an Steuerberater).',
+        when: 'Monatsabschluss — sendet alle approveden Docs.',
+        params: [
+          { key: 'entity', label: 'Entität', type: 'select', options: _ACT_ENTITIES, default: 'c3-convis-gmbh' },
+          { key: 'month',  label: 'Monat (1-12)', type: 'integer', default: 4 },
+          { key: 'year',   label: 'Jahr', type: 'integer', default: 2026 },
+          { key: 'force_resend', label: 'Erneut senden (force)', type: 'boolean', default: false },
+        ],
+        exec: { kind: 'webhook', url: 'https://jcbinetti.app.n8n.cloud/webhook/tgv-buchhalter-versand',
+                body: (p) => ({ entity: p.entity, month: +p.month, year: +p.year, force_resend: !!p.force_resend }),
+                confirm: 'WF E starten — {entity} / {month}/{year} an Buchhalter senden?' }},
+      { name: 'move_document_in_drive', what: 'Verschiebt Datei in TGV-CORE auf den Routing-konformen Pfad.',
+        when: 'Wenn Drive-Pfad-Audit zeigt: Doc liegt im falschen Ordner.',
+        params: [
+          { key: 'doc_id', label: 'Doc-ID', type: 'integer', default: '' },
+          { key: 'dry_run', label: 'Nur simulieren (kein Move)', type: 'boolean', default: true },
+        ],
+        exec: { kind: 'note', text: 'move_document_in_drive: heute nur über MCP-CLI / Claude.ai erreichbar. Browser-Pfad in Welle (c) Iter 20.\nManuell: in Drive öffnen + per Hand verschieben, oder Claude.ai-MCP nutzen.' }},
+      { name: 'record_user_decision', what: 'Schreibt eine User-Korrektur in learning_events (Auto-Learning).',
+        when: 'Wenn du eine Korrektur explizit als Lern-Signal markieren willst.',
+        params: [
+          { key: 'document_id', label: 'Doc-ID', type: 'integer', default: '' },
+          { key: 'field',  label: 'Feld', type: 'select', options: ['entity','provider','doc_type','amount','category_l1'], default: 'entity' },
+          { key: 'before', label: 'Vorher (alter Wert)', type: 'string', default: '' },
+          { key: 'after',  label: 'Nachher (neuer Wert)', type: 'string', default: '' },
+          { key: 'reason', label: 'Begründung', type: 'string', default: 'manual' },
+        ],
+        exec: { kind: 'insert', table: 'learning_events', body: (p) => {
+          if (!p.document_id) throw new Error('document_id Pflicht');
+          return {
+            document_id: +p.document_id,
+            event_type: 'user_correction_action_hub',
+            was_correction: true,
+            correction_diff: { field: p.field, before: p.before, after: p.after, reason: p.reason },
+            created_at: new Date().toISOString(),
+          };
+        }, confirm: 'Korrektur Doc {document_id}: {field} "{before}" → "{after}" als Lern-Signal speichern?' }},
+    ]
+  },
+  {
+    id: 'search', icon: '🔍', title: 'Suche',
+    desc: 'Volltext + Wissensbasis.',
+    tools: [
+      { name: 'search_documents', what: 'Volltext-Suche in documents (provider/subject/category).',
+        when: 'Wenn du ein bestimmtes Doc finden willst, Doc-ID unbekannt.',
+        params: [
+          { key: 'query',  label: 'Suchbegriff', type: 'string', default: '' },
+          { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
+          { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 20 },
+        ],
+        exec: { kind: 'postgrest', build: (p) => {
+          if (!p.query) throw new Error('Suchbegriff Pflicht');
+          const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
+          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+          return `documents?select=id,invoice_date,entity,provider,amount,doc_type,status,subject&or=(provider.ilike.*${q}*,subject.ilike.*${q}*)&order=date_received.desc&limit=${p.limit||20}${ent}`;
+        }}},
+      { name: 'search_knowledge', what: 'Sucht in agent_knowledge nach Prozessen/Regeln.',
+        when: 'Bei technischen Fragen über Workflows oder Skills.',
+        params: [
+          { key: 'query', label: 'Suchbegriff', type: 'string', default: '' },
+          { key: 'limit', label: 'Max. Ergebnisse', type: 'integer', default: 5 },
+        ],
+        exec: { kind: 'postgrest', build: (p) => {
+          if (!p.query) throw new Error('query Pflicht');
+          const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
+          return `agent_knowledge?select=topic,summary,detail,scope&or=(topic.ilike.*${q}*,summary.ilike.*${q}*)&limit=${p.limit||5}`;
+        }}},
+    ]
+  },
+  {
+    id: 'skill', icon: '⚙️', title: 'Skill-Steuerung',
+    desc: 'Skill-Pipeline manuell triggern. Achtung: kostet n8n-Quota.',
+    tools: [
+      { name: 'trigger_skill_router', what: 'Triggert tgv-skill-router für ein einzelnes Doc.',
+        when: 'Doc neu prozessieren — z.B. nach Korrektur erneut Cascade.',
+        params: [{ key: 'doc_id', label: 'Doc-ID', type: 'integer', default: '' }],
+        exec: { kind: 'webhook', url: 'https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router',
+                body: (p) => { if (!p.doc_id) throw new Error('doc_id Pflicht'); return { doc_id: +p.doc_id, _trigger: 'mcp-hub' }; },
+                confirm: 'Skill-Router für Doc {doc_id} starten — kostet ~5-9 n8n-Execs?' }},
+      { name: 'run_inbox_cascade', what: 'Startet Cascade auf alle Docs mit processing_state=inbox.',
+        when: 'Periodisch oder nach Mail-Welle.',
+        params: [
+          { key: 'batch_size', label: 'Batch-Size', type: 'integer', default: 50 },
+          { key: 'dry_run',    label: 'Trockenlauf (simulieren)', type: 'boolean', default: true },
+        ],
+        exec: { kind: 'webhook', url: 'https://jcbinetti.app.n8n.cloud/webhook/tgv-inbox-cascade',
+                body: (p) => ({ batch_size: +p.batch_size||50, dry_run: !!p.dry_run, _trigger: 'mcp-hub' }),
+                confirm: 'Inbox-Cascade — Batch {batch_size}{dry_run_note} starten?' }},
+    ]
+  },
+  {
+    id: 'flow', icon: '🔄', title: 'Workflow-Steuerung',
+    desc: 'n8n-Workflows verwalten via API.',
+    tools: [
+      { name: 'update_n8n_schedule', what: 'Schedule-Trigger eines n8n-Workflows ändern (Stunden zw. Runs).',
+        when: 'Bei Quota-Engpass: WFs auf 2-tägig drosseln.',
+        params: [
+          { key: 'workflow_id_or_name', label: 'WF-ID oder Name', type: 'string', default: '' },
+          { key: 'interval_hours',      label: 'Intervall (Stunden)', type: 'integer', default: 24 },
+        ],
+        exec: { kind: 'note', text: 'update_n8n_schedule: nur via MCP-Server (Python) ausführbar — n8n Admin-API erlaubt keine Browser-CORS-Calls.\nManuell: 08_OPS/credentials/n8n.env laden + Skript laufen lassen, oder Claude.ai-MCP nutzen.' }},
+    ]
+  },
+  {
+    id: 'audit', icon: '🧠', title: 'Audit',
+    desc: 'Memory-Layer: Konversationen, Events, Decisions, Regeln.',
+    tools: [
+      { name: 'start_conversation', what: 'Legt eine neue agent_conversation an (Audit-Trail-Start).',
+        when: 'Beginn einer Multi-Step-Untersuchung, z.B. Datenmigration.',
+        params: [
+          { key: 'title',    label: 'Titel', type: 'string', default: '' },
+          { key: 'topic',    label: 'Topic', type: 'string', default: 'general' },
+          { key: 'priority', label: 'Priorität', type: 'select', options: ['low','medium','high','urgent'], default: 'medium' },
+        ],
+        exec: { kind: 'insert', table: 'agent_conversations', body: (p) => {
+          if (!p.title) throw new Error('Titel Pflicht');
+          return { title: p.title, topic: p.topic||'general', priority: p.priority||'medium', status: 'open', summary: '', conversation_key: `c_${Date.now()}` };
+        }, confirm: 'Neue Konversation "{title}" anlegen?' }},
+      { name: 'log_agent_event', what: 'Schreibt ein agent_event (z.B. Tool-Call, Skill-Output).',
+        when: 'Beim Logging eines manuellen Schritts.',
+        params: [
+          { key: 'conversation_key', label: 'Konversations-Key', type: 'string', default: '' },
+          { key: 'event_type',       label: 'Event-Type', type: 'string', default: 'note' },
+          { key: 'role',             label: 'Rolle', type: 'select', options: ['user','assistant','system','tool'], default: 'user' },
+          { key: 'content',          label: 'Content', type: 'string', default: '' },
+        ],
+        exec: { kind: 'note', text: 'log_agent_event: braucht conversation_id-Auflösung über conversation_key. Heute nur über MCP-Server. Browser-Pfad in Welle (c) wenn Bedarf.' }},
+      { name: 'record_decision', what: 'Schreibt eine agent_decision (Audit + creates_rule Flag).',
+        when: 'Wenn du eine Entscheidung als Regel-Vorlage markieren willst.',
+        params: [
+          { key: 'decision_type', label: 'Decision-Type', type: 'string', default: '' },
+          { key: 'reason',        label: 'Begründung', type: 'string', default: '' },
+          { key: 'creates_rule',  label: 'Soll Regel werden', type: 'boolean', default: false },
+        ],
+        exec: { kind: 'insert', table: 'agent_decisions', body: (p) => {
+          if (!p.decision_type) throw new Error('decision_type Pflicht');
+          return { decision_type: p.decision_type, reason: p.reason||'', creates_rule: !!p.creates_rule, user_confirmed: true };
+        }, confirm: 'Decision "{decision_type}" loggen?' }},
+      { name: 'remember_rule', what: 'Speichert eine Routing/Triage-Regel in mail_routing_rules.',
+        when: 'Wenn du eine wiederkehrende Mail-Regel manuell pflegen willst.',
+        params: [
+          { key: 'description', label: 'Beschreibung', type: 'string', default: '' },
+          { key: 'match_field', label: 'Match-Feld', type: 'select', options: ['sender','subject','both'], default: 'sender' },
+          { key: 'match_value', label: 'Match-Wert', type: 'string', default: '' },
+          { key: 'action',      label: 'Aktion', type: 'select', options: ['forward','tag','block'], default: 'forward' },
+          { key: 'entity',      label: 'Entität', type: 'select', options: ['', ..._ACT_ENTITIES], default: '' },
+          { key: 'priority',    label: 'Priorität', type: 'integer', default: 10 },
+        ],
+        exec: { kind: 'insert', table: 'mail_routing_rules', body: (p) => {
+          if (!p.match_value) throw new Error('Match-Wert Pflicht');
+          return {
+            name: p.description || `Rule ${Date.now()}`,
+            match_field: p.match_field, match_type: 'contains', match_value: p.match_value,
+            action: p.action, entity: p.entity || null, priority: +p.priority||10,
+            notes: p.description, active: true,
+          };
+        }, confirm: 'Neue Regel "{description}" anlegen?' }},
+    ]
+  },
+];
+
+function loadActions() {
+  const wrap = document.getElementById('actions-content');
+  if (!wrap) return;
+  let html = '';
+  for (const g of ACTION_GROUPS) {
+    html += `<div class="actions-group" id="actions-g-${g.id}">`;
+    html += `<div class="actions-group-head">
+      <span class="ag-icon">${g.icon}</span>
+      <span>${esc(g.title)}</span>
+      <span class="ag-count">— ${g.tools.length} Tool${g.tools.length===1?'':'s'}</span>
+      <span style="margin-left:auto;font-size:10px;color:var(--tx2);font-weight:400;font-style:italic;">${esc(g.desc)}</span>
+    </div>`;
+    html += `<div class="actions-grid">`;
+    for (const t of g.tools) {
+      const hist = _mcpHistGet(t.name);
+      html += `<div class="tool-card" id="tc-${t.name}">
+        <div class="tc-name">${esc(t.name)}</div>
+        <div class="tc-what">${esc(t.what)}</div>
+        <div class="tc-when">💡 ${esc(t.when)}</div>
+        <div class="tc-actions">
+          <button class="tc-run-btn" onclick="mcpRunOpen('${t.name}')" title="Ausführen-Modal öffnen — du siehst alle Optionen + Default-Werte und bestätigst.">▶ Ausführen</button>
+          <button class="tc-history-btn" onclick="toggleChat();setTimeout(()=>document.getElementById('chat-input')?.focus(),100)" title="Den Chat öffnen — KI entscheidet selbst Tool-Wahl.">💬 Chat</button>
+        </div>
+        ${hist.length ? `<div class="tc-history" title="Letzte 3 Aufrufe (lokal in localStorage gespeichert).">${hist.map(h => `<div class="tc-history-row">${esc(h.when)} · ${esc(h.status)}</div>`).join('')}</div>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+// === MCP-Run-Modal ===
+let _mcpCurrentTool = null;
+
+function _findToolByName(name) {
+  for (const g of ACTION_GROUPS) for (const t of g.tools) if (t.name === name) return t;
+  return null;
+}
+
+function mcpRunOpen(toolName) {
+  const tool = _findToolByName(toolName);
+  if (!tool) return;
+  _mcpCurrentTool = tool;
+  document.getElementById('mcp-modal-title').textContent = tool.name;
+  document.getElementById('mcp-modal-what').textContent = tool.what;
+  document.getElementById('mcp-modal-when').textContent = '💡 ' + tool.when;
+  const formWrap = document.getElementById('mcp-modal-form');
+  let formHtml = '';
+  for (const p of (tool.params||[])) {
+    const idAttr = `mcp-p-${p.key}`;
+    formHtml += `<div class="mrf-row">
+      <label for="${idAttr}">${esc(p.label)}<span class="mrf-help">(${esc(p.type)})</span></label>`;
+    if (p.type === 'select') {
+      formHtml += `<select id="${idAttr}">${(p.options||[]).map(o => `<option value="${esc(o)}" ${o == p.default ? 'selected' : ''}>${esc(o === '' ? '— keiner —' : o)}</option>`).join('')}</select>`;
+    } else if (p.type === 'boolean') {
+      formHtml += `<select id="${idAttr}"><option value="false" ${!p.default?'selected':''}>nein</option><option value="true" ${p.default?'selected':''}>ja</option></select>`;
+    } else if (p.type === 'integer') {
+      formHtml += `<input type="number" id="${idAttr}" value="${p.default ?? ''}">`;
+    } else {
+      formHtml += `<input type="text" id="${idAttr}" value="${esc(p.default ?? '')}">`;
+    }
+    formHtml += `</div>`;
+  }
+  if (!(tool.params||[]).length) formHtml = '<div style="font-size:11px;color:var(--tx2);font-style:italic;">— keine Optionen — direkt ausführen.</div>';
+  formWrap.innerHTML = formHtml;
+  document.getElementById('mcp-run-output').style.display = 'none';
+  document.getElementById('mcp-run-output').textContent = '';
+  document.getElementById('mcp-run-go').disabled = false;
+  document.getElementById('mcp-run-go').textContent = '▶ Ausführen';
+  document.getElementById('mcp-run-modal').classList.add('open');
+}
+
+function mcpRunClose() {
+  document.getElementById('mcp-run-modal').classList.remove('open');
+  _mcpCurrentTool = null;
+}
+
+function _mcpCollectParams(tool) {
+  const out = {};
+  for (const p of (tool.params||[])) {
+    const el = document.getElementById(`mcp-p-${p.key}`);
+    if (!el) continue;
+    if (p.type === 'integer') out[p.key] = el.value === '' ? '' : +el.value;
+    else if (p.type === 'boolean') out[p.key] = el.value === 'true';
+    else out[p.key] = el.value;
+  }
+  return out;
+}
+
+function _mcpFmtConfirmTpl(tpl, params) {
+  return (tpl||'').replace(/\{(\w+)\}/g, (_, k) => {
+    if (k === 'dry_run_note') return params.dry_run ? ' (Trockenlauf)' : ' (LIVE!)';
+    return params[k] != null ? String(params[k]) : '?';
+  });
+}
+
+async function mcpRunExecute() {
+  const tool = _mcpCurrentTool;
+  if (!tool) return;
+  const out = document.getElementById('mcp-run-output');
+  const btn = document.getElementById('mcp-run-go');
+  out.style.display = 'block';
+  out.textContent = '⏳ läuft…';
+  btn.disabled = true;
+  btn.textContent = '⏳ …';
+
+  let params, status = 'ok', summary = '';
+  try {
+    params = _mcpCollectParams(tool);
+    const ex = tool.exec;
+    if (!ex) throw new Error('exec fehlt');
+
+    // Confirm-Dialog für Schreib-Tools (Schicht "Verständnis-Echo" aus chatbot_ux_safety)
+    if (ex.confirm) {
+      const msg = _mcpFmtConfirmTpl(ex.confirm, params);
+      if (!confirm(msg + '\n\n[OK] = ausführen   [Abbrechen]')) {
+        out.textContent = '— abgebrochen.';
+        btn.disabled = false; btn.textContent = '▶ Ausführen';
+        return;
+      }
+    }
+
+    if (ex.kind === 'note') {
+      out.textContent = '🛈 ' + ex.text;
+      summary = 'note';
+    } else if (ex.kind === 'postgrest') {
+      const path = ex.build(params);
+      const data = await supa(path);
+      summary = ex.format ? ex.format(data) : (Array.isArray(data) ? `${data.length} Treffer\n\n` + JSON.stringify(data, null, 2) : JSON.stringify(data, null, 2));
+      out.textContent = summary;
+    } else if (ex.kind === 'multi') {
+      const lines = [];
+      for (const s of ex.steps) {
+        try { const r = await supa(s.q); lines.push(`${s.label}: ${Array.isArray(r) ? r.length : '?'}`); }
+        catch (e) { lines.push(`${s.label}: ❌ ${e.message}`); }
+      }
+      summary = lines.join('\n');
+      out.textContent = summary;
+    } else if (ex.kind === 'patch') {
+      const ok = await supaPatch(ex.table, ex.where(params), ex.body(params));
+      summary = ok ? '✅ patch ok' : '❌ patch fehlgeschlagen';
+      out.textContent = summary;
+      status = ok ? 'ok' : 'err';
+    } else if (ex.kind === 'insert') {
+      const url = `${SUPA_REST}/${ex.table}`;
+      const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' });
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(ex.body(params)) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      summary = '✅ inserted\n\n' + JSON.stringify(data, null, 2);
+      out.textContent = summary;
+    } else if (ex.kind === 'webhook') {
+      const url = ex.url;
+      const body = ex.body(params);
+      const res = await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      summary = `✅ webhook gesendet\n\n${url}\nbody: ${JSON.stringify(body, null, 2)}\n\n(no-cors → keine Response sichtbar; in n8n Executions checken)`;
+      out.textContent = summary;
+    } else {
+      throw new Error(`unbekannte exec.kind: ${ex.kind}`);
+    }
+  } catch (e) {
+    status = 'err';
+    summary = '❌ ' + e.message;
+    out.textContent = summary;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Ausführen';
+    if (params) {
+      _mcpHistPush(tool.name, {
+        when: new Date().toLocaleString('de-DE', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }),
+        status: status === 'ok' ? '✓' : '✗',
+        params,
+      });
+      // Refresh the card history inline
+      if (document.getElementById('page-actions')?.classList.contains('active')) loadActions();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
 //  Iter 20.1 — Side-Panel (Workshop Q1 C→A Pfad)
 //  Master-Detail-Pattern: Triage öffnet Doc-Detail rechts.
 //  Inhalt: PDF-Inline-Preview + Edit-Felder + Skill-Status-Box.
@@ -9088,9 +9813,9 @@ function _spDocTypeOptions(currentType) {
 }
 
 async function _spFetchSkillHistory(docId) {
-  // agent_events für dieses Doc — letzte 20, sortiert
+  // agent_events für dieses Doc — letzte 50, mit tool_input/output für Token-Aggregat
   try {
-    const url = `${SUPABASE_URL}/rest/v1/agent_events?document_id=eq.${docId}&select=tool_name,event_type,created_at,content&order=created_at.desc&limit=20`;
+    const url = `${SUPABASE_URL}/rest/v1/agent_events?document_id=eq.${docId}&select=id,tool_name,event_type,role,confidence,created_at,content,tool_input,tool_output&order=created_at.asc&limit=50`;
     const headers = await _supaAuthHeaders();
     const res = await fetch(url, { headers });
     if (!res.ok) return [];
@@ -9099,6 +9824,151 @@ async function _spFetchSkillHistory(docId) {
     console.warn('[side-panel] skill history fetch failed', e);
     return [];
   }
+}
+
+// US11 Skill-History-Vollausbau (Iter 20.8):
+// Per Skill: count, duration_ms, tokens (in+out), cost_eur, avg confidence, ROI.
+// Loops: cascade-Runs gezählt aus agent_events. Lern-Hinweis aus pattern_rules.scope=skill_routing.
+//
+// Cost-Modell (Default Haiku 4.5; falls model_used in tool_output[*] gesetzt → respektiert):
+//   haiku-4-5: in 0.80 USD/Mtok · out 4.00 USD/Mtok
+//   sonnet-4-6: in 3.00 USD/Mtok · out 15.00 USD/Mtok
+//   opus-4-7: in 15.00 USD/Mtok · out 75.00 USD/Mtok
+const _MODEL_PRICING_USD_PER_MTOK = {
+  'claude-haiku-4-5':  { in: 0.80, out: 4.00 },
+  'claude-sonnet-4-6': { in: 3.00, out: 15.00 },
+  'claude-opus-4-7':   { in: 15.00, out: 75.00 },
+};
+const _USD_TO_EUR = 0.92;
+
+function _spEstimateCostEur(model, tokensIn, tokensOut) {
+  const key = (model||'').toLowerCase().includes('sonnet') ? 'claude-sonnet-4-6'
+           : (model||'').toLowerCase().includes('opus')   ? 'claude-opus-4-7'
+           : 'claude-haiku-4-5';
+  const p = _MODEL_PRICING_USD_PER_MTOK[key];
+  const usd = (tokensIn/1e6)*p.in + (tokensOut/1e6)*p.out;
+  return usd * _USD_TO_EUR;
+}
+
+function _spExtractTokens(toolOutput, toolInput) {
+  // Defensive Extraktion: tokens können in tool_output (z.B. {"usage":{"input_tokens":..,"output_tokens":..}})
+  // oder direkt (z.B. {"tokens_in":..,"tokens_out":..}) liegen, oder gar nicht.
+  let tIn = 0, tOut = 0, model = null, durationMs = 0;
+  const o = toolOutput || {};
+  const i = toolInput || {};
+  if (o.usage) {
+    tIn  += +o.usage.input_tokens  || +o.usage.prompt_tokens     || 0;
+    tOut += +o.usage.output_tokens || +o.usage.completion_tokens || 0;
+  }
+  tIn  += +o.tokens_in  || +o.input_tokens  || 0;
+  tOut += +o.tokens_out || +o.output_tokens || 0;
+  model = o.model || o.model_used || i.model || null;
+  durationMs = +o.duration_ms || +o.elapsed_ms || +o.latency_ms || 0;
+  return { tokensIn: tIn, tokensOut: tOut, model, durationMs };
+}
+
+async function _spFetchLearningHints(docType) {
+  // Lern-Hinweis: pattern_rules.scope=skill_routing für diesen doc_type → Auto-Routing-Vorschlag.
+  // Fallback: aus learning_events frequency manueller Trigger.
+  if (!docType) return [];
+  try {
+    // 1. pattern_rules direkt
+    const prUrl = `${SUPABASE_URL}/rest/v1/pattern_rules?scope=eq.skill_routing&select=id,stage,match_condition,action,promote_count,active&order=promote_count.desc.nullslast&limit=20`;
+    const headers = await _supaAuthHeaders();
+    const prRes = await fetch(prUrl, { headers });
+    const rules = prRes.ok ? await prRes.json() : [];
+    const matched = rules.filter(r => {
+      try {
+        const cond = typeof r.match_condition === 'string' ? JSON.parse(r.match_condition) : r.match_condition;
+        if (!cond) return false;
+        return cond['doc.doc_type'] === docType || cond['doc_type'] === docType;
+      } catch { return false; }
+    });
+    return matched;
+  } catch (e) {
+    console.warn('[side-panel] pattern_rules fetch failed', e);
+    return [];
+  }
+}
+
+function _spRenderSkillHistoryFull(events, hints) {
+  if (!events || !events.length) {
+    return '<div style="font-size:11px;color:var(--tx2);">— keine agent_events für dieses Doc (z.B. duplicate-stub ohne Pipeline-Run)</div>';
+  }
+  // Aggregate per tool_name
+  const byTool = {};
+  let totalTokensIn = 0, totalTokensOut = 0, totalCostEur = 0, totalDurationMs = 0;
+  let cascadeRuns = 0;
+  events.forEach(e => {
+    const k = e.tool_name || (e.event_type || '(unknown)');
+    if (!byTool[k]) byTool[k] = { count: 0, last: '', first: '', confs: [], tokensIn: 0, tokensOut: 0, costEur: 0, durationMs: 0, models: new Set() };
+    const m = byTool[k];
+    m.count++;
+    if (!m.first || e.created_at < m.first) m.first = e.created_at;
+    if (!m.last  || e.created_at > m.last)  m.last  = e.created_at;
+    if (e.confidence != null) m.confs.push(e.confidence);
+    const tk = _spExtractTokens(e.tool_output, e.tool_input);
+    m.tokensIn += tk.tokensIn;
+    m.tokensOut += tk.tokensOut;
+    m.durationMs += tk.durationMs;
+    if (tk.model) m.models.add(tk.model);
+    if (tk.tokensIn || tk.tokensOut) m.costEur += _spEstimateCostEur(tk.model, tk.tokensIn, tk.tokensOut);
+    totalTokensIn += tk.tokensIn;
+    totalTokensOut += tk.tokensOut;
+    totalDurationMs += tk.durationMs;
+    if (tk.tokensIn || tk.tokensOut) totalCostEur += _spEstimateCostEur(tk.model, tk.tokensIn, tk.tokensOut);
+    if ((e.event_type||'').includes('cascade') || (e.tool_name||'').includes('cascade') || (e.tool_name||'').includes('orchestrator')) cascadeRuns++;
+  });
+
+  const fmtNum = (n) => n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n);
+  const fmtCost = (eur) => eur < 0.001 ? '< 0,01 ct' : eur < 0.01 ? (eur*100).toFixed(2) + ' ct' : (eur).toFixed(4) + ' €';
+  const fmtMs = (ms) => ms === 0 ? 'n/a' : ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(1) + 's';
+
+  // Tabellenkopf
+  let html = `<div style="font-size:10px;color:var(--tx2);margin-bottom:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+    <span title="Anzahl Cascade-/Orchestrator-Runs auf diesem Doc">🔁 ${cascadeRuns} Loop${cascadeRuns===1?'':'s'}</span>
+    <span title="Summe Input + Output tokens aller Skills">🪙 ${fmtNum(totalTokensIn)}+${fmtNum(totalTokensOut)} tok</span>
+    <span title="Geschätzte LLM-Kosten in EUR (Haiku-Default; Sonnet/Opus pricing falls model_used gesetzt)">💰 ${fmtCost(totalCostEur)}</span>
+    <span title="Summe Skill-Latenzen (aus tool_output.duration_ms wenn vorhanden)">⏱ ${fmtMs(totalDurationMs)}</span>
+  </div>`;
+
+  const sorted = Object.entries(byTool).sort((a,b) => b[1].count - a[1].count);
+  for (const [tool, m] of sorted) {
+    const date = (m.last||'').slice(0,16).replace('T',' ');
+    const avgConf = m.confs.length ? Math.round(m.confs.reduce((a,b)=>a+b,0)/m.confs.length) : null;
+    const minConf = m.confs.length ? Math.min(...m.confs) : null;
+    const maxConf = m.confs.length ? Math.max(...m.confs) : null;
+    const confDelta = (minConf != null && maxConf != null) ? (maxConf - minConf) : 0;
+    const roi = avgConf != null ? Math.round(avgConf * Math.log2(m.count + 1)) : null; // confidence × log(runs)
+    const modelStr = m.models.size ? [...m.models].join(', ') : 'n/a';
+    html += `<div style="background:var(--bg1);border-radius:5px;padding:8px 10px;margin-bottom:8px;border-left:3px solid var(--blu);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <span style="font-family:monospace;font-size:12px;font-weight:600;color:var(--tx);">${_spEsc(tool)}</span>
+        <span style="font-size:10px;color:var(--tx2);">${m.count}× · letzter ${_spEsc(date)}</span>
+      </div>
+      <div style="font-size:10px;color:var(--tx2);margin-top:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:4px;">
+        <span title="Tokens input + output">🪙 ${fmtNum(m.tokensIn)}+${fmtNum(m.tokensOut)}</span>
+        <span title="Geschätzte Kosten EUR (LLM-Pricing × tokens)">💰 ${fmtCost(m.costEur)}</span>
+        <span title="Skill-Latenz Summe">⏱ ${fmtMs(m.durationMs)}</span>
+        <span title="Avg / Min / Max Confidence — Δ zeigt Streuung">🎯 ${avgConf!=null?avgConf+'%':'n/a'}${confDelta>0?` (Δ${confDelta})`:''}</span>
+        ${roi!=null?`<span title="ROI = avg-Confidence × log₂(runs+1) — höher = effektiver">📈 ROI ${roi}</span>`:''}
+        <span title="Model(s) aus tool_output.model_used">🤖 ${_spEsc(modelStr)}</span>
+      </div>
+    </div>`;
+  }
+
+  // Lern-Hinweis aus pattern_rules.scope=skill_routing
+  if (hints && hints.length) {
+    html += `<div style="margin-top:10px;padding:8px 10px;background:rgba(245,158,11,0.08);border-left:2px solid var(--orng);border-radius:3px;font-size:11px;line-height:1.5;">
+      <strong style="color:var(--orng);">💡 Lern-Hinweis (Mig 061 skill_routing):</strong><br>`;
+    hints.forEach(h => {
+      let action = '?'; try { const a = typeof h.action === 'string' ? JSON.parse(h.action) : h.action; action = a?.auto_apply_skill || JSON.stringify(a); } catch {}
+      html += `<div style="margin-top:4px;">stage=<strong>${_spEsc(h.stage||'?')}</strong> · ${h.promote_count||0}× → schlägt vor: <code>${_spEsc(action)}</code></div>`;
+    });
+    html += `</div>`;
+  }
+
+  return html;
 }
 
 // v11.50 — Side-Panel Re-Strukturierung (User-Feedback 2026-05-10):
@@ -9333,33 +10203,15 @@ function openSidePanel(doc) {
   _sidePanelEscHandler = (e) => { if (e.key === 'Escape') closeSidePanel(); };
   document.addEventListener('keydown', _sidePanelEscHandler);
 
-  // Skill-History async
-  _spFetchSkillHistory(doc.id).then(events => {
+  // Skill-History async — US11 Vollausbau (Iter 20.8): tokens/cost/duration/loops/ROI/Lern-Hinweis
+  Promise.all([
+    _spFetchSkillHistory(doc.id),
+    _spFetchLearningHints(doc.doc_type),
+  ]).then(([events, hints]) => {
     const list = document.getElementById('sp-skills-list');
     const loading = document.getElementById('sp-skills-loading');
     if (!list || !loading) return;
-    if (!events.length) {
-      loading.textContent = '— keine agent_events für dieses Doc (z.B. duplicate-stub ohne Pipeline-Run)';
-      return;
-    }
-    const byTool = {};
-    events.forEach(e => {
-      const k = e.tool_name || '(unknown)';
-      if (!byTool[k]) byTool[k] = { count: 0, last: '', confs: [] };
-      byTool[k].count++;
-      if (!byTool[k].last || e.created_at > byTool[k].last) byTool[k].last = e.created_at;
-      if (e.confidence != null) byTool[k].confs.push(e.confidence);
-    });
-    const rows = Object.entries(byTool).map(([tool, m]) => {
-      const date = (m.last||'').slice(0,16).replace('T',' ');
-      const avgConf = m.confs.length ? Math.round(m.confs.reduce((a,b)=>a+b,0)/m.confs.length) : null;
-      return `<div class="sp-skill-row applied">
-        <span class="sp-skill-name">${_spEsc(tool)}</span>
-        <span class="sp-skill-meta">${m.count}× · ${_spEsc(date)}${avgConf!=null?' · ⌀ Skill-Relevanz beim Run: '+avgConf+'%':''}</span>
-      </div>`;
-    }).join('');
-    list.innerHTML = rows
-      + `<div style="margin-top:8px;font-size:10px;color:var(--tx2);">💡 Cost/Tokens/Loops-Aggregat folgt in Block C (Iter 20.8).</div>`;
+    list.innerHTML = _spRenderSkillHistoryFull(events, hints);
     list.style.display = 'block';
     loading.style.display = 'none';
   });
