@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.54 — 2026-05-10 — Iter 20 Block B Welle b2 (US14 query_documents): Strukturierter Ad-hoc-Filter mit enums (date_range/entity/doc_type/supplier/group_by/sort) als 23. MCP-Tool. Im Chat via TGV_TOOLS + im Hub als Search-Karte. Schicht-A-Schutz (chatbot_ux_safety): nur Whitelist-Werte, PostgREST-Filter, niemals SQL-String-Konkatenation. -->
+<!-- TGV Dashboard v11.55 — 2026-05-10 — Iter 20 Block A PR2 UX-Polish auf Block-B-Basis (v11.54): Status-Badges + 3-Werte-Tripel + resizable Side-Panel + Hängend-Tab + Provider-Combobox + DB-Snapshot + Quota-Override + Linkrate-Cursor-Fix. Behält Block B (US14 query_documents + MCP-Hub + Mail-Test). -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.54">
-<title>TGV Dashboard v11.54 — Financial OS</title>
+<meta name="version" content="11.55">
+<title>TGV Dashboard v11.55 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -412,6 +412,14 @@ thead th {
 }
 thead th:hover { background: #002f5f; }
 thead th .sort-ind { margin-left: 4px; opacity: 0.5; }
+/* v11.53 T14 — Linkrate-Spalten haben keinen Sort-Handler → explizit kein Hand-Cursor.
+   (User-Bug-Fund: Spalte b "Entity" zeigte Pointer ohne Funktion.) */
+#lr-provider-table thead th,
+#lr-month-table thead th {
+  cursor: default;
+}
+#lr-provider-table thead th:hover,
+#lr-month-table thead th:hover { background: var(--navy); }
 tbody td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--s2);
@@ -1116,6 +1124,174 @@ table th.num, table td.num { text-align: right !important; }
 }
 #side-panel.open { transform: translateX(0); }
 
+/* v11.53 T6 — Side-Panel Resize-Handle (drag links zur Breitenanpassung) */
+#side-panel-resize-handle {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 951;
+  transition: background 0.15s;
+}
+#side-panel-resize-handle:hover,
+#side-panel-resize-handle.dragging {
+  background: var(--blu);
+  opacity: 0.6;
+}
+#side-panel.dragging { transition: none; user-select: none; }
+body.sp-resizing { cursor: ew-resize !important; user-select: none; }
+
+/* v11.53 T4 — Skill-Status-Badge (in Triage-Skill-Row) */
+.skill-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 9px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.2px;
+}
+.skill-status-badge.pending {
+  background: rgba(245,158,11,0.12);
+  color: var(--orng);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+.skill-status-badge.done {
+  background: rgba(16,185,129,0.12);
+  color: var(--grn);
+  border: 1px solid rgba(16,185,129,0.25);
+}
+.skill-status-badge.rerun {
+  background: rgba(59,130,246,0.12);
+  color: var(--blu);
+  border: 1px solid rgba(59,130,246,0.25);
+}
+
+/* v11.53 T5 — Skill-Stats-Tripel (drei klare Zeilen pro Skill-Row) */
+.skill-stats-tripel {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 10px;
+}
+.skill-stats-tripel > div {
+  background: var(--bg1);
+  border-radius: 4px;
+  padding: 3px 7px;
+  color: var(--tx2);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skill-stats-tripel .stats-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.75;
+}
+.skill-stats-tripel .stats-value { font-weight: 600; color: var(--tx); display: block; }
+
+/* v11.53 T11 — DB-Snapshot Section (collapsible) */
+.db-snapshot-toggle {
+  background: var(--bg1);
+  border: 1px solid var(--bdr);
+  color: var(--tx);
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.db-snapshot-toggle:hover { background: var(--blu-bg); border-color: var(--blu); }
+.db-snapshot-table {
+  width: 100%;
+  font-size: 11px;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-family: monospace;
+}
+.db-snapshot-table tr { border-bottom: 1px solid var(--bdr); }
+.db-snapshot-table tr:last-child { border-bottom: 0; }
+.db-snapshot-table td {
+  padding: 4px 8px;
+  vertical-align: top;
+  word-break: break-word;
+}
+.db-snapshot-table td:first-child {
+  color: var(--tx2);
+  font-weight: 600;
+  width: 40%;
+  font-size: 10px;
+  text-transform: lowercase;
+}
+
+/* v11.53 T10 — Provider Combobox echte Klapp-Liste */
+.provider-combobox-wrap { position: relative; }
+.provider-combobox-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--bdr);
+  border-radius: 4px;
+  z-index: 100;
+  margin-top: 2px;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.provider-combobox-list.open { display: block; }
+.provider-combobox-list .pcb-item {
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--tx);
+  border-bottom: 1px solid var(--bdr);
+}
+.provider-combobox-list .pcb-item:last-child { border-bottom: 0; }
+.provider-combobox-list .pcb-item:hover,
+.provider-combobox-list .pcb-item.active { background: var(--blu-bg); color: var(--blu); }
+.provider-combobox-list .pcb-empty { padding: 10px; font-size: 11px; color: var(--tx2); font-style: italic; text-align: center; }
+.provider-combobox-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: var(--tx2);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* v11.53 T13 — Quota-Override Drift-Anzeige */
+.quota-drift-pill {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  margin-left: 4px;
+  font-weight: 600;
+}
+.quota-drift-pill.warn { background: rgba(245,158,11,0.18); color: var(--orng); }
+.quota-drift-pill.ok   { background: rgba(16,185,129,0.18); color: var(--grn); }
+
+
 #side-panel-backdrop {
   position: fixed;
   inset: 0;
@@ -1719,6 +1895,7 @@ body.chat-open #main-content {
 
 <div id="side-panel-backdrop" onclick="closeSidePanel()"></div>
 <div id="side-panel" role="dialog" aria-labelledby="side-panel-title" aria-hidden="true">
+  <div id="side-panel-resize-handle" onmousedown="startSidePanelResize(event)" title="Ziehen, um Side-Panel-Breite anzupassen"></div>
   <div class="side-panel-header">
     <div>
       <h3 id="side-panel-title">Doc-Detail</h3>
@@ -3560,7 +3737,7 @@ let gPeriod = 'all';
 let gTxns = [];
 let gDocs = [];
 let gFinLoaded = false;
-let gInboxFilter = 'all'; // 'all' | 'inbox' | 'pending_review'
+let gInboxFilter = 'all'; // 'all' | 'inbox' | 'pending_review' | 'haengend' (T8 v11.53)
 let gInboxRows = [];   // gecachte Inbox-Daten für client-seitigen Filter
 
 // Sort state for tables
@@ -4088,6 +4265,16 @@ function renderInbox() {
   const total       = entityRows.length;
   const inboxCount  = entityRows.filter(r => r.status === 'inbox').length;
   const reviewCount = entityRows.filter(r => r.status === 'pending_review' || r.status === 'needs_review').length;
+  // v11.53 T8: „Hängend" = needs_review/inbox älter als 24h (date_received) ODER ohne provider/entity
+  const stuckCutoff = Date.now() - 24*60*60*1000;
+  const isHaengend = r => {
+    if (r.status === 'approved' || r.status === 'done') return false;
+    const ageMs = r.date_received ? new Date(r.date_received).getTime() : 0;
+    if (ageMs && ageMs < stuckCutoff) return true;
+    if (!r.provider || !r.entity) return true;
+    return false;
+  };
+  const haengendCount = entityRows.filter(isHaengend).length;
 
   // Duplikat-Erkennung: gleicher drive_file_name = Duplikat markieren
   const nameCounts = {};
@@ -4103,6 +4290,7 @@ function renderInbox() {
   // Status-Filter NACH Zähler-Berechnung anwenden
   if (gInboxFilter === 'inbox') rows = rows.filter(r => r.status === 'inbox');
   else if (gInboxFilter === 'pending_review') rows = rows.filter(r => r.status === 'pending_review' || r.status === 'needs_review');
+  else if (gInboxFilter === 'haengend') rows = rows.filter(isHaengend);
 
   if (!rows.length) {
     wrap.innerHTML = `<div class="alert alert-ok">✅ Keine Dokumente für diesen Filter</div>`;
@@ -4115,7 +4303,12 @@ function renderInbox() {
     <button class="inbox-chip ${gInboxFilter==='all'?'active':''}" onclick="setInboxFilter('all',this)" title="Alle Dokumente die noch deinen OK-Klick oder eine Prüfung brauchen">Alle (${total})</button>
     <button class="inbox-chip ${gInboxFilter==='inbox'?'active':''}" onclick="setInboxFilter('inbox',this)" title="Neu von n8n importiert — Triage-Agent hat Entität+Typ gesetzt. Prüfe und klicke OK: startet automatisch den passenden Skill (RECHNUNG/STEUER → Invoice-Extraktion, VERTRAG → Vertrags-Extraktion, danach Reconcile)">📥 Eingang (${inboxCount})</button>
     <button class="inbox-chip ${gInboxFilter==='pending_review'?'active':''}" onclick="setInboxFilter('pending_review',this)" title="Triage-Agent war unsicher (Confidence gering) — bitte Entität und Typ manuell prüfen und bestätigen, dann OK klicken">⚠️ Prüfen (${reviewCount})</button>
+    <button class="inbox-chip ${gInboxFilter==='haengend'?'active':''}" onclick="setInboxFilter('haengend',this)" title="Hängend (T8 v11.53): Docs > 24h ohne Approval ODER ohne provider/entity. Skill-Gap-Indikator.">🪤 Hängend (${haengendCount})</button>
   </div>
+  ${gInboxFilter==='haengend' ? `<div style="background:rgba(245,158,11,0.08);border-left:3px solid var(--orng);padding:10px 14px;border-radius:6px;margin-bottom:10px;font-size:12px;color:var(--tx);">
+    <strong>🪤 Hängend = Skill-Gap-Indikator.</strong> ${haengendCount} Doc${haengendCount===1?'':'s'} > 24h ohne Approval ODER ohne provider/entity.
+    Wenn Häufung pro Provider/doc_type → fehlt evtl. ein Skill (siehe „💡 Diesen Skill bräuchte ich" in Triage).
+  </div>` : ''}
   <div class="card">
     <div class="inbox-table-wrap">
     <table class="inbox-table">
@@ -7942,24 +8135,50 @@ function triageDocCard(doc) {
     const isChecked = sel.has(s.name) && !isFuture;
     const conf = s.confidence;
     const confColor = conf >= 80 ? 'var(--grn)' : conf >= 50 ? 'var(--orng)' : conf > 0 ? 'var(--red)' : 'var(--tx2)';
-    const barW = Math.max(2, Math.min(100, conf));
     const showLearningPill = conf > 0 && conf < 70;
+
+    // v11.53 T4 — Skill-Status-Badge ⏳ pending / ✅ done / ↻ rerun
+    let statusBadge;
+    if (isFuture) {
+      statusBadge = `<span class="skill-status-badge pending" title="Skill noch nicht bereit / future">⏳ in der Mache</span>`;
+    } else if (s.done) {
+      statusBadge = `<span class="skill-status-badge rerun" title="Skill ist auf diesem Doc bereits gelaufen — Häkchen + Apply triggert Re-Run">↻ re-runnable</span>`;
+    } else {
+      statusBadge = `<span class="skill-status-badge pending" title="Skill noch nicht auf diesem Doc gelaufen — wartet auf Apply">⏳ ausstehend</span>`;
+    }
+
+    // v11.53 T5 — Stats-Tripel (3 Werte klar getrennt: Relevanz / Trefferquote / Status)
+    const stats = gTriageSkillStats[s.name];
+    const tqHtml = stats && stats.total >= 1
+      ? `${stats.correct}/${stats.total} (${Math.round(100 * stats.correct / stats.total)}%)`
+      : '—';
+    const tqColor = stats && stats.total >= 1 && stats.correct / stats.total >= 0.5 ? 'var(--grn)' : (stats && stats.total >= 1 ? 'var(--orng)' : 'var(--tx2)');
+    const statusLabel = isFuture ? 'in der Mache' : (s.done ? 're-runnable' : 'ausstehend');
+    const statusColor = isFuture ? 'var(--orng)' : (s.done ? 'var(--blu)' : 'var(--orng)');
+
+    const tripel = conf > 0 ? `
+      <div class="skill-stats-tripel" title="Drei verschiedene Kennzahlen — siehe ⓘ-Buttons.">
+        <div title="🔧 Skill-Relevanz für DIESES Doc"><span class="stats-label">🔧 Relevanz ${helpIcon('confidence_skill_relevance')}</span><span class="stats-value" style="color:${confColor}">${conf}%</span></div>
+        <div title="📚 Skill-Trefferquote über alle Docs (learning_events)"><span class="stats-label">📚 Trefferquote ${helpIcon('confidence_skill_history')}</span><span class="stats-value" style="color:${tqColor}">${tqHtml}</span></div>
+        <div title="Skill-Aktivitätsstatus"><span class="stats-label">⏱ Status</span><span class="stats-value" style="color:${statusColor}">${statusLabel}</span></div>
+      </div>
+    ` : '';
 
     return `
       <label class="triage-skill-row" style="display:flex;align-items:flex-start;padding:7px 10px;border-radius:5px;cursor:${isFuture?'not-allowed':'pointer'};background:${isChecked?'var(--blu-bg)':'transparent'};border:1px solid ${isChecked?'var(--blu)':'transparent'};margin-bottom:3px;${isFuture?'opacity:0.65;':''}">
         <input type="checkbox" ${isChecked?'checked':''} ${isFuture?'disabled':''}
                onchange="triageToggleSkill(${doc.id}, '${s.name}', this.checked)"
                style="margin-right:9px;margin-top:3px;accent-color:var(--blu);">
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:500;">${s.label} <code style="font-size:10px;color:var(--tx2);background:var(--bg1);padding:1px 5px;border-radius:3px;">${s.name}</code> ${s.done?'<span style="color:var(--grn);font-size:11px;margin-left:6px;">✓ schon gelaufen</span>':''}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+            <span>${s.label}</span>
+            <code style="font-size:10px;color:var(--tx2);background:var(--bg1);padding:1px 5px;border-radius:3px;">${s.name}</code>
+            ${statusBadge}
+          </div>
           <div style="font-size:11px;color:var(--tx2);margin-top:2px;">${s.desc}</div>
-          ${conf > 0 ? `<div style="font-size:11px;color:var(--tx2);margin-top:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-              <span style="display:inline-block;background:var(--bg1);height:4px;width:80px;border-radius:2px;overflow:hidden;"><span style="display:block;height:100%;width:${barW}%;background:${confColor};"></span></span>
-              <span style="color:${confColor};font-weight:500;" title="🔧 Skill-Relevanz — wie sicher das System ist, dass dieser Skill jetzt für DIESES Doc passt. NICHT die Doc-Felder-Sicherheit oder die historische Trefferquote.">🔧 Skill-Relevanz: ${conf}%</span>
-              ${helpIcon('confidence_skill_relevance', 'margin-left:-2px;')}
-              ${triageStatString(s.name)}
-              ${showLearningPill?'<span style="background:var(--blu-bg);color:var(--blu);padding:1px 7px;border-radius:9px;font-size:10px;">📚 deine Korrektur lernt das System</span>':''}
-            </div>` : `<div style="font-size:11px;color:var(--orng);margin-top:4px;">Skill in der Mache — Doc kann jetzt geflaggt werden</div>`}
+          ${tripel}
+          ${showLearningPill?'<div style="margin-top:4px;"><span style="background:var(--blu-bg);color:var(--blu);padding:1px 7px;border-radius:9px;font-size:10px;">📚 deine Korrektur lernt das System</span></div>':''}
+          ${conf === 0 ? '<div style="font-size:11px;color:var(--orng);margin-top:4px;">Skill in der Mache — Doc kann jetzt geflaggt werden</div>' : ''}
         </div>
       </label>`;
   }).join('');
@@ -9291,7 +9510,55 @@ async function fetchQuotaMtd() {
   }
 }
 
-function renderQuotaTicker(payload) {
+// v11.53 T13 — Quota-Override: User pflegt einmal pro Tag den echten Dashboard-Wert
+// system_config Key 'n8n_dashboard_mtd_manual' (value: integer, source-of-truth wenn frisch <24h)
+async function fetchQuotaManualOverride() {
+  try {
+    const headers = await _supaAuthHeaders();
+    const url = `${SUPABASE_URL}/rest/v1/system_config?key=eq.n8n_dashboard_mtd_manual&select=value,updated_at`;
+    const res = await fetch(url, { headers });
+    if (!res.ok) return null;
+    const arr = await res.json();
+    if (!arr.length) return null;
+    const raw = arr[0].value;
+    const num = typeof raw === 'object' ? Number(raw.mtd ?? raw.count ?? 0) : Number(raw);
+    if (!Number.isFinite(num)) return null;
+    return { value: Math.round(num), updated_at: arr[0].updated_at };
+  } catch (e) { return null; }
+}
+async function saveQuotaManualOverride(value) {
+  try {
+    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' });
+    const url = `${SUPABASE_URL}/rest/v1/system_config?on_conflict=key`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ key: 'n8n_dashboard_mtd_manual', value: { mtd: value, set_via: 'dashboard-ui-v11.53' } }),
+    });
+    if (!res.ok) {
+      // Fallback: PATCH wenn POST nicht erlaubt
+      const r2 = await fetch(`${SUPABASE_URL}/rest/v1/system_config?key=eq.n8n_dashboard_mtd_manual`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ value: { mtd: value, set_via: 'dashboard-ui-v11.53' } }),
+      });
+      return r2.ok;
+    }
+    return true;
+  } catch (e) { console.warn('[quota-override] save failed', e); return false; }
+}
+async function promptQuotaOverride() {
+  const cur = await fetchQuotaManualOverride();
+  const curStr = cur ? `${cur.value} (gesetzt: ${(cur.updated_at||'').slice(0,16).replace('T',' ')})` : '— noch kein Override';
+  const v = prompt(`Quota-Override (n8n_dashboard_mtd_manual)\n\nAktuell: ${curStr}\n\nBitte echten MTD-Wert vom n8n-Cloud-Dashboard eintippen (z.B. 2081):`, cur ? String(cur.value) : '');
+  if (v == null) return;
+  const num = parseInt(v.replace(/[^\d]/g, ''), 10);
+  if (!Number.isFinite(num) || num < 0 || num > 50000) { alert('Ungültiger Wert.'); return; }
+  const ok = await saveQuotaManualOverride(num);
+  alert(ok ? `✅ Override gespeichert: ${num}` : '❌ Speichern fehlgeschlagen (siehe Console).');
+  refreshQuotaTicker();
+}
+
+function renderQuotaTicker(payload, overrideObj) {
   const valEl = document.getElementById('quota-ticker-value');
   const fillEl = document.getElementById('quota-ticker-fill');
   if (!valEl || !fillEl) return;
@@ -9301,22 +9568,53 @@ function renderQuotaTicker(payload) {
     fillEl.style.backgroundColor = '#6b7280';
     return;
   }
-  const mtd = payload.mtd;
+  // T13: Override hat Vorrang wenn vorhanden + frisch <24h
+  let mtd = payload.mtd;
+  let sourceLabel = payload.source;
+  let driftPill = '';
+  let usingOverride = false;
+  if (overrideObj && overrideObj.value != null) {
+    const ageMs = overrideObj.updated_at ? Date.now() - new Date(overrideObj.updated_at).getTime() : Infinity;
+    const fresh = ageMs < 24*60*60*1000;
+    if (fresh) {
+      const apiVal = payload.mtd;
+      mtd = overrideObj.value;
+      sourceLabel = 'manual-override (User-Eintrag)';
+      usingOverride = true;
+      const drift = mtd - apiVal;
+      const pct = apiVal > 0 ? Math.round(100 * drift / apiVal) : 0;
+      const cls = Math.abs(pct) >= 5 ? 'warn' : 'ok';
+      driftPill = ` <span class="quota-drift-pill ${cls}" title="Drift: API ${apiVal} vs Override ${mtd} = ${drift>=0?'+':''}${drift} (${pct>=0?'+':''}${pct}%)">Δ ${drift>=0?'+':''}${drift}</span>`;
+    }
+  }
   const pct = Math.min(100, Math.round((mtd / TGV_N8N_PLAN_MONTHLY) * 100));
-  valEl.textContent = `${mtd.toLocaleString('de-DE')} / ${TGV_N8N_PLAN_MONTHLY.toLocaleString('de-DE')} (${pct}%)`;
+  valEl.innerHTML = `${mtd.toLocaleString('de-DE')} / ${TGV_N8N_PLAN_MONTHLY.toLocaleString('de-DE')} (${pct}%)${driftPill}`;
   fillEl.style.width = `${pct}%`;
   fillEl.style.backgroundColor = pct < 60 ? '#10b981' : pct < 85 ? '#f59e0b' : '#ef4444';
   const ticker = document.getElementById('quota-ticker');
   if (ticker) {
     const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     const lastSync = payload.stale ? ('Sync: ' + (payload.stale.slice(0,16).replace('T',' ')) + ' UTC') : '';
-    ticker.title = `n8n-Quota MTD: ${mtd} / ${TGV_N8N_PLAN_MONTHLY} (${pct}%). Source: ${payload.source}. ${lastSync} · n8n-API kann ~13-25% gegenüber Dashboard untercounten (Memory feedback_n8n_quota_api_drift). Refresh-↻ triggert cost-collector mit Pagination (1 Exec). Anzeige: ${ts}.`;
+    const overrideHint = usingOverride ? ' [Override aktiv — frisch]' : (overrideObj ? ' [Override stale, ignored]' : '');
+    ticker.title = `n8n-Quota MTD: ${mtd} / ${TGV_N8N_PLAN_MONTHLY} (${pct}%). Source: ${sourceLabel}${overrideHint}. ${lastSync} · n8n-API kann ~13-25% gegenüber Dashboard untercounten (Memory feedback_n8n_quota_api_drift). Refresh-↻ triggert cost-collector. Override-Knopf 📝 öffnet Eingabe für echten Dashboard-Wert. Anzeige: ${ts}.`;
+  }
+  // Override-Knopf einblenden falls noch kein Element da
+  const headDiv = document.querySelector('#quota-ticker > div');
+  if (headDiv && !document.getElementById('quota-override-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'quota-override-btn';
+    btn.title = 'Echten Dashboard-MTD eintragen (system_config.n8n_dashboard_mtd_manual). Wird Source-of-Truth wenn <24h alt.';
+    btn.style.cssText = 'background:none;border:0;color:rgba(255,255,255,0.4);cursor:pointer;font-size:11px;padding:0 2px;margin-left:4px;';
+    btn.setAttribute('aria-label', 'Quota-Override');
+    btn.textContent = '📝';
+    btn.onclick = promptQuotaOverride;
+    headDiv.appendChild(btn);
   }
 }
 
 async function refreshQuotaTicker() {
-  const payload = await fetchQuotaMtd();
-  renderQuotaTicker(payload);
+  const [payload, override] = await Promise.all([fetchQuotaMtd(), fetchQuotaManualOverride()]);
+  renderQuotaTicker(payload, override);
 }
 
 function startQuotaTicker() {
@@ -10229,9 +10527,14 @@ function openSidePanel(doc) {
 
   const fields = [
     { key: 'provider', label: 'Provider / Lieferant', value: doc.provider, source: 'aus PDF + Mail-Subject (orchestrator)',
-      editor: `<label style="font-size:10px;color:var(--tx2);">neu eintragen (Tipp: Auswahl aus 347 kb_suppliers per Suche)</label>
-               <input type="text" id="sp-edit-provider" list="sp-supplier-datalist" value="${_spEsc(doc.provider||'')}" placeholder="z.B. Perplexity (Liste klappt auf)" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">
-               <datalist id="sp-supplier-datalist"><!-- befüllt async --></datalist>` },
+      editor: `<label style="font-size:10px;color:var(--tx2);">neu eintragen — Klick auf ▾ klappt Liste der 347 kb_suppliers auf, Tippen filtert</label>
+               <div class="provider-combobox-wrap">
+                 <input type="text" id="sp-edit-provider" autocomplete="off" value="${_spEsc(doc.provider||'')}" placeholder="z.B. Perplexity"
+                        oninput="providerComboboxFilter(this.value)" onfocus="providerComboboxOpen()" onkeydown="providerComboboxKey(event)"
+                        style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 28px 5px 8px;font-size:12px;margin-top:3px;">
+                 <button type="button" class="provider-combobox-toggle" onclick="providerComboboxToggle()" aria-label="Klappliste öffnen">▾</button>
+                 <div id="sp-provider-combobox-list" class="provider-combobox-list" role="listbox"></div>
+               </div>` },
     { key: 'entity', label: 'Entität', value: doc.entity, source: 'tgv-resolve-supplier (kb_suppliers Match)',
       editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren</label>
                <select id="sp-edit-entity" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">${_spEntityOptions(doc.entity)}</select>` },
@@ -10291,11 +10594,22 @@ function openSidePanel(doc) {
       <div style="font-size:10px;color:var(--tx2);margin-bottom:8px;font-style:italic;">Liste der bereits gelaufenen Skills auf diesem Doc (aus <code>agent_events</code>). „⌀ Skill-Relevanz beim Run" zeigt die durchschnittliche Skill-Relevanz dieses Skills bei seinen Runs auf diesem Doc.</div>
       ${skillsHtml}
     </div>
-    <div class="side-panel-section" style="border-bottom:none;">
+    <div class="side-panel-section">
       <h4>📂 Drive-Pfad <span style="font-weight:400;color:var(--tx2);font-size:10px;">(wo das Doc liegt)</span> ${helpIcon('drive_path')}</h4>
       ${_spDrivePathHtml(doc)}
+    </div>
+    <div class="side-panel-section" style="border-bottom:none;">
+      <h4>📊 Alle DB-Felder (raw)</h4>
+      <button class="db-snapshot-toggle" onclick="spToggleDbSnapshot(this)" aria-expanded="false">
+        <span>▾ Alle Felder anzeigen (${Object.keys(doc).length})</span>
+        <span style="font-size:10px;color:var(--tx2);">documents row</span>
+      </button>
+      <div id="sp-db-snapshot-content" style="display:none;margin-top:8px;">
+        ${_spDbSnapshotHtml(doc)}
+      </div>
     </div>`;
 
+  _spInitWidth();
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
   backdrop.classList.add('open');
@@ -10315,11 +10629,10 @@ function openSidePanel(doc) {
     loading.style.display = 'none';
   });
 
-  // v11.50: Provider-Autocomplete-Datalist mit allen kb_suppliers
+  // v11.53 T10: Provider-Combobox echte Klapp-Liste (replace datalist)
   _spFetchAllSupplierNames().then(names => {
-    const dl = document.getElementById('sp-supplier-datalist');
-    if (!dl || !names.length) return;
-    dl.innerHTML = names.map(n => `<option value="${_spEsc(n)}">`).join('');
+    _gProviderComboboxNames = names || [];
+    providerComboboxRender(document.getElementById('sp-edit-provider')?.value || '');
   });
 
   // kb_suppliers async (für aktuelles Provider-Feld)
@@ -10367,6 +10680,153 @@ function closeSidePanel() {
     _sidePanelEscHandler = null;
   }
   _sidePanelCurrentDoc = null;
+}
+
+// v11.53 T10 — Provider Combobox (echte Klapp-Liste statt datalist)
+let _gProviderComboboxNames = [];
+let _gProviderComboboxFiltered = [];
+let _gProviderComboboxActive = -1;
+function providerComboboxRender(filterStr) {
+  const list = document.getElementById('sp-provider-combobox-list');
+  if (!list) return;
+  const f = (filterStr || '').toLowerCase().trim();
+  _gProviderComboboxFiltered = f
+    ? _gProviderComboboxNames.filter(n => n.toLowerCase().includes(f)).slice(0, 80)
+    : _gProviderComboboxNames.slice(0, 80);
+  if (!_gProviderComboboxFiltered.length) {
+    list.innerHTML = `<div class="pcb-empty">${f ? `Kein Treffer für „${_spEsc(f)}"` : 'Lade…'}</div>`;
+  } else {
+    list.innerHTML = _gProviderComboboxFiltered.map((n, i) =>
+      `<div class="pcb-item ${i === _gProviderComboboxActive ? 'active' : ''}" data-idx="${i}" onclick="providerComboboxPick(${i})">${_spEsc(n)}</div>`
+    ).join('');
+    if (f) list.innerHTML += `<div class="pcb-empty">${_gProviderComboboxFiltered.length} Treffer (max 80 angezeigt)</div>`;
+  }
+}
+function providerComboboxOpen() {
+  const list = document.getElementById('sp-provider-combobox-list');
+  if (!list) return;
+  if (!_gProviderComboboxFiltered.length) providerComboboxRender('');
+  list.classList.add('open');
+  document.addEventListener('mousedown', _providerComboboxOutsideClose, true);
+}
+function providerComboboxClose() {
+  const list = document.getElementById('sp-provider-combobox-list');
+  if (list) list.classList.remove('open');
+  _gProviderComboboxActive = -1;
+  document.removeEventListener('mousedown', _providerComboboxOutsideClose, true);
+}
+function _providerComboboxOutsideClose(e) {
+  const wrap = document.querySelector('.provider-combobox-wrap');
+  if (wrap && !wrap.contains(e.target)) providerComboboxClose();
+}
+function providerComboboxToggle() {
+  const list = document.getElementById('sp-provider-combobox-list');
+  if (!list) return;
+  if (list.classList.contains('open')) providerComboboxClose();
+  else { providerComboboxRender(document.getElementById('sp-edit-provider')?.value || ''); providerComboboxOpen(); }
+}
+function providerComboboxFilter(val) {
+  providerComboboxRender(val);
+  providerComboboxOpen();
+}
+function providerComboboxPick(idx) {
+  const name = _gProviderComboboxFiltered[idx];
+  if (!name) return;
+  const inp = document.getElementById('sp-edit-provider');
+  if (inp) inp.value = name;
+  providerComboboxClose();
+}
+function providerComboboxKey(e) {
+  const list = document.getElementById('sp-provider-combobox-list');
+  if (!list || !list.classList.contains('open')) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _gProviderComboboxActive = Math.min(_gProviderComboboxFiltered.length - 1, _gProviderComboboxActive + 1);
+    providerComboboxRender(document.getElementById('sp-edit-provider').value);
+    providerComboboxOpen();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _gProviderComboboxActive = Math.max(0, _gProviderComboboxActive - 1);
+    providerComboboxRender(document.getElementById('sp-edit-provider').value);
+    providerComboboxOpen();
+  } else if (e.key === 'Enter' && _gProviderComboboxActive >= 0) {
+    e.preventDefault();
+    providerComboboxPick(_gProviderComboboxActive);
+  } else if (e.key === 'Escape') {
+    providerComboboxClose();
+  }
+}
+
+// v11.53 T11 — DB-Snapshot collapsible (alle 30+ doc-Felder raw)
+function _spDbSnapshotHtml(doc) {
+  const keys = Object.keys(doc).sort();
+  const rows = keys.map(k => {
+    const v = doc[k];
+    let display;
+    if (v == null) display = '<span style="color:var(--tx2);font-style:italic;">null</span>';
+    else if (typeof v === 'object') display = `<code style="font-size:10px;">${_spEsc(JSON.stringify(v))}</code>`;
+    else display = _spEsc(String(v));
+    return `<tr><td>${_spEsc(k)}</td><td>${display}</td></tr>`;
+  }).join('');
+  return `<table class="db-snapshot-table"><tbody>${rows}</tbody></table>`;
+}
+function spToggleDbSnapshot(btn) {
+  const content = document.getElementById('sp-db-snapshot-content');
+  if (!content) return;
+  const open = content.style.display !== 'none';
+  content.style.display = open ? 'none' : 'block';
+  const span = btn.querySelector('span');
+  if (span) {
+    const cnt = (span.textContent.match(/\d+/) || ['?'])[0];
+    span.textContent = (open ? '▾' : '▴') + ' Alle Felder ' + (open ? 'anzeigen' : 'ausblenden') + ` (${cnt})`;
+  }
+  btn.setAttribute('aria-expanded', String(!open));
+}
+
+// v11.53 T6 — Side-Panel Resize (Drag-Handle links)
+let _spResizeStart = null;
+const SP_WIDTH_KEY = 'tgv_side_panel_width';
+function _spInitWidth() {
+  const stored = parseInt(localStorage.getItem(SP_WIDTH_KEY) || '0', 10);
+  if (stored >= 360 && stored <= 1200) {
+    const panel = document.getElementById('side-panel');
+    if (panel) panel.style.width = stored + 'px';
+  }
+}
+function startSidePanelResize(e) {
+  e.preventDefault();
+  const panel = document.getElementById('side-panel');
+  const handle = document.getElementById('side-panel-resize-handle');
+  if (!panel) return;
+  _spResizeStart = { x: e.clientX, w: panel.getBoundingClientRect().width };
+  panel.classList.add('dragging');
+  if (handle) handle.classList.add('dragging');
+  document.body.classList.add('sp-resizing');
+  document.addEventListener('mousemove', _spResizeMove);
+  document.addEventListener('mouseup', _spResizeEnd);
+}
+function _spResizeMove(e) {
+  if (!_spResizeStart) return;
+  const panel = document.getElementById('side-panel');
+  if (!panel) return;
+  // Side-Panel ist rechts angedockt: nach links ziehen = breiter
+  const delta = _spResizeStart.x - e.clientX;
+  const newW = Math.max(360, Math.min(1200, _spResizeStart.w + delta));
+  panel.style.width = newW + 'px';
+}
+function _spResizeEnd() {
+  document.removeEventListener('mousemove', _spResizeMove);
+  document.removeEventListener('mouseup', _spResizeEnd);
+  document.body.classList.remove('sp-resizing');
+  const panel = document.getElementById('side-panel');
+  const handle = document.getElementById('side-panel-resize-handle');
+  if (panel) {
+    panel.classList.remove('dragging');
+    const w = parseInt(panel.style.width || '480', 10);
+    try { localStorage.setItem(SP_WIDTH_KEY, String(w)); } catch (e) {}
+  }
+  if (handle) handle.classList.remove('dragging');
+  _spResizeStart = null;
 }
 
 // Bridge: Triage-Card-Button → Side-Panel mit Doc aus gTriageDocs
