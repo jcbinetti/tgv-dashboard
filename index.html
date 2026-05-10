@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.53 — 2026-05-10 — Iter 20 Block B auf Block-A+C-Basis: MCP-Tool-Hub Tab "🤖 Aktionen" (22 Tools in 6 Gruppen, Karten-Layout, Execute-Modal, last-3-History, Schicht-A-Injection-Schutz) + Skill-History-Vollausbau im Side-Panel (tokens/cost_eur/duration/loops/ROI/Lern-Hinweis aus pattern_rules.scope=skill_routing Mig 061) + Mail-Rules Live-Test-Button. Behält Block-A: Confidence-3-Trennung + ⓘ-Click-Popups + Duplicate-Banner. Behält Block-C: Architektur v8 Live-Hook + agent_events Stream + Pattern-Lifecycle + Buchhalter-Vorschau. -->
+<!-- TGV Dashboard v11.54 — 2026-05-10 — Iter 20 Block B Welle b2 (US14 query_documents): Strukturierter Ad-hoc-Filter mit enums (date_range/entity/doc_type/supplier/group_by/sort) als 23. MCP-Tool. Im Chat via TGV_TOOLS + im Hub als Search-Karte. Schicht-A-Schutz (chatbot_ux_safety): nur Whitelist-Werte, PostgREST-Filter, niemals SQL-String-Konkatenation. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.53">
-<title>TGV Dashboard v11.53 — Financial OS</title>
+<meta name="version" content="11.54">
+<title>TGV Dashboard v11.54 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -8779,6 +8779,28 @@ const TGV_TOOLS = [
       },
       required: ['query']
     }
+  },
+  {
+    // US14 (Iter 20.15) — strukturierter Ad-hoc-Filter über documents.
+    // Beispiel-User-Frage: "Welche Supplier März 2026 mit Bruttos sortiert nach Entität+Datum"
+    // Sicherheits-Constraint: nur Whitelist-Werte (enums), niemals freier SQL-String.
+    name: 'query_documents',
+    description: 'Strukturierter Filter über documents — ersetzt freie SQL-Queries. Nutze dies wenn der User aggregierte Reports anfragt (z.B. "Supplier März", "Brutto pro Entity", "Verträge mit Vodafone"). Default sort=date_received desc.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        date_from: { type: 'string', description: 'Untere Datumsgrenze ISO YYYY-MM-DD (inklusiv, gilt auf invoice_date)' },
+        date_to:   { type: 'string', description: 'Obere Datumsgrenze ISO YYYY-MM-DD (exklusiv)' },
+        entity:    { type: 'string', description: 'Firma', enum: ['privat','c3-convis-gmbh','c4-convis-sarl','kivisai'] },
+        doc_type:  { type: 'string', description: 'Doc-Typ', enum: ['Rechnung','Vertrag','Lohnsteuer','Kontoauszug','Quittung','Sonstiges'] },
+        supplier:  { type: 'string', description: 'ILIKE-Match auf provider (z.B. "vodafone", "ionos")' },
+        status:    { type: 'string', description: 'Doc-Status', enum: ['inbox','needs_review','pending_review','approved','rejected'] },
+        group_by:  { type: 'string', description: 'Gruppierung (statt Einzel-Rows)', enum: ['entity','supplier','month','category_l1'] },
+        sort_by:   { type: 'string', description: 'Sort-Feld (immer DESC)', enum: ['date_received','invoice_date','amount','entity','provider'] },
+        limit:     { type: 'integer', description: 'Max. Treffer (1-200)' }
+      },
+      required: []
+    }
   }
 ];
 
@@ -8853,6 +8875,64 @@ async function executeTool(toolName, toolInput) {
         supaCount('txn_master', 'document_id=is.null')
       ]);
       return `Nächste Aktionen im TGV-System:\n• ${pendingDocs} Dokumente offen (inbox + needs_review)\n• ${pendingTxns} Transaktionen zur Kategorie-Bestätigung\n• ${unlinkedTxns} Transaktionen ohne verknüpfte Rechnung`;
+    }
+
+    if (toolName === 'query_documents') {
+      // US14 — strukturierter Ad-hoc-Filter. Schicht-A (chatbot_ux_safety):
+      // alle Werte gegen Whitelist, nur PostgREST mit url.searchParams (auto-escaped).
+      const VALID_ENT  = new Set(['privat','c3-convis-gmbh','c4-convis-sarl','kivisai']);
+      const VALID_TYPE = new Set(['Rechnung','Vertrag','Lohnsteuer','Kontoauszug','Quittung','Sonstiges']);
+      const VALID_ST   = new Set(['inbox','needs_review','pending_review','approved','rejected']);
+      const VALID_GRP  = new Set(['entity','supplier','month','category_l1']);
+      const VALID_SRT  = new Set(['date_received','invoice_date','amount','entity','provider']);
+      const args = toolInput || {};
+      if (args.entity   && !VALID_ENT.has(args.entity))   return `Fehler: entity="${args.entity}" nicht erlaubt.`;
+      if (args.doc_type && !VALID_TYPE.has(args.doc_type)) return `Fehler: doc_type="${args.doc_type}" nicht erlaubt.`;
+      if (args.status   && !VALID_ST.has(args.status))    return `Fehler: status="${args.status}" nicht erlaubt.`;
+      if (args.group_by && !VALID_GRP.has(args.group_by)) return `Fehler: group_by="${args.group_by}" nicht erlaubt.`;
+      if (args.sort_by  && !VALID_SRT.has(args.sort_by))  return `Fehler: sort_by="${args.sort_by}" nicht erlaubt.`;
+      const limit = Math.max(1, Math.min(+args.limit || 50, 200));
+      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category_l1,subject'];
+      if (args.date_from) filters.push(`invoice_date=gte.${encodeURIComponent(args.date_from)}`);
+      if (args.date_to)   filters.push(`invoice_date=lt.${encodeURIComponent(args.date_to)}`);
+      if (args.entity)    filters.push(`entity=eq.${encodeURIComponent(args.entity)}`);
+      if (args.doc_type)  filters.push(`doc_type=eq.${encodeURIComponent(args.doc_type)}`);
+      if (args.status)    filters.push(`status=eq.${encodeURIComponent(args.status)}`);
+      if (args.supplier) {
+        const term = String(args.supplier).replace(/[%,*]/g,' ').trim();
+        if (term) filters.push(`provider=ilike.*${encodeURIComponent(term)}*`);
+      }
+      filters.push(`order=${args.sort_by || 'date_received'}.desc.nullslast`);
+      filters.push(`limit=${limit}`);
+      const rows = await supa(`documents?${filters.join('&')}`);
+      if (!rows.length) return 'Keine Dokumente gefunden für die angegebenen Filter.';
+
+      // Group-by Aggregation client-side
+      if (args.group_by) {
+        const buckets = {};
+        for (const r of rows) {
+          let k;
+          if (args.group_by === 'entity')         k = r.entity || '—';
+          else if (args.group_by === 'supplier')  k = r.provider || '—';
+          else if (args.group_by === 'month')     k = (r.invoice_date || r.date_received || '').slice(0,7) || '—';
+          else if (args.group_by === 'category_l1') k = r.category_l1 || '—';
+          else k = '?';
+          const b = (buckets[k] = buckets[k] || { count: 0, sum: 0, currency: r.currency || 'EUR', samples: [] });
+          b.count++;
+          if (r.amount != null) { const n = Number(r.amount); if (!isNaN(n)) b.sum += n; }
+          if (b.samples.length < 3) b.samples.push(r);
+        }
+        const groupKeys = Object.entries(buckets).sort((a,b) => b[1].count - a[1].count);
+        const lines = [`📊 query_documents — group_by=${args.group_by}, ${rows.length} rows in ${groupKeys.length} Gruppen`];
+        for (const [k, b] of groupKeys) {
+          lines.push(`\n● ${k}: ${b.count} docs · Σ ${b.sum.toFixed(2)} ${b.currency}`);
+          for (const s of b.samples) lines.push(`   - #${s.id} ${(s.invoice_date||s.date_received||'').slice(0,10)} · ${s.provider||'—'} · ${s.amount!=null?Number(s.amount).toFixed(2)+' '+(s.currency||'EUR'):'—'} · ${s.status||'?'}`);
+        }
+        return lines.join('\n');
+      }
+      // Flat-Liste
+      const lines = rows.map(r => `- #${r.id} ${(r.invoice_date||r.date_received||'').slice(0,10)} · ${r.entity||'—'} · ${r.provider||'—'} · ${r.amount!=null?Number(r.amount).toFixed(2)+' '+(r.currency||'EUR'):'—'} · ${r.doc_type||'?'} · ${r.status||'?'}`);
+      return `📋 ${rows.length} Dokumente:\n${lines.join('\n')}`;
     }
 
     if (toolName === 'search_knowledge') {
@@ -9476,8 +9556,22 @@ const ACTION_GROUPS = [
   },
   {
     id: 'search', icon: '🔍', title: 'Suche',
-    desc: 'Volltext + Wissensbasis.',
+    desc: 'Volltext + Wissensbasis + Ad-hoc-Filter.',
     tools: [
+      { name: 'query_documents', what: 'Strukturierter Ad-hoc-Filter über documents (Datum/Entity/Doc-Type/Supplier/Group-by).',
+        when: 'Wenn du Reports willst statt SQL zu schreiben — z.B. "Supplier März 2026 nach Entität".',
+        params: [
+          { key: 'date_from', label: 'Datum ab (YYYY-MM-DD)', type: 'string', default: '' },
+          { key: 'date_to',   label: 'Datum bis (exklusiv)', type: 'string', default: '' },
+          { key: 'entity',    label: 'Entität', type: 'select', options: ['', ..._ACT_ENTITIES], default: '' },
+          { key: 'doc_type',  label: 'Doc-Type', type: 'select', options: ['', ..._ACT_DOC_TYPES], default: '' },
+          { key: 'supplier',  label: 'Supplier (ILIKE)', type: 'string', default: '' },
+          { key: 'status',    label: 'Status', type: 'select', options: ['','inbox','needs_review','pending_review','approved','rejected'], default: '' },
+          { key: 'group_by',  label: 'Gruppieren nach', type: 'select', options: ['','entity','supplier','month','category_l1'], default: '' },
+          { key: 'sort_by',   label: 'Sortieren nach', type: 'select', options: ['date_received','invoice_date','amount','entity','provider'], default: 'date_received' },
+          { key: 'limit',     label: 'Max. Ergebnisse', type: 'integer', default: 50 },
+        ],
+        exec: { kind: 'tool_call', toolName: 'query_documents' }},
       { name: 'search_documents', what: 'Volltext-Suche in documents (provider/subject/category).',
         when: 'Wenn du ein bestimmtes Doc finden willst, Doc-ID unbekannt.',
         params: [
@@ -9721,6 +9815,11 @@ async function mcpRunExecute() {
     if (ex.kind === 'note') {
       out.textContent = '🛈 ' + ex.text;
       summary = 'note';
+    } else if (ex.kind === 'tool_call') {
+      // Delegiert an die bestehende executeTool()-Logik (TGV_TOOLS-Array), z.B. query_documents.
+      // Vorteil: ein Ort für Validierung + Output-Formatierung — gleich wie der Chat ihn nutzt.
+      summary = await executeTool(ex.toolName, params);
+      out.textContent = summary;
     } else if (ex.kind === 'postgrest') {
       const path = ex.build(params);
       const data = await supa(path);
