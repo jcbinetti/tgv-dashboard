@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.45 — 2026-05-09 — Iter 16: Architektur-Tab (iframe-Embed v7, 7-Layer Cytoscape, lazy-loaded, Deep-Link #architektur) -->
+<!-- TGV Dashboard v11.47 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.45">
-<title>TGV Dashboard v11.45 — Financial OS</title>
+<meta name="version" content="11.47">
+<title>TGV Dashboard v11.47 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1027,20 +1027,172 @@ table th.num, table td.num { text-align: right !important; }
 .contract-row:hover td { background: #e0f2f2 !important; }
 .contract-row.selected td { background: #d0ede9 !important; border-left: 3px solid var(--teal); }
 
-/* ─── CHAT PANEL ─── */
-#chat-btn {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.7);
-  padding: 5px 12px;
+/* ─── SIDE PANEL (Iter 20.1 — Side-Panel-C Stub, Workshop Q1 b→a Pfad) ─── */
+/* Globaler Master-Detail-Container.  Triage öffnet Doc-Detail rechts;
+   geplant für Inbox / Verträge / Finanzen / Monatsabschluss in Welle (a) Erweiterung.
+   Mobile: kommt von unten als Vollbild-Sheet (Tailwind-responsive-Pattern in Iter 21+).
+   ESC-key + Backdrop-Click schließt. */
+#side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 480px;
+  max-width: 92vw;
+  height: 100vh;
+  background: var(--bg);
+  border-left: 1px solid var(--bdr);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.35);
+  transform: translateX(100%);
+  transition: transform 0.25s ease-out;
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#side-panel.open { transform: translateX(0); }
+
+#side-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 940;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+#side-panel-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bdr);
+  background: var(--bg1);
+  flex-shrink: 0;
+}
+.side-panel-header h3 { font-size: 13px; font-weight: 600; margin: 0; }
+.side-panel-header-sub { font-size: 10px; color: var(--tx2); margin-top: 2px; font-family: monospace; }
+.side-panel-close {
+  background: none;
+  border: none;
+  color: var(--tx2);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.side-panel-close:hover { color: var(--tx); }
+
+.side-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.side-panel-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bdr);
+}
+.side-panel-section h4 {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--tx2);
+  margin: 0 0 10px;
+}
+
+#side-panel-pdf-frame {
+  width: 100%;
+  height: 360px;
+  border: 1px solid var(--bdr);
+  border-radius: 4px;
+  background: var(--bg1);
+}
+
+.sp-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.sp-field-row label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--tx2);
+}
+.sp-field-row select,
+.sp-field-row input[type="text"],
+.sp-field-row input[type="number"] {
+  background: var(--bg1);
+  color: var(--tx);
+  border: 1px solid var(--bdr);
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.sp-skill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  background: var(--bg1);
   border-radius: 4px;
   font-size: 11px;
+}
+.sp-skill-row.applied { border-left: 3px solid var(--grn); }
+.sp-skill-row.recommended { border-left: 3px solid var(--blu); }
+.sp-skill-row .sp-skill-name { font-family: monospace; font-size: 11px; color: var(--tx); }
+.sp-skill-row .sp-skill-meta { color: var(--tx2); font-size: 10px; }
+
+@media (max-width: 768px) {
+  #side-panel {
+    width: 100vw;
+    max-width: 100vw;
+    top: auto;
+    bottom: 0;
+    height: 88vh;
+    border-left: none;
+    border-top: 1px solid var(--bdr);
+    border-radius: 12px 12px 0 0;
+    transform: translateY(100%);
+  }
+  #side-panel.open { transform: translateY(0); }
+  #side-panel-pdf-frame { height: 240px; }
+}
+
+/* ─── CHAT PANEL ─── */
+/* Iter 20.2b — Chat-Button prominenter (User-Anforderung 2026-05-10:
+   "MCP chat button nicht verlieren + sichtbar"). Vorher: zurückhaltend
+   transparent. Jetzt: teal-Akzent damit User die KI-Conversational-Funktion
+   direkt erkennt. Bridge zu MCP-Tool-Hub-Tab kommt in Iter-20-P1 (Welle c). */
+#chat-btn {
+  background: var(--teal);
+  border: 1px solid var(--teal);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  box-shadow: 0 2px 6px rgba(20,184,166,0.25);
 }
-#chat-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+#chat-btn:hover {
+  background: #0d9488;
+  border-color: #0d9488;
+  box-shadow: 0 3px 10px rgba(20,184,166,0.4);
+  transform: translateY(-1px);
+}
 #chat-btn.has-msg::after {
   content: '';
   position: absolute;
@@ -1395,9 +1547,24 @@ body.chat-open #main-content {
   </div>
   <div class="topbar-right">
     <span class="topbar-version" id="topbar-version">v?</span>
-    <button id="chat-btn" onclick="toggleChat()" title="TGV Chat — Ad-hoc Korrekturen">💬 Chat</button>
+    <button id="chat-btn" onclick="toggleChat()" title="TGV Chat (Claude + MCP-Tools) — Ad-hoc-Anfragen, Korrekturen, Tool-Calls in natürlicher Sprache. 22 Tools verfügbar (Liste folgt im Hub-Tab Iter 20 P1 Welle c).">💬 Chat</button>
     <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
     <button id="auth-logout-btn" onclick="authLogout()" title="Abmelden" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.8);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:6px">🔒 Abmelden</button>
+  </div>
+</div>
+
+<!-- SIDE PANEL — Iter 20.1 (Workshop Q1: C→A Pfad, Master-Detail global) -->
+<div id="side-panel-backdrop" onclick="closeSidePanel()"></div>
+<div id="side-panel" role="dialog" aria-labelledby="side-panel-title" aria-hidden="true">
+  <div class="side-panel-header">
+    <div>
+      <h3 id="side-panel-title">Doc-Detail</h3>
+      <div class="side-panel-header-sub" id="side-panel-subtitle">—</div>
+    </div>
+    <button class="side-panel-close" onclick="closeSidePanel()" title="Schließen (Esc)" aria-label="Side-Panel schließen">×</button>
+  </div>
+  <div class="side-panel-body" id="side-panel-body">
+    <!-- populated by openSidePanel(doc) -->
   </div>
 </div>
 
@@ -1436,66 +1603,83 @@ body.chat-open #main-content {
 
   <!-- SIDEBAR -->
   <nav id="sidebar">
-    <div class="sidebar-section-label">Navigation</div>
+    <div class="sidebar-section-label" title="TGV CORE — Finanzsteuerung Multi-Entity (C3, C4, KIVISAI, PRIVAT). Heute aktiv.">CORE · Finanzen</div>
 
-    <button class="nav-item active" onclick="showPage('uebersicht', this)">
+    <button class="nav-item active" onclick="showPage('uebersicht', this)" title="KPI-Dashboard mit Stats (Docs, Txn, Verträge, Linkrate, Cost)">
       <span class="nav-icon">📊</span>
       <span class="nav-label">Übersicht</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('inbox', this)">
+    <button class="nav-item" onclick="showPage('inbox', this)" title="Eingehende Docs + Txn-Review (3 Sub-Tabs: Dokumente, Transaktionen, Zuletzt)">
       <span class="nav-icon">📥</span>
       <span class="nav-label">Inbox</span>
       <span class="nav-badge" id="inbox-badge" style="display:none">0</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('triage', this)" title="UI Variante C — Skill-driven Multi-Select (Iter 15.2)">
+    <button class="nav-item" onclick="showPage('triage', this)" title="Skill-driven Multi-Select pro Doc (UI-C, Iter 15.2). Korrigiere doc_type, Entity, Provider und triggere Skills.">
       <span class="nav-icon">🎯</span>
       <span class="nav-label">Triage</span>
       <span class="nav-badge" id="triage-badge" style="display:none;background:var(--blu)">0</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('finanzen', this)">
+    <button class="nav-item" onclick="showPage('finanzen', this)" title="L1/L2/L3 Drilldown, Cashflow, Transaktionen, Doc-Liste, Reconcile-Abgleich">
       <span class="nav-icon">💶</span>
       <span class="nav-label">Finanzen</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('vertraege', this)">
+    <button class="nav-item" onclick="showPage('vertraege', this)" title="prf_contracts Master + Renewal-Reminder (notice_deadline)">
       <span class="nav-icon">📄</span>
       <span class="nav-label">Verträge</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('projekte', this)">
+    <button class="nav-item" onclick="showPage('projekte', this)" title="prf_projects (heute 3 Projekte). Ab Iter 22+ wird das zur PROJEKT-Domain umstrukturiert.">
       <span class="nav-icon">📋</span>
       <span class="nav-label">Projekte</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('monatsabschluss', this)">
+    <button class="nav-item" onclick="showPage('monatsabschluss', this)" title="Buchhalter-Versand pro Monat + Entity (WF E)">
       <span class="nav-icon">📅</span>
       <span class="nav-label">Monatsabschluss</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('mailrules', this)">
+    <button class="nav-item" onclick="showPage('mailrules', this)" title="Mail-Routing-Regeln (54 IMAP-Filter-Regeln). CRUD geplant Iter 20.">
       <span class="nav-icon">📬</span>
       <span class="nav-label">Mail Rules</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('linkrate', this)">
+    <button class="nav-item" onclick="showPage('linkrate', this)" title="KPI Doc↔Txn Verknüpfungs-Rate über Zeit. Aktuell ~53% (Iter 15 Decoupling).">
       <span class="nav-icon">🔗</span>
       <span class="nav-label">Linkrate</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('system', this)">
+    <div class="sidebar-section-label" title="TGV PROJEKT — projektgetriebene Arbeit pro Entity (consulting, IT, Marketing, ai-healthy-ship, ...). Eigene Skills + Rechte + Theme. Phase 2 ab Iter 22+.">PROJEKT · Workspace</div>
+
+    <button class="nav-item" disabled style="opacity:0.45;cursor:not-allowed" title="TGV-PROJEKT-Domain: Phase 2 Roadmap. Skills wie Steuerberater, Copywriter, Projektsteuer, Controller, Graphikdesigner, Reisekosten-Master in projekt-spezifischer Konfiguration. Aktiviert ab Iter 22+ (siehe Memory project_tgv_core_vs_projekt_vision).">
+      <span class="nav-icon">🚧</span>
+      <span class="nav-label">Coming Iter 22+</span>
+    </button>
+
+    <div class="sidebar-section-label" title="System-Tools für Configuration, Telemetrie, Pattern-Health, Architektur-Visualisierung">SYSTEM</div>
+
+    <button class="nav-item" onclick="showPage('system', this)" title="Migrations-Liste, n8n-WF-Status, Cost-Telemetrie, Pattern-Health (3 Sub-Tabs)">
       <span class="nav-icon">⚙️</span>
       <span class="nav-label">System</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('architektur', this)" title="TGV-Architektur Visualisierung v7 (Cytoscape, 7-Layer, 3 Modi)">
+    <button class="nav-item" onclick="showPage('architektur', this)" title="TGV 7-Layer-Architektur als Cytoscape-Graph (3 Modi: Erklären/Lehren/Live). Quelle: KONZEPT_v2 §2.">
       <span class="nav-icon">🏗</span>
       <span class="nav-label">Architektur</span>
     </button>
 
     <div class="sidebar-footer">
+      <!-- Iter 20.1c Live-Cost-Ticker (cost_telemetry_n8n MTD aus Mig 060) -->
+      <div id="quota-ticker" style="font-size:10px;line-height:1.4;margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid #6b7280" title="n8n-Execution-Quota verbraucht im aktuellen Monat (cost_telemetry_n8n + Dashboard-Komplement). Klick: kompletter Cost-Tab.">
+        <div style="opacity:0.5;font-size:9px;letter-spacing:0.5px">QUOTA · MTD</div>
+        <div id="quota-ticker-value" style="font-weight:600;font-size:11px;color:rgba(255,255,255,0.8)">…lade</div>
+        <div id="quota-ticker-bar" style="height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:4px;overflow:hidden">
+          <div id="quota-ticker-fill" style="height:100%;width:0%;background:#6b7280;transition:width 0.4s,background-color 0.4s"></div>
+        </div>
+      </div>
       TGV Financial OS <span id="sidebar-version">v?</span><br>
       Jean-Chris Binetti
     </div>
@@ -6833,10 +7017,18 @@ function triageDocCard(doc) {
             ${doc.drive_file_id ? '<span style="margin-left:6px;color:var(--tx2);">📎 PDF</span>' : ''}
           </div>
         </div>
-        <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
-               onchange="triageToggleBulk(${doc.id})"
-               title="Bulk-Auswahl"
-               style="margin-top:4px;width:18px;height:18px;accent-color:var(--blu);cursor:pointer;">
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <!-- Iter 20.1 Side-Panel-Trigger (Workshop Q1 C→A Pfad) -->
+          <button onclick="openSidePanelForDocId(${doc.id})"
+                  title="Side-Panel öffnen: PDF inline + Felder editieren + Skill-History (Iter 20.1)"
+                  style="background:var(--bg1);border:1px solid var(--bdr);color:var(--tx);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;">
+            📋 Detail
+          </button>
+          <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
+                 onchange="triageToggleBulk(${doc.id})"
+                 title="Bulk-Auswahl"
+                 style="width:18px;height:18px;accent-color:var(--blu);cursor:pointer;">
+        </div>
       </div>
       <div style="font-size:12px;color:var(--tx2);font-style:italic;margin-bottom:8px;">Was soll mit diesem Doc passieren?</div>
       <div>${skillsHtml}</div>
@@ -7921,7 +8113,327 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // AUTH GATE (Iter 9.5) — initAuth() ruft loadUebersicht/loadMdCategories nach Login
   initAuth();
+
+  // Iter 20.1c — Live-Quota-Ticker (cost_telemetry_n8n + Mig 060)
+  // Refresh alle 60s. Source-of-Truth: Dashboard-Wert pflegen User manuell;
+  // hier zeigen wir den DB-Stand als Mindest-Indikator.
+  startQuotaTicker();
 });
+
+// ═══════════════════════════════════════════════════════
+//  Iter 20.1c — Live-Quota-Ticker (Mig 060 cost_telemetry_n8n)
+// ═══════════════════════════════════════════════════════
+const TGV_N8N_PLAN_MONTHLY = 2500; // n8n Cloud Pro plan limit per month
+
+async function fetchQuotaMtd() {
+  try {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const url = `${SUPABASE_URL}/rest/v1/cost_telemetry_n8n?ts=gte.${encodeURIComponent(monthStart)}&select=id`;
+    const headers = await _supaAuthHeaders({ Prefer: 'count=exact', Range: '0-0' });
+    const res = await fetch(url, { headers });
+    if (!res.ok) return null;
+    const cr = res.headers.get('Content-Range') || '';
+    const total = parseInt(cr.split('/')[1] || '0', 10);
+    return Number.isFinite(total) ? total : null;
+  } catch (e) {
+    console.warn('[quota-ticker] fetch failed', e);
+    return null;
+  }
+}
+
+function renderQuotaTicker(mtd) {
+  const valEl = document.getElementById('quota-ticker-value');
+  const fillEl = document.getElementById('quota-ticker-fill');
+  if (!valEl || !fillEl) return;
+  if (mtd === null) {
+    valEl.textContent = '— / 2.500 (n/a)';
+    fillEl.style.width = '0%';
+    fillEl.style.backgroundColor = '#6b7280';
+    return;
+  }
+  const pct = Math.min(100, Math.round((mtd / TGV_N8N_PLAN_MONTHLY) * 100));
+  valEl.textContent = `${mtd.toLocaleString('de-DE')} / ${TGV_N8N_PLAN_MONTHLY.toLocaleString('de-DE')} (${pct}%)`;
+  fillEl.style.width = `${pct}%`;
+  // green < 60, yellow 60-85, red > 85
+  fillEl.style.backgroundColor = pct < 60 ? '#10b981' : pct < 85 ? '#f59e0b' : '#ef4444';
+  // Tooltip update with timestamp
+  const ticker = document.getElementById('quota-ticker');
+  if (ticker) {
+    const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    ticker.title = `n8n-Execution-Quota MTD aus cost_telemetry_n8n (Mig 060). ${mtd} ausgeführt von ${TGV_N8N_PLAN_MONTHLY} Plan-Limit (${pct}%). DB-Wert kann unter Dashboard liegen wenn Cron-Lücken (siehe feedback_n8n_quota_api_drift.md). Stand: ${ts}.`;
+  }
+}
+
+async function refreshQuotaTicker() {
+  const mtd = await fetchQuotaMtd();
+  renderQuotaTicker(mtd);
+}
+
+function startQuotaTicker() {
+  // First load after auth establishes session
+  setTimeout(() => refreshQuotaTicker(), 1500);
+  // Refresh every 60s
+  setInterval(() => refreshQuotaTicker(), 60_000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  Iter 20.1 — Side-Panel (Workshop Q1 C→A Pfad)
+//  Master-Detail-Pattern: Triage öffnet Doc-Detail rechts.
+//  Inhalt: PDF-Inline-Preview + Edit-Felder + Skill-Status-Box.
+//  Erweiterung Welle (a): Inbox / Verträge / Finanzen / Monatsabschluss.
+// ═══════════════════════════════════════════════════════
+
+let _sidePanelCurrentDoc = null;
+let _sidePanelEscHandler = null;
+
+function _spDriveEmbedUrl(driveFileId) {
+  // /preview rendert PDF inline; /view würde Login-Block im iframe triggern.
+  return driveFileId
+    ? `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/preview`
+    : null;
+}
+
+function _spEntityOptions(currentEntity) {
+  const entities = [
+    ['c3-convis-gmbh', 'C3 Convis GmbH'],
+    ['c4-convis-sarl', 'C4 Convis SARL'],
+    ['kivisai',        'KIVISAI'],
+    ['privat',         'Privat'],
+  ];
+  return entities.map(([v, l]) =>
+    `<option value="${v}" ${v === currentEntity ? 'selected' : ''}>${l}</option>`
+  ).join('');
+}
+
+function _spDocTypeOptions(currentType) {
+  // Iter 16 Mig 032 doc_type canonical (Title-Case)
+  const types = ['Rechnung','Vertrag','Lohnsteuer','Kontoauszug','Quittung','Sonstiges'];
+  return types.map(t =>
+    `<option value="${t}" ${t === currentType ? 'selected' : ''}>${t}</option>`
+  ).join('');
+}
+
+async function _spFetchSkillHistory(docId) {
+  // agent_events für dieses Doc — letzte 20, sortiert
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/agent_events?document_id=eq.${docId}&select=tool_name,event_type,created_at,content&order=created_at.desc&limit=20`;
+    const headers = await _supaAuthHeaders();
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    console.warn('[side-panel] skill history fetch failed', e);
+    return [];
+  }
+}
+
+function openSidePanel(doc) {
+  if (!doc) return;
+  _sidePanelCurrentDoc = doc;
+
+  const panel = document.getElementById('side-panel');
+  const backdrop = document.getElementById('side-panel-backdrop');
+  const title = document.getElementById('side-panel-title');
+  const sub = document.getElementById('side-panel-subtitle');
+  const body = document.getElementById('side-panel-body');
+  if (!panel || !body) return;
+
+  // Title + subtitle
+  title.textContent = `${doc.provider || '— kein Provider —'}`;
+  sub.textContent = `#${doc.id} · ${doc.doc_type || '?'} · ${doc.invoice_date || (doc.date_received||'').slice(0,10) || '—'}`;
+
+  // PDF-Section
+  const pdfUrl = _spDriveEmbedUrl(doc.drive_file_id);
+  const pdfHtml = pdfUrl
+    ? `<iframe id="side-panel-pdf-frame" src="${pdfUrl}" title="PDF-Vorschau" loading="lazy"></iframe>
+       <div style="margin-top:6px;font-size:10px;color:var(--tx2);">
+         📎 ${doc.drive_file_name || 'unbenannt'} ·
+         <a href="https://drive.google.com/file/d/${encodeURIComponent(doc.drive_file_id)}/view" target="_blank" rel="noopener" style="color:var(--blu)">In Drive öffnen ↗</a>
+       </div>`
+    : `<div style="padding:30px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
+         ⚠️ Kein drive_file_id — PDF nicht verknüpft. Doc evtl. via WG/Forward verloren (siehe Memory feedback_a2_wg_forward_pdf_loss).
+       </div>`;
+
+  // Edit-Felder (US9: Doc-Zuordnung pre/post Banking-Reconcile editierbar)
+  const amount = doc.amount != null ? Number(doc.amount).toFixed(2) : '';
+  const editHtml = `
+    <div class="sp-field-row">
+      <label>Entität</label>
+      <select id="sp-edit-entity">${_spEntityOptions(doc.entity)}</select>
+    </div>
+    <div class="sp-field-row">
+      <label>Provider / Lieferant</label>
+      <input type="text" id="sp-edit-provider" value="${(doc.provider||'').replace(/"/g,'&quot;')}" placeholder="z.B. Perplexity">
+    </div>
+    <div class="sp-field-row">
+      <label>Doc-Type</label>
+      <select id="sp-edit-doctype">${_spDocTypeOptions(doc.doc_type)}</select>
+    </div>
+    <div class="sp-field-row">
+      <label>Betrag (${doc.currency||'EUR'})</label>
+      <input type="number" step="0.01" id="sp-edit-amount" value="${amount}">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button onclick="sidePanelSaveEdit()" style="flex:1;background:var(--blu);color:#fff;border:0;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;" title="Speichert Änderungen + emittiert learning_events (B10 Auto-Learning Pattern)">💾 Speichern + Lernen</button>
+      <button onclick="closeSidePanel()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);border-radius:4px;padding:8px 12px;font-size:12px;cursor:pointer;">Abbrechen</button>
+    </div>
+    <div id="sp-edit-status" style="font-size:10px;color:var(--tx2);margin-top:6px;min-height:14px;"></div>`;
+
+  // Skill-Status-Box (US11 Stub — vollständige History in 20.8 Welle c)
+  const skillsHtml = `<div id="sp-skills-loading" style="font-size:11px;color:var(--tx2);">…lade Skill-History</div>
+                      <div id="sp-skills-list" style="display:none;"></div>`;
+
+  body.innerHTML = `
+    <div class="side-panel-section">
+      <h4>📄 PDF-Vorschau</h4>
+      ${pdfHtml}
+    </div>
+    <div class="side-panel-section">
+      <h4>✏️ Felder bearbeiten (US9)</h4>
+      ${editHtml}
+    </div>
+    <div class="side-panel-section">
+      <h4>🔧 Skill-Status (US11 Stub)</h4>
+      ${skillsHtml}
+    </div>
+    <div class="side-panel-section" style="border-bottom:none;">
+      <h4>📂 Drive-Pfad (US12)</h4>
+      <div style="font-size:11px;color:var(--tx2);font-family:monospace;word-break:break-all;">
+        ${doc.drive_file_id ? `file_id: ${doc.drive_file_id}` : '⚠️ kein drive_file_id'}
+      </div>
+      <div style="font-size:10px;color:var(--tx2);margin-top:4px;">
+        Routing-Verify-Logik kommt in Welle (a) Erweiterung. Heute: Pfad sichtbar, Soll/Ist-Vergleich offen.
+      </div>
+    </div>
+  `;
+
+  // Open animation
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  backdrop.classList.add('open');
+
+  // ESC-Handler
+  _sidePanelEscHandler = (e) => { if (e.key === 'Escape') closeSidePanel(); };
+  document.addEventListener('keydown', _sidePanelEscHandler);
+
+  // Skill-History asynchron laden
+  _spFetchSkillHistory(doc.id).then(events => {
+    const list = document.getElementById('sp-skills-list');
+    const loading = document.getElementById('sp-skills-loading');
+    if (!list || !loading) return;
+    if (!events.length) {
+      loading.textContent = '— keine Skill-Events für dieses Doc';
+      return;
+    }
+    // Group by tool_name, count + last timestamp
+    const byTool = {};
+    events.forEach(e => {
+      const k = e.tool_name || '(unknown)';
+      if (!byTool[k]) byTool[k] = { count: 0, last: '', status: '' };
+      byTool[k].count++;
+      if (!byTool[k].last || e.created_at > byTool[k].last) {
+        byTool[k].last = e.created_at;
+        byTool[k].status = e.event_type || '';
+      }
+    });
+    const rows = Object.entries(byTool).map(([tool, m]) => {
+      const date = (m.last||'').slice(0,16).replace('T',' ');
+      return `<div class="sp-skill-row applied">
+        <span class="sp-skill-name">${tool}</span>
+        <span class="sp-skill-meta">${m.count}× · ${date}</span>
+      </div>`;
+    }).join('');
+    list.innerHTML = rows
+      + `<div style="margin-top:8px;font-size:10px;color:var(--tx2);">Vollständige History inkl. Cost/Tokens/ROI in Welle (c) 20.8 (US11).</div>`;
+    list.style.display = 'block';
+    loading.style.display = 'none';
+  });
+}
+
+function closeSidePanel() {
+  const panel = document.getElementById('side-panel');
+  const backdrop = document.getElementById('side-panel-backdrop');
+  if (panel) {
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+  if (backdrop) backdrop.classList.remove('open');
+  if (_sidePanelEscHandler) {
+    document.removeEventListener('keydown', _sidePanelEscHandler);
+    _sidePanelEscHandler = null;
+  }
+  _sidePanelCurrentDoc = null;
+}
+
+// Bridge: Triage-Card-Button → Side-Panel mit Doc aus gTriageDocs
+function openSidePanelForDocId(docId) {
+  const doc = (typeof gTriageDocs !== 'undefined' && gTriageDocs)
+    ? gTriageDocs.find(d => d.id === docId)
+    : null;
+  if (doc) {
+    openSidePanel(doc);
+  } else {
+    console.warn('[side-panel] doc not found in gTriageDocs for id', docId);
+  }
+}
+
+async function sidePanelSaveEdit() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  const status = document.getElementById('sp-edit-status');
+  const newEntity = document.getElementById('sp-edit-entity').value;
+  const newProvider = document.getElementById('sp-edit-provider').value.trim();
+  const newDocType = document.getElementById('sp-edit-doctype').value;
+  const newAmountRaw = document.getElementById('sp-edit-amount').value;
+  const newAmount = newAmountRaw === '' ? null : Number(newAmountRaw);
+
+  // Diff vs Original
+  const changes = {};
+  const orig = { entity: doc.entity, provider: doc.provider, doc_type: doc.doc_type, amount: doc.amount };
+  if (newEntity !== doc.entity) changes.entity = newEntity;
+  if (newProvider !== (doc.provider||'')) changes.provider = newProvider;
+  if (newDocType !== doc.doc_type) changes.doc_type = newDocType;
+  if (newAmount !== doc.amount) changes.amount = newAmount;
+
+  if (Object.keys(changes).length === 0) {
+    status.textContent = '— keine Änderungen';
+    return;
+  }
+
+  status.textContent = '💾 speichere…';
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/documents?id=eq.${doc.id}`;
+    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(changes) });
+    if (!res.ok) throw new Error(`PATCH ${res.status}`);
+
+    // B10 Auto-Learning: learning_events INSERT (Workshop Q6 Konfidenz-Check kommt in Iter 20.10 Lifecycle-Engine)
+    try {
+      const leUrl = `${SUPABASE_URL}/rest/v1/learning_events`;
+      const leBody = {
+        document_id: doc.id,
+        event_type: 'user_correction_side_panel',
+        was_correction: true,
+        correction_diff: { before: orig, after: changes },
+        created_at: new Date().toISOString(),
+      };
+      const leHeaders = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+      await fetch(leUrl, { method: 'POST', headers: leHeaders, body: JSON.stringify(leBody) });
+    } catch (e) {
+      console.warn('[side-panel] learning_events insert failed (non-fatal)', e);
+    }
+
+    status.innerHTML = `✅ gespeichert (${Object.keys(changes).length} Feld${Object.keys(changes).length===1?'':'er'}). System lernt aus dieser Korrektur.`;
+    // Update local doc reference
+    Object.assign(doc, changes);
+    // Refresh Triage in background
+    if (typeof loadTriage === 'function') setTimeout(loadTriage, 800);
+  } catch (e) {
+    console.error('[side-panel] save failed', e);
+    status.innerHTML = `❌ Speichern fehlgeschlagen: ${e.message}`;
+  }
+}
 </script>
 </div><!-- /#dashboard-wrapper -->
 </body>
