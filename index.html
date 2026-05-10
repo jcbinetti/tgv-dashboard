@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.48 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
+<!-- TGV Dashboard v11.49 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.48">
-<title>TGV Dashboard v11.48 — Financial OS</title>
+<meta name="version" content="11.49">
+<title>TGV Dashboard v11.49 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1672,7 +1672,7 @@ body.chat-open #main-content {
     </button>
 
     <div class="sidebar-footer">
-      <!-- Iter 20.1c Quota-Ticker + Refresh-Knopf (v11.48: User-Feedback "nicht aktuell") -->
+      <!-- Iter 20.1c Quota-Ticker + Refresh-Knopf (v11.49: User-Feedback "nicht aktuell") -->
       <div id="quota-ticker" style="font-size:10px;line-height:1.4;margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid #6b7280" title="n8n-Quota MTD aus cost_telemetry_n8n (DB cache). n8n-API liefert nur last 250 Execs — echter MTD im n8n-Dashboard. Refresh-Knopf ↻ triggert cost-collector (kostet 1 n8n-Exec).">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="opacity:0.5;font-size:9px;letter-spacing:0.5px">QUOTA · MTD (DB)</span>
@@ -7033,7 +7033,10 @@ function triageDocCard(doc) {
                  style="width:18px;height:18px;accent-color:var(--blu);cursor:pointer;">
         </div>
       </div>
-      <div style="font-size:12px;color:var(--tx2);font-style:italic;margin-bottom:8px;">Was soll mit diesem Doc passieren?</div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:8px;background:var(--bg1);padding:8px 10px;border-radius:4px;border-left:3px solid var(--blu);" title="✓ Häkchen = beim Klick auf 'Zuweisen + ausführen' wird dieser Skill ausgeführt. Vorausgewählt sind Skills die das System für relevant hält. Stat 'X/Y richtig' = wie oft dieser Skill historisch korrekt war (NICHT nur für dieses Doc). 'schon gelaufen' = bereits einmal ausgeführt, kann re-run.">
+        <strong style="color:var(--tx);">Was soll mit diesem Doc passieren?</strong><br>
+        <span style="font-size:11px;">✓ vorgewählt = relevant laut KI · klick „Zuweisen + ausführen" startet alle markierten · ↻ schon gelaufen = re-run möglich</span>
+      </div>
       <div>${skillsHtml}</div>
       <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);align-items:center;flex-wrap:wrap;">
         <button class="btn-sm" onclick="triageApplyDoc(${doc.id})" style="background:var(--blu);color:white;padding:6px 14px;font-weight:500;">Zuweisen + ausführen</button>
@@ -8180,7 +8183,7 @@ function startQuotaTicker() {
   setInterval(() => refreshQuotaTicker(), 60_000);
 }
 
-// v11.48 Manual-Refresh-Knopf — User-getriggert, kostet 1 n8n-Exec
+// v11.49 Manual-Refresh-Knopf — User-getriggert, kostet 1 n8n-Exec
 async function manualQuotaRefresh(btnEl) {
   if (btnEl) btnEl.style.opacity = '0.4';
   try {
@@ -8249,6 +8252,75 @@ async function _spFetchSkillHistory(docId) {
   }
 }
 
+// v11.49 — Side-Panel Re-Strukturierung (User-Feedback 2026-05-10):
+// (1) Skill-Output ZUERST sichtbar, Edit erst nach "▾ ändern"-Klick (Roll-Menu).
+// (2) Supplier-Wissen-Section neu (kb_suppliers für Provider).
+// (3) Skill-Re-Run-Button (trigger_skill_router via Webhook).
+function _spEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function _spInfoCard(f) {
+  const showVal = (f.value != null && f.value !== '') ? String(f.value) : '— leer —';
+  const valStyle = (f.value != null && f.value !== '') ? 'color:var(--tx);font-weight:500;' : 'color:var(--tx2);font-style:italic;';
+  const editorHtml = f.editor ? f.editor : '';
+  return `
+    <div class="sp-info-card" id="sp-card-${f.key}" data-field="${f.key}" style="background:var(--bg1);border-radius:5px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.6px;">${_spEsc(f.label)}</div>
+          <div class="sp-info-value" style="font-size:13px;${valStyle}margin-top:2px;word-break:break-word;">${_spEsc(showVal)}</div>
+          ${f.source ? `<div style="font-size:9px;color:var(--tx2);font-style:italic;margin-top:3px;">↳ ${_spEsc(f.source)}</div>` : ''}
+        </div>
+        ${editorHtml ? `<button onclick="spToggleEdit('${f.key}')" class="sp-edit-toggle" style="background:none;border:1px solid var(--bdr);color:var(--tx2);font-size:10px;padding:3px 8px;border-radius:3px;cursor:pointer;white-space:nowrap;">▾ ändern</button>` : ''}
+      </div>
+      ${editorHtml ? `<div class="sp-info-editor" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bdr);">${editorHtml}</div>` : ''}
+    </div>`;
+}
+
+function spToggleEdit(key) {
+  const card = document.getElementById(`sp-card-${key}`);
+  if (!card) return;
+  const editor = card.querySelector('.sp-info-editor');
+  const btn = card.querySelector('.sp-edit-toggle');
+  if (!editor || !btn) return;
+  const open = editor.style.display !== 'none';
+  editor.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▾ ändern' : '▴ schließen';
+}
+
+async function _spFetchSupplier(provider) {
+  if (!provider) return [];
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?pattern=ilike.*${encodeURIComponent(provider)}*&select=id,pattern,name_normalized,entity,category_l1,category_l2,category_l3,recurring,avg_amount,currency,verification_count,conflict_count,last_seen,active&order=verification_count.desc.nullslast&limit=5`;
+    const headers = await _supaAuthHeaders();
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) { console.warn('[side-panel] kb_suppliers fetch failed', e); return []; }
+}
+
+async function sidePanelRerunCascade() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  if (!confirm(`Skills für Doc #${doc.id} (${doc.provider}) neu starten?\nKostet ~5-9 n8n-Execs (Cascade-chain).`)) return;
+  const status = document.getElementById('sp-skills-loading');
+  if (status) { status.textContent = '↻ trigger_skill_router läuft…'; status.style.display = 'block'; }
+  try {
+    const res = await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_id: doc.id, _trigger: 'side-panel-rerun' }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (status) status.textContent = '✅ Skills gestartet — Cascade läuft im Backend. Refresh in 30s.';
+  } catch (e) {
+    if (status) status.textContent = '❌ Fehler: ' + e.message;
+  }
+}
+
 function openSidePanel(doc) {
   if (!doc) return;
   _sidePanelCurrentDoc = doc;
@@ -8260,50 +8332,68 @@ function openSidePanel(doc) {
   const body = document.getElementById('side-panel-body');
   if (!panel || !body) return;
 
-  // Title + subtitle
   title.textContent = `${doc.provider || '— kein Provider —'}`;
   sub.textContent = `#${doc.id} · ${doc.doc_type || '?'} · ${doc.invoice_date || (doc.date_received||'').slice(0,10) || '—'}`;
 
-  // PDF-Section
+  // === PDF Section ===
   const pdfUrl = _spDriveEmbedUrl(doc.drive_file_id);
   const pdfHtml = pdfUrl
     ? `<iframe id="side-panel-pdf-frame" src="${pdfUrl}" title="PDF-Vorschau" loading="lazy"></iframe>
        <div style="margin-top:6px;font-size:10px;color:var(--tx2);">
-         📎 ${doc.drive_file_name || 'unbenannt'} ·
+         📎 ${_spEsc(doc.drive_file_name || 'unbenannt')} ·
          <a href="https://drive.google.com/file/d/${encodeURIComponent(doc.drive_file_id)}/view" target="_blank" rel="noopener" style="color:var(--blu)">In Drive öffnen ↗</a>
        </div>`
-    : `<div style="padding:30px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
-         ⚠️ Kein drive_file_id — PDF nicht verknüpft. Doc evtl. via WG/Forward verloren (siehe Memory feedback_a2_wg_forward_pdf_loss).
+    : `<div style="padding:24px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
+         ⚠️ Kein PDF — Doc hat kein drive_file_id (z.B. duplicate-stub oder WG/Fwd-Verlust).
        </div>`;
 
-  // Edit-Felder (US9: Doc-Zuordnung pre/post Banking-Reconcile editierbar)
+  // === Skill-Output Cards (Read-First, Edit-on-Toggle) ===
   const amount = doc.amount != null ? Number(doc.amount).toFixed(2) : '';
-  const editHtml = `
-    <div class="sp-field-row">
-      <label>Entität</label>
-      <select id="sp-edit-entity">${_spEntityOptions(doc.entity)}</select>
-    </div>
-    <div class="sp-field-row">
-      <label>Provider / Lieferant</label>
-      <input type="text" id="sp-edit-provider" value="${(doc.provider||'').replace(/"/g,'&quot;')}" placeholder="z.B. Perplexity">
-    </div>
-    <div class="sp-field-row">
-      <label>Doc-Type</label>
-      <select id="sp-edit-doctype">${_spDocTypeOptions(doc.doc_type)}</select>
-    </div>
-    <div class="sp-field-row">
-      <label>Betrag (${doc.currency||'EUR'})</label>
-      <input type="number" step="0.01" id="sp-edit-amount" value="${amount}">
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button onclick="sidePanelSaveEdit()" style="flex:1;background:var(--blu);color:#fff;border:0;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;" title="Speichert Änderungen + emittiert learning_events (B10 Auto-Learning Pattern)">💾 Speichern + Lernen</button>
-      <button onclick="closeSidePanel()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);border-radius:4px;padding:8px 12px;font-size:12px;cursor:pointer;">Abbrechen</button>
+  const conf = doc.confidence_score != null ? doc.confidence_score : null;
+  const confColor = conf == null ? 'var(--tx2)' : conf >= 80 ? 'var(--grn)' : conf >= 50 ? 'var(--orng)' : 'var(--red)';
+
+  const fields = [
+    { key: 'provider', label: 'Provider / Lieferant', value: doc.provider, source: 'aus PDF + Mail-Subject (orchestrator)',
+      editor: `<label style="font-size:10px;color:var(--tx2);">neu eintragen</label>
+               <input type="text" id="sp-edit-provider" value="${_spEsc(doc.provider||'')}" placeholder="z.B. Perplexity" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">` },
+    { key: 'entity', label: 'Entität', value: doc.entity, source: 'tgv-resolve-supplier (kb_suppliers Match)',
+      editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren</label>
+               <select id="sp-edit-entity" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">${_spEntityOptions(doc.entity)}</select>` },
+    { key: 'doc_type', label: 'Doc-Type', value: doc.doc_type, source: 'tgv-skill-orchestrator (Plan-Iteration)',
+      editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren</label>
+               <select id="sp-edit-doctype" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">${_spDocTypeOptions(doc.doc_type)}</select>` },
+    { key: 'amount', label: `Betrag (${doc.currency || 'EUR'})`, value: amount ? amount + ' ' + (doc.currency||'EUR') : null,
+      source: 'tgv-pdf-invoice-extract',
+      editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren</label>
+               <input type="number" step="0.01" id="sp-edit-amount" value="${amount}" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">` },
+    { key: 'invoice_date', label: 'Rechnungsdatum', value: doc.invoice_date,
+      source: 'tgv-pdf-invoice-extract', editor: '' },
+    { key: 'confidence', label: `Confidence (${conf != null ? conf + '%' : 'n/a'})`, value: conf != null ? String(conf) : null,
+      source: 'orchestrator gesamt-Confidence', editor: '' },
+    { key: 'routing_reason', label: 'Routing-Reason', value: doc.routing_reason,
+      source: 'system (z.B. duplicate-detection, force-reclass)', editor: '' },
+  ];
+  const skillOutputHtml = fields.map(_spInfoCard).join('');
+
+  // === Save-Bar (für alle Edit-Toggles unten gemeinsam) ===
+  const saveBarHtml = `
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="sidePanelSaveEdit()" style="flex:1;background:var(--blu);color:#fff;border:0;border-radius:4px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;" title="Speichert alle geöffneten ▴-Editoren + emittiert learning_events (B10 Auto-Learning).">💾 Änderungen speichern + Lernen</button>
     </div>
     <div id="sp-edit-status" style="font-size:10px;color:var(--tx2);margin-top:6px;min-height:14px;"></div>`;
 
-  // Skill-Status-Box (US11 Stub — vollständige History in 20.8 Welle c)
-  const skillsHtml = `<div id="sp-skills-loading" style="font-size:11px;color:var(--tx2);">…lade Skill-History</div>
-                      <div id="sp-skills-list" style="display:none;"></div>`;
+  // === Skill-History Section + Re-Run ===
+  const skillsHtml = `
+    <div id="sp-skills-loading" style="font-size:11px;color:var(--tx2);">…lade Skill-History (agent_events)</div>
+    <div id="sp-skills-list" style="display:none;"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <button onclick="sidePanelRerunCascade()" title="trigger_skill_router auf doc_id — startet Cascade neu (kostet ~5-9 n8n-Execs)" style="background:transparent;border:1px solid var(--blu);color:var(--blu);padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;">↻ Skills neu starten (Cascade)</button>
+    </div>`;
+
+  // === Supplier Section ===
+  const supplierHtml = `
+    <div id="sp-supplier-loading" style="font-size:11px;color:var(--tx2);">…lade kb_suppliers</div>
+    <div id="sp-supplier-content" style="display:none;"></div>`;
 
   body.innerHTML = `
     <div class="side-panel-section">
@@ -8311,63 +8401,91 @@ function openSidePanel(doc) {
       ${pdfHtml}
     </div>
     <div class="side-panel-section">
-      <h4>✏️ Felder bearbeiten (US9)</h4>
-      ${editHtml}
+      <h4>🤖 Was das System weiß (Skill-Output)</h4>
+      <div style="font-size:10px;color:var(--tx2);margin-bottom:8px;font-style:italic;">Klick „▾ ändern" um zu korrigieren. Save-Knopf unten speichert alle geöffneten Editoren + lernt daraus.</div>
+      ${skillOutputHtml}
+      ${saveBarHtml}
     </div>
     <div class="side-panel-section">
-      <h4>🔧 Skill-Status (US11 Stub)</h4>
+      <h4>📚 Supplier-Wissen (kb_suppliers)</h4>
+      ${supplierHtml}
+    </div>
+    <div class="side-panel-section">
+      <h4>🔧 Skill-History + Re-Run</h4>
       ${skillsHtml}
     </div>
     <div class="side-panel-section" style="border-bottom:none;">
-      <h4>📂 Drive-Pfad (US12)</h4>
+      <h4>📂 Drive-Pfad</h4>
       <div style="font-size:11px;color:var(--tx2);font-family:monospace;word-break:break-all;">
-        ${doc.drive_file_id ? `file_id: ${doc.drive_file_id}` : '⚠️ kein drive_file_id'}
+        ${doc.drive_file_id ? 'file_id: ' + _spEsc(doc.drive_file_id) : '⚠️ kein drive_file_id'}
       </div>
-      <div style="font-size:10px;color:var(--tx2);margin-top:4px;">
-        Routing-Verify-Logik kommt in Welle (a) Erweiterung. Heute: Pfad sichtbar, Soll/Ist-Vergleich offen.
-      </div>
-    </div>
-  `;
+    </div>`;
 
-  // Open animation
   panel.classList.add('open');
   panel.setAttribute('aria-hidden', 'false');
   backdrop.classList.add('open');
-
-  // ESC-Handler
   _sidePanelEscHandler = (e) => { if (e.key === 'Escape') closeSidePanel(); };
   document.addEventListener('keydown', _sidePanelEscHandler);
 
-  // Skill-History asynchron laden
+  // Skill-History async
   _spFetchSkillHistory(doc.id).then(events => {
     const list = document.getElementById('sp-skills-list');
     const loading = document.getElementById('sp-skills-loading');
     if (!list || !loading) return;
     if (!events.length) {
-      loading.textContent = '— keine Skill-Events für dieses Doc';
+      loading.textContent = '— keine agent_events für dieses Doc (z.B. duplicate-stub ohne Pipeline-Run)';
       return;
     }
-    // Group by tool_name, count + last timestamp
     const byTool = {};
     events.forEach(e => {
       const k = e.tool_name || '(unknown)';
-      if (!byTool[k]) byTool[k] = { count: 0, last: '', status: '' };
+      if (!byTool[k]) byTool[k] = { count: 0, last: '', confs: [] };
       byTool[k].count++;
-      if (!byTool[k].last || e.created_at > byTool[k].last) {
-        byTool[k].last = e.created_at;
-        byTool[k].status = e.event_type || '';
-      }
+      if (!byTool[k].last || e.created_at > byTool[k].last) byTool[k].last = e.created_at;
+      if (e.confidence != null) byTool[k].confs.push(e.confidence);
     });
     const rows = Object.entries(byTool).map(([tool, m]) => {
       const date = (m.last||'').slice(0,16).replace('T',' ');
+      const avgConf = m.confs.length ? Math.round(m.confs.reduce((a,b)=>a+b,0)/m.confs.length) : null;
       return `<div class="sp-skill-row applied">
-        <span class="sp-skill-name">${tool}</span>
-        <span class="sp-skill-meta">${m.count}× · ${date}</span>
+        <span class="sp-skill-name">${_spEsc(tool)}</span>
+        <span class="sp-skill-meta">${m.count}× · ${_spEsc(date)}${avgConf!=null?' · ⌀ '+avgConf+'%':''}</span>
       </div>`;
     }).join('');
     list.innerHTML = rows
-      + `<div style="margin-top:8px;font-size:10px;color:var(--tx2);">Vollständige History inkl. Cost/Tokens/ROI in Welle (c) 20.8 (US11).</div>`;
+      + `<div style="margin-top:8px;font-size:10px;color:var(--tx2);">Cost/Tokens/Loops-Aggregat in Welle (c) 20.8 (US11).</div>`;
     list.style.display = 'block';
+    loading.style.display = 'none';
+  });
+
+  // kb_suppliers async
+  _spFetchSupplier(doc.provider).then(rows => {
+    const cont = document.getElementById('sp-supplier-content');
+    const loading = document.getElementById('sp-supplier-loading');
+    if (!cont || !loading) return;
+    if (!rows.length) {
+      loading.textContent = `— kein kb_suppliers-Eintrag für Provider "${doc.provider || '?'}". Wird angelegt nach 1. Approve (B10 Auto-Learning).`;
+      return;
+    }
+    cont.innerHTML = rows.map(s => {
+      const cat = [s.category_l1, s.category_l2, s.category_l3].filter(Boolean).join(' / ') || '—';
+      const lastSeen = s.last_seen ? (s.last_seen||'').slice(0,10) : '—';
+      const recurr = s.recurring ? '🔁 recurring' : '';
+      const verifBadge = s.verification_count > 0 ? `<span style="background:var(--grn-bg);color:var(--grn);padding:1px 6px;border-radius:8px;font-size:10px;">✓ ${s.verification_count}× verified</span>` : '';
+      const conflictBadge = s.conflict_count > 0 ? `<span style="background:var(--red-bg);color:var(--red);padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;">⚠ ${s.conflict_count} conflict</span>` : '';
+      return `<div class="sp-info-card" style="background:var(--bg1);border-radius:5px;padding:10px 12px;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:600;color:var(--tx);">${_spEsc(s.name_normalized || s.pattern)}</div>
+        <div style="font-size:11px;color:var(--tx2);margin-top:3px;">
+          <strong>Pattern:</strong> ${_spEsc(s.pattern)}<br>
+          <strong>Entity:</strong> ${_spEsc(s.entity || '—')}<br>
+          <strong>Kategorie:</strong> ${_spEsc(cat)}<br>
+          <strong>Avg-Betrag:</strong> ${s.avg_amount != null ? Number(s.avg_amount).toFixed(2) + ' ' + (s.currency||'EUR') : '—'} ${recurr}<br>
+          <strong>Last seen:</strong> ${_spEsc(lastSeen)}
+        </div>
+        <div style="margin-top:6px;">${verifBadge}${conflictBadge}</div>
+      </div>`;
+    }).join('');
+    cont.style.display = 'block';
     loading.style.display = 'none';
   });
 }
