@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.49 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
+<!-- TGV Dashboard v11.50 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.49">
-<title>TGV Dashboard v11.49 — Financial OS</title>
+<meta name="version" content="11.50">
+<title>TGV Dashboard v11.50 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1672,7 +1672,7 @@ body.chat-open #main-content {
     </button>
 
     <div class="sidebar-footer">
-      <!-- Iter 20.1c Quota-Ticker + Refresh-Knopf (v11.49: User-Feedback "nicht aktuell") -->
+      <!-- Iter 20.1c Quota-Ticker + Refresh-Knopf (v11.50: User-Feedback "nicht aktuell") -->
       <div id="quota-ticker" style="font-size:10px;line-height:1.4;margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid #6b7280" title="n8n-Quota MTD aus cost_telemetry_n8n (DB cache). n8n-API liefert nur last 250 Execs — echter MTD im n8n-Dashboard. Refresh-Knopf ↻ triggert cost-collector (kostet 1 n8n-Exec).">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="opacity:0.5;font-size:9px;letter-spacing:0.5px">QUOTA · MTD (DB)</span>
@@ -7058,7 +7058,9 @@ function triageStatString(skillName) {
   if (!s || s.total < 1) return '';
   const correctPct = s.total > 0 ? Math.round(100 * s.correct / s.total) : 0;
   const color = correctPct >= 80 ? 'var(--grn)' : correctPct >= 50 ? 'var(--orng)' : 'var(--red)';
-  return `<span style="color:${color};font-size:10px;">· ${s.correct}/${s.total} richtig (${correctPct}%)</span>`;
+  // v11.50: Label klarer — User-Verwirrung dass es als doc-spezifisch interpretiert wurde.
+  // Tatsächlich: Skill-historische Trefferquote über ALLE Docs (learning_events Aggregat).
+  return `<span style="color:${color};font-size:10px;" title="Historische Trefferquote dieses Skills über alle Docs (aus learning_events). NICHT spezifisch für DIESES Doc — sondern: in ${s.total} bisherigen Anwendungen war Skill in ${s.correct} Fällen vom User bestätigt korrekt.">· Skill-Trefferquote global: ${s.correct}/${s.total} (${correctPct}%)</span>`;
 }
 
 // Iter 15.3 — Log User-Korrektur in learning_events via PostgREST INSERT
@@ -8132,48 +8134,61 @@ document.addEventListener('DOMContentLoaded', () => {
 const TGV_N8N_PLAN_MONTHLY = 2500; // n8n Cloud Pro plan limit per month
 
 async function fetchQuotaMtd() {
+  // v11.50: nutze cost_metrics.executions_mtd (cost-collector v0.4.0 paginiert n8n-API)
+  // Fallback: count cost_telemetry_n8n rows.
   try {
+    const headers = await _supaAuthHeaders();
+    const mUrl = `${SUPABASE_URL}/rest/v1/cost_metrics?source=eq.n8n&metric_name=eq.executions_mtd&select=value,collected_at&order=collected_at.desc&limit=1`;
+    const mRes = await fetch(mUrl, { headers });
+    if (mRes.ok) {
+      const arr = await mRes.json();
+      if (arr.length && Number.isFinite(Number(arr[0].value))) {
+        return { mtd: Math.round(Number(arr[0].value)), source: 'paginated n8n-API', stale: arr[0].collected_at };
+      }
+    }
+    // Fallback: row-count
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const url = `${SUPABASE_URL}/rest/v1/cost_telemetry_n8n?ts=gte.${encodeURIComponent(monthStart)}&select=id`;
-    const headers = await _supaAuthHeaders({ Prefer: 'count=exact', Range: '0-0' });
-    const res = await fetch(url, { headers });
-    if (!res.ok) return null;
-    const cr = res.headers.get('Content-Range') || '';
-    const total = parseInt(cr.split('/')[1] || '0', 10);
-    return Number.isFinite(total) ? total : null;
+    const cUrl = `${SUPABASE_URL}/rest/v1/cost_telemetry_n8n?ts=gte.${encodeURIComponent(monthStart)}&select=id`;
+    const cRes = await fetch(cUrl, { headers: { ...headers, Prefer: 'count=exact', Range: '0-0' } });
+    if (cRes.ok) {
+      const cr = cRes.headers.get('Content-Range') || '';
+      const total = parseInt(cr.split('/')[1] || '0', 10);
+      return { mtd: total, source: 'cost_telemetry_n8n rows (fallback)', stale: null };
+    }
+    return null;
   } catch (e) {
     console.warn('[quota-ticker] fetch failed', e);
     return null;
   }
 }
 
-function renderQuotaTicker(mtd) {
+function renderQuotaTicker(payload) {
   const valEl = document.getElementById('quota-ticker-value');
   const fillEl = document.getElementById('quota-ticker-fill');
   if (!valEl || !fillEl) return;
-  if (mtd === null) {
+  if (!payload) {
     valEl.textContent = '— / 2.500 (n/a)';
     fillEl.style.width = '0%';
     fillEl.style.backgroundColor = '#6b7280';
     return;
   }
+  const mtd = payload.mtd;
   const pct = Math.min(100, Math.round((mtd / TGV_N8N_PLAN_MONTHLY) * 100));
   valEl.textContent = `${mtd.toLocaleString('de-DE')} / ${TGV_N8N_PLAN_MONTHLY.toLocaleString('de-DE')} (${pct}%)`;
   fillEl.style.width = `${pct}%`;
-  // green < 60, yellow 60-85, red > 85
   fillEl.style.backgroundColor = pct < 60 ? '#10b981' : pct < 85 ? '#f59e0b' : '#ef4444';
-  // Tooltip update with timestamp
   const ticker = document.getElementById('quota-ticker');
   if (ticker) {
     const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-    ticker.title = `n8n-Execution-Quota MTD aus cost_telemetry_n8n (Mig 060). ${mtd} ausgeführt von ${TGV_N8N_PLAN_MONTHLY} Plan-Limit (${pct}%). DB-Wert kann unter Dashboard liegen wenn Cron-Lücken (siehe feedback_n8n_quota_api_drift.md). Stand: ${ts}.`;
+    const lastSync = payload.stale ? ('Sync: ' + (payload.stale.slice(0,16).replace('T',' ')) + ' UTC') : '';
+    ticker.title = `n8n-Quota MTD: ${mtd} / ${TGV_N8N_PLAN_MONTHLY} (${pct}%). Source: ${payload.source}. ${lastSync} · n8n-API kann ~13-25% gegenüber Dashboard untercounten (Memory feedback_n8n_quota_api_drift). Refresh-↻ triggert cost-collector mit Pagination (1 Exec). Anzeige: ${ts}.`;
   }
 }
 
 async function refreshQuotaTicker() {
-  const mtd = await fetchQuotaMtd();
-  renderQuotaTicker(mtd);
+  const payload = await fetchQuotaMtd();
+  renderQuotaTicker(payload);
 }
 
 function startQuotaTicker() {
@@ -8183,7 +8198,7 @@ function startQuotaTicker() {
   setInterval(() => refreshQuotaTicker(), 60_000);
 }
 
-// v11.49 Manual-Refresh-Knopf — User-getriggert, kostet 1 n8n-Exec
+// v11.50 Manual-Refresh-Knopf — User-getriggert, kostet 1 n8n-Exec
 async function manualQuotaRefresh(btnEl) {
   if (btnEl) btnEl.style.opacity = '0.4';
   try {
@@ -8252,7 +8267,7 @@ async function _spFetchSkillHistory(docId) {
   }
 }
 
-// v11.49 — Side-Panel Re-Strukturierung (User-Feedback 2026-05-10):
+// v11.50 — Side-Panel Re-Strukturierung (User-Feedback 2026-05-10):
 // (1) Skill-Output ZUERST sichtbar, Edit erst nach "▾ ändern"-Klick (Roll-Menu).
 // (2) Supplier-Wissen-Section neu (kb_suppliers für Provider).
 // (3) Skill-Re-Run-Button (trigger_skill_router via Webhook).
@@ -8289,6 +8304,63 @@ function spToggleEdit(key) {
   const open = editor.style.display !== 'none';
   editor.style.display = open ? 'none' : 'block';
   btn.textContent = open ? '▾ ändern' : '▴ schließen';
+}
+
+// v11.50: Drive-Pfad konstruieren aus doc-Feldern (US12 Vollausbau)
+function _spDrivePathHtml(doc) {
+  if (!doc.drive_file_id) {
+    return `<div style="padding:12px;background:var(--bg1);border-radius:4px;font-size:11px;color:var(--tx2);">
+      ⚠️ Kein drive_file_id — Doc ist nicht in Drive gespeichert.<br>
+      <span style="font-size:10px;">Routing-Reason: ${_spEsc(doc.routing_reason || '—')}</span>
+    </div>`;
+  }
+  // Konstruktion gemäss store-file-to-drive Skill-Logik:
+  //   /TGV-CORE/DOCUMENTS/{ENTITY-FOLDER}/{YEAR}/{MM_MONAT}/{filename}
+  const entityFolderMap = {
+    'c3-convis-gmbh': 'C3-CONVIS-GMBH',
+    'c4-convis-sarl': 'C4-CONVIS-SARL',
+    'kivisai': 'KIVISAI',
+    'privat': 'PRIVAT',
+  };
+  const entFolder = entityFolderMap[doc.entity] || doc.entity?.toUpperCase() || '?';
+  const dateRef = doc.invoice_date || doc.date_received || '';
+  const year = dateRef ? dateRef.slice(0,4) : '?';
+  const monthNum = dateRef ? dateRef.slice(5,7) : '?';
+  const monthNames = {'01':'Januar','02':'Februar','03':'März','04':'April','05':'Mai','06':'Juni','07':'Juli','08':'August','09':'September','10':'Oktober','11':'November','12':'Dezember'};
+  const monthFolder = monthNum !== '?' ? `${monthNum}_${monthNames[monthNum]||''}` : '?';
+  const docTypeFolder = doc.doc_type === 'Vertrag' ? 'CONTRACTS' : 'DOCUMENTS';
+  const constructedPath = `/TGV-CORE/${docTypeFolder}/${entFolder}/${year}/${monthFolder}/${doc.drive_file_name || '<filename>'}`;
+
+  return `<div style="background:var(--bg1);border-radius:4px;padding:10px 12px;">
+    <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Konstruierter Pfad (laut Routing-Regel)</div>
+    <div style="font-family:monospace;font-size:11px;color:var(--tx);word-break:break-all;line-height:1.5;">${_spEsc(constructedPath)}</div>
+    <div style="margin-top:8px;font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;">Drive-Links</div>
+    <div style="font-size:11px;margin-top:4px;">
+      <a href="https://drive.google.com/file/d/${encodeURIComponent(doc.drive_file_id)}/view" target="_blank" rel="noopener" style="color:var(--blu);">📄 Datei öffnen ↗</a>
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;">file_id (DB)</div>
+    <div style="font-family:monospace;font-size:10px;color:var(--tx2);word-break:break-all;">${_spEsc(doc.drive_file_id)}</div>
+    <div style="margin-top:10px;padding:6px 10px;background:rgba(245,158,11,0.08);border-left:2px solid var(--orng);font-size:10px;color:var(--tx2);border-radius:3px;">
+      💡 Pfad-Move (move_document_in_drive MCP-Tool) folgt in Welle (c) — heute nur read-only.
+    </div>
+  </div>`;
+}
+
+// v11.50: alle kb_suppliers-Names für Provider-Datalist (Autocomplete)
+async function _spFetchAllSupplierNames() {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?select=name_normalized,pattern&order=verification_count.desc.nullslast&limit=400`;
+    const headers = await _supaAuthHeaders();
+    const res = await fetch(url, { headers });
+    if (!res.ok) return [];
+    const arr = await res.json();
+    const names = new Set();
+    arr.forEach(r => {
+      if (r.name_normalized) names.add(r.name_normalized);
+      if (r.pattern && r.pattern !== r.name_normalized) names.add(r.pattern);
+    });
+    return [...names].sort();
+  } catch (e) { return []; }
 }
 
 async function _spFetchSupplier(provider) {
@@ -8354,8 +8426,9 @@ function openSidePanel(doc) {
 
   const fields = [
     { key: 'provider', label: 'Provider / Lieferant', value: doc.provider, source: 'aus PDF + Mail-Subject (orchestrator)',
-      editor: `<label style="font-size:10px;color:var(--tx2);">neu eintragen</label>
-               <input type="text" id="sp-edit-provider" value="${_spEsc(doc.provider||'')}" placeholder="z.B. Perplexity" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">` },
+      editor: `<label style="font-size:10px;color:var(--tx2);">neu eintragen (Tipp: Auswahl aus 347 kb_suppliers per Suche)</label>
+               <input type="text" id="sp-edit-provider" list="sp-supplier-datalist" value="${_spEsc(doc.provider||'')}" placeholder="z.B. Perplexity (Liste klappt auf)" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">
+               <datalist id="sp-supplier-datalist"><!-- befüllt async --></datalist>` },
     { key: 'entity', label: 'Entität', value: doc.entity, source: 'tgv-resolve-supplier (kb_suppliers Match)',
       editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren</label>
                <select id="sp-edit-entity" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">${_spEntityOptions(doc.entity)}</select>` },
@@ -8415,10 +8488,8 @@ function openSidePanel(doc) {
       ${skillsHtml}
     </div>
     <div class="side-panel-section" style="border-bottom:none;">
-      <h4>📂 Drive-Pfad</h4>
-      <div style="font-size:11px;color:var(--tx2);font-family:monospace;word-break:break-all;">
-        ${doc.drive_file_id ? 'file_id: ' + _spEsc(doc.drive_file_id) : '⚠️ kein drive_file_id'}
-      </div>
+      <h4>📂 Drive-Pfad <span style="font-weight:400;color:var(--tx2);font-size:10px;">(wo das Doc liegt)</span></h4>
+      ${_spDrivePathHtml(doc)}
     </div>`;
 
   panel.classList.add('open');
@@ -8458,7 +8529,14 @@ function openSidePanel(doc) {
     loading.style.display = 'none';
   });
 
-  // kb_suppliers async
+  // v11.50: Provider-Autocomplete-Datalist mit allen kb_suppliers
+  _spFetchAllSupplierNames().then(names => {
+    const dl = document.getElementById('sp-supplier-datalist');
+    if (!dl || !names.length) return;
+    dl.innerHTML = names.map(n => `<option value="${_spEsc(n)}">`).join('');
+  });
+
+  // kb_suppliers async (für aktuelles Provider-Feld)
   _spFetchSupplier(doc.provider).then(rows => {
     const cont = document.getElementById('sp-supplier-content');
     const loading = document.getElementById('sp-supplier-loading');
