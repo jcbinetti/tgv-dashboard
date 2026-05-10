@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.50 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
+<!-- TGV Dashboard v11.51 — 2026-05-10 — Iter 20 Block C: Architektur v8 Live-Hook (Mode C Mock↔Realtime) + agent_events Stream-Panel global + Pattern-Rules Lifecycle-View (System/Patterns) + Buchhalter-Versand-Vorschau (US10). Workshop-Acceptance #10/#14/#15/#11. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.50">
-<title>TGV Dashboard v11.50 — Financial OS</title>
+<meta name="version" content="11.51">
+<title>TGV Dashboard v11.51 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1598,6 +1598,106 @@ body.chat-open #main-content {
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STREAM PANEL — Iter 20.5 (Workshop-Acceptance #15)
+     Globales kollabierbares agent_events-Live-Panel.
+     Realtime-Channel auf agent_events (INSERT). Type-Filter + Detail-Modal.
+     Eigene Komponente — NICHT zu verwechseln mit links Detail-Side-Panel.
+═══════════════════════════════════════════════════════════════════════ -->
+<style>
+  #stream-panel-toggle {
+    position: fixed; right: 16px; bottom: 16px; z-index: 70;
+    background: var(--bg2, #1a1f2a); color: var(--tx1, #e6e9ef);
+    border: 1px solid var(--s3, #2a313e); border-radius: 22px;
+    padding: 8px 14px; font-size: 12px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: inline-flex; align-items: center; gap: 8px;
+    font-family: inherit;
+  }
+  #stream-panel-toggle .stream-dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; animation: streamDot 1.6s ease-in-out infinite; }
+  #stream-panel-toggle.live .stream-dot { background: #10b981; animation: none; }
+  #stream-panel-toggle.offline .stream-dot { background: #ef4444; animation: none; }
+  @keyframes streamDot { 0%,100%{opacity:1} 50%{opacity:.3} }
+  #stream-panel {
+    position: fixed; right: 16px; bottom: 60px; width: 380px; max-height: 60vh;
+    background: var(--bg1, #0f141c); border: 1px solid var(--s3, #2a313e); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5); display: none; flex-direction: column;
+    z-index: 71; overflow: hidden;
+  }
+  #stream-panel.open { display: flex; }
+  #stream-panel-head {
+    padding: 8px 12px; border-bottom: 1px solid var(--s3); display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg2);
+  }
+  #stream-panel-head h4 { margin: 0; font-size: 12px; font-weight: 600; }
+  #stream-panel-head .stream-meta { font-size: 10.5px; color: var(--mute, #9aa3b8); }
+  #stream-panel-filters { padding: 6px 10px; border-bottom: 1px solid var(--s3); display: flex; gap: 4px; flex-wrap: wrap; }
+  .stream-filter {
+    font-size: 10px; padding: 3px 7px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--s3); background: transparent; color: var(--mute);
+  }
+  .stream-filter.active { background: var(--blu, #3b82f6); color: white; border-color: var(--blu); }
+  #stream-panel-list { flex: 1; overflow: auto; padding: 4px 0; }
+  .stream-evt {
+    padding: 6px 12px; border-bottom: 1px dashed var(--s3); cursor: pointer;
+    font-size: 11px; line-height: 1.4;
+  }
+  .stream-evt:hover { background: rgba(59,130,246,0.06); }
+  .stream-evt-head { display: flex; justify-content: space-between; gap: 8px; }
+  .stream-evt-type { font-family: ui-monospace, monospace; font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+  .stream-evt-type.t-orchestrator { background: #2d1f4d; color: #c4b5fd; }
+  .stream-evt-type.t-skill { background: #0f3d36; color: #6ee7b7; }
+  .stream-evt-type.t-learning { background: #4a1a35; color: #f9a8d4; }
+  .stream-evt-type.t-error { background: #4a1a1a; color: #fca5a5; }
+  .stream-evt-type.t-other { background: #1a2238; color: #93c5fd; }
+  .stream-evt-time { color: var(--mute); font-size: 10px; }
+  .stream-evt-tool { color: var(--tx1, #e6e9ef); font-weight: 500; margin-top: 2px; }
+  #stream-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; display: none;
+  }
+  #stream-modal-backdrop.open { display: flex; align-items: center; justify-content: center; }
+  #stream-modal {
+    background: var(--bg1, #0f141c); border: 1px solid var(--s3); border-radius: 10px;
+    width: min(720px, 90vw); max-height: 80vh; overflow: auto; padding: 18px 20px;
+  }
+  #stream-modal h3 { margin: 0 0 8px; font-size: 14px; }
+  #stream-modal pre { font-size: 11px; background: var(--bg2); padding: 10px; border-radius: 6px; overflow: auto; }
+</style>
+
+<button id="stream-panel-toggle" onclick="toggleStreamPanel()" title="agent_events Live-Stream (Realtime-Channel auf Supabase). Klick auf Event = Detail-Modal mit Tool-Input/Output.">
+  <span class="stream-dot"></span><span>📡 Stream</span><span id="stream-toggle-counter" style="opacity:.7;font-size:10.5px"></span>
+</button>
+<div id="stream-panel" aria-hidden="true">
+  <div id="stream-panel-head">
+    <div>
+      <h4>📡 agent_events · Live</h4>
+      <div class="stream-meta" id="stream-panel-meta">verbinde…</div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="clearStreamEvents()" title="Anzeige leeren" style="background:none;border:1px solid var(--s3);color:var(--mute);font-size:10px;padding:3px 6px;border-radius:4px;cursor:pointer">leeren</button>
+      <button onclick="toggleStreamPanel()" style="background:none;border:none;color:var(--mute);font-size:14px;cursor:pointer">×</button>
+    </div>
+  </div>
+  <div id="stream-panel-filters">
+    <button class="stream-filter active" data-filter="all" onclick="setStreamFilter('all', this)">alle</button>
+    <button class="stream-filter" data-filter="orchestrator" onclick="setStreamFilter('orchestrator', this)" title="orchestrator.plan + dispatch">orch</button>
+    <button class="stream-filter" data-filter="skill" onclick="setStreamFilter('skill', this)" title="skill.execution started/completed">skills</button>
+    <button class="stream-filter" data-filter="learning" onclick="setStreamFilter('learning', this)" title="learning_event + user_correction">learn</button>
+    <button class="stream-filter" data-filter="error" onclick="setStreamFilter('error', this)" title="failed/error">errors</button>
+  </div>
+  <div id="stream-panel-list">
+    <div style="padding:14px;text-align:center;color:var(--mute);font-size:11px" id="stream-empty">Warte auf Events…</div>
+  </div>
+</div>
+<div id="stream-modal-backdrop" onclick="closeStreamModal(event)">
+  <div id="stream-modal" onclick="event.stopPropagation()">
+    <h3 id="stream-modal-title">Event-Detail</h3>
+    <div id="stream-modal-body"></div>
+    <div style="margin-top:12px;text-align:right">
+      <button onclick="closeStreamModal()" style="background:var(--blu);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <!-- LAYOUT -->
 <div id="layout">
 
@@ -2209,14 +2309,75 @@ body.chat-open #main-content {
         </div>
       </div>
 
-      <!-- VERSAND-BUTTON -->
+      <!-- VERSAND-BUTTON + VORSCHAU (Iter 20.7 — US10) -->
       <div class="card">
-        <div class="card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div class="card-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:600;color:var(--tx0)">📤 Monatsabschluss an Buchhalter senden</div>
-            <div style="font-size:11px;color:var(--tx2);margin-top:3px">WF E sendet DE/FR getrennt mit Drive-Links und Beträgen-Tabelle</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px">WF E sendet DE/FR getrennt mit Drive-Links und Beträgen-Tabelle. <strong>Vorschau zeigt Empfänger, Betreff, Body, Doc-Liste + fehlende Docs.</strong></div>
           </div>
-          <button class="btn-sm btn-approve" onclick="sendMonatsabschluss()" id="ma-send-btn" style="padding:10px 22px;font-size:13px;font-weight:700">📤 Jetzt an Buchhalter senden</button>
+          <button class="btn-sm" onclick="openAccountantPreview()" style="padding:10px 18px;font-size:12px;background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" title="Vorschau anzeigen — vor Versand prüfen">👁 Vorschau anzeigen</button>
+          <button class="btn-sm btn-approve" onclick="sendMonatsabschluss()" id="ma-send-btn" style="padding:10px 22px;font-size:13px;font-weight:700" title="Direktversand ohne Vorschau (alter Workflow)">📤 Jetzt senden</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         BUCHHALTER-VERSAND-VORSCHAU MODAL (Iter 20.7 — US10)
+         Zeigt vor send_to_accountant alles editierbar:
+         - Empfänger (default aus system_config)
+         - Subject (Template + Period)
+         - Body (Editor + Signature/Logo)
+         - Liste Docs im Paket (mit doc_type-Filter)
+         - Liste FEHLENDER Docs (Lücken-Erkennung)
+       ═══════════════════════════════════════════════════ -->
+    <div class="modal-bg" id="accountant-preview-modal" style="display:none">
+      <div class="modal-box" style="width:min(880px,94vw);max-height:90vh;overflow:auto;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div>
+            <div class="modal-title" style="margin:0">📧 Buchhalter-Versand · Vorschau</div>
+            <div style="font-size:11px;color:var(--tx2);margin-top:3px" id="ap-period-info">Zeitraum lädt…</div>
+          </div>
+          <button onclick="closeAccountantPreview()" style="background:none;border:none;color:var(--tx2);font-size:20px;cursor:pointer">×</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;font-size:12px;margin-bottom:12px">
+          <label style="color:var(--tx2);align-self:center">Empfänger</label>
+          <input id="ap-recipient" type="email" placeholder="buchhalter@example.com" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 9px;border-radius:4px;font-size:12px">
+          <label style="color:var(--tx2);align-self:center">CC (optional)</label>
+          <input id="ap-cc" type="email" placeholder="cc@example.com" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 9px;border-radius:4px;font-size:12px">
+          <label style="color:var(--tx2);align-self:center">Betreff</label>
+          <input id="ap-subject" type="text" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 9px;border-radius:4px;font-size:12px">
+          <label style="color:var(--tx2)" style="align-self:center">Doc-Type-Filter</label>
+          <div id="ap-doctype-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px">
+          <div>
+            <div style="font-size:11px;color:var(--tx2);font-weight:600;margin-bottom:4px;text-transform:uppercase">📦 Im Paket (<span id="ap-docs-count">0</span>)</div>
+            <div id="ap-docs-list" style="border:1px solid var(--s3);border-radius:6px;max-height:240px;overflow:auto;background:var(--bg1)">
+              <div style="padding:14px;text-align:center;color:var(--mute);font-size:11px">Lade…</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:4px;text-transform:uppercase">⚠ Fehlend (<span id="ap-missing-count">0</span>)</div>
+            <div id="ap-missing-list" style="border:1px solid #92400e;border-radius:6px;max-height:240px;overflow:auto;background:rgba(251,191,36,0.04)">
+              <div style="padding:14px;text-align:center;color:var(--mute);font-size:11px">Lade Lücken-Analyse (Vorjahres-Vergleich)…</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:var(--tx2);font-weight:600;margin-bottom:4px;display:block;text-transform:uppercase">✉ Mail-Body (HTML, mit Signatur)</label>
+          <textarea id="ap-body" rows="9" style="width:100%;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:8px;border-radius:4px;font-size:12px;font-family:ui-monospace,Menlo,monospace"></textarea>
+        </div>
+
+        <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--s3);padding-top:12px;margin-top:8px">
+          <div style="font-size:10.5px;color:var(--tx2)" id="ap-warn-line"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-sm" onclick="closeAccountantPreview()" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:8px 14px">Abbrechen</button>
+            <button class="btn-sm btn-approve" onclick="confirmAccountantSend()" id="ap-confirm-btn" style="padding:8px 18px;font-weight:700">📤 Versand bestätigen</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2711,6 +2872,29 @@ body.chat-open #main-content {
             <div id="ph-overview"><div class="spinner-wrap"><div class="spinner"></div> Lade Pattern Health…</div></div>
           </div>
         </div>
+        <!-- Iter 20.4 — Pattern-Rules Lifecycle-View (Workshop-Acceptance #14) -->
+        <div class="card">
+          <div class="card-head" style="display:flex;align-items:center;justify-content:space-between">
+            <h2>🔄 Pattern-Rules Lifecycle <span style="font-size:11px;color:var(--tx2);font-weight:400">— pattern_rules pro Scope mit Stage-Badge, Verification + Conflict-Counts, Trust-Score</span></h2>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="pr-scope-filter" onchange="loadPatternRulesLifecycle()" style="font-size:11px;padding:4px 6px;background:var(--bg2);color:var(--tx1);border:1px solid var(--s3);border-radius:4px">
+                <option value="all">Alle Scopes</option>
+                <option value="triage">triage</option>
+                <option value="extraction">extraction</option>
+                <option value="routing">routing</option>
+                <option value="cascade">cascade</option>
+                <option value="reconcile">reconcile</option>
+                <option value="tax">tax</option>
+                <option value="duplicate">duplicate</option>
+                <option value="skill_routing">skill_routing</option>
+              </select>
+              <button onclick="loadPatternRulesLifecycle()" class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:4px 10px;font-size:11px" title="Neu laden aus pattern_rules">↻</button>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div id="pr-lifecycle"><div class="spinner-wrap"><div class="spinner"></div> Lade Pattern-Rules…</div></div>
+          </div>
+        </div>
         <div class="card">
           <div class="card-head"><h2>⚠️ Top-10 Conflict-Regeln</h2></div>
           <div class="card-body" style="padding:0">
@@ -2734,26 +2918,27 @@ body.chat-open #main-content {
     </div>
 
     <!-- ═══════════════════════════════════════════════
-         PAGE: ARCHITEKTUR (Iter 16 / Dashboard v11.45)
-         Standalone Cytoscape-Visualisierung v7 als iframe.
-         Quelle: 09_ARCHITEKTUR/tgv-architecture-v7.html
+         PAGE: ARCHITEKTUR (Iter 20.3 / Dashboard v11.51)
+         Standalone Cytoscape-Visualisierung v8 als iframe.
+         v8: Mode C mit Mock/Live-Toggle (Supabase-Realtime auf agent_events).
+         Quelle: 09_ARCHITEKTUR/tgv-architecture-v8.html
     ════════════════════════════════════════════════ -->
     <div class="page" id="page-architektur">
       <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <h1>🏗 Architektur</h1>
-          <p>Interaktive 7-Layer-Topologie · Modi A Erklären / B Lehren / C Live-Mock · Cytoscape + dagre · Drag&amp;Drop, localStorage-Persistenz</p>
+          <p>Interaktive 7-Layer-Topologie · Modi A Erklären / B Lehren / C Live (Mock↔Realtime-Toggle) · Cytoscape + dagre · Drag&amp;Drop, localStorage-Persistenz</p>
         </div>
         <div style="display:flex;gap:8px;">
-          <a href="./09_ARCHITEKTUR/tgv-architecture-v7.html" target="_blank" rel="noopener"
+          <a href="./09_ARCHITEKTUR/tgv-architecture-v8.html" target="_blank" rel="noopener"
              class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:6px 12px;text-decoration:none;">↗ In neuem Tab</a>
         </div>
       </div>
       <div style="margin-top:8px;border:1px solid var(--s3);border-radius:8px;overflow:hidden;background:var(--bg1);">
         <iframe id="architektur-frame"
-                data-src="./09_ARCHITEKTUR/tgv-architecture-v7.html"
+                data-src="./09_ARCHITEKTUR/tgv-architecture-v8.html"
                 style="width:100%;height:calc(100vh - 200px);min-height:600px;border:0;display:block;"
-                title="TGV Architektur Visualisierung v7"
+                title="TGV Architektur Visualisierung v8"
                 loading="lazy"></iframe>
       </div>
     </div>
@@ -2786,6 +2971,144 @@ const SUPABASE_ANON_KEY = 'sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_';
 const JC_USER_ID        = 'b942cb53-55f5-4f52-906d-2ed29c46f07a';
 
 const _supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ═══════════════════════════════════════════════════════════════════════
+// STREAM PANEL — Iter 20.5 (agent_events Realtime, global)
+// ═══════════════════════════════════════════════════════════════════════
+const STREAM_STATE = {
+  events: [],          // last 20
+  filter: 'all',
+  channel: null,
+  connected: false,
+};
+function classifyStreamEvent(evt) {
+  const tn = (evt.tool_name || '').toLowerCase();
+  const et = (evt.event_type || '').toLowerCase();
+  if (et === 'failed' || et === 'error' || et === 'failure') return 'error';
+  if (et === 'learning_event' || et === 'user_correction' || tn.includes('kb-learn') || tn.includes('learn')) return 'learning';
+  if (tn.includes('orchestrator') || tn.includes('dispatcher') || et === 'plan' || et === 'dispatch') return 'orchestrator';
+  if (tn.startsWith('tgv-') || et === 'started' || et === 'completed' || et === 'finished') return 'skill';
+  return 'other';
+}
+function fmtStreamTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+function renderStreamPanel() {
+  const list = document.getElementById('stream-panel-list');
+  if (!list) return;
+  const filter = STREAM_STATE.filter;
+  const filtered = STREAM_STATE.events.filter(e => filter === 'all' || classifyStreamEvent(e) === filter);
+  if (!filtered.length) {
+    list.innerHTML = `<div style="padding:14px;text-align:center;color:var(--mute);font-size:11px" id="stream-empty">${STREAM_STATE.connected ? 'Keine Events im Filter' : 'Warte auf Events…'}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map((e, idx) => {
+    const cls = classifyStreamEvent(e);
+    const tool = e.tool_name || e.workflow_name || '?';
+    const evtType = e.event_type || cls;
+    return `<div class="stream-evt" onclick="openStreamModal(${idx})">
+      <div class="stream-evt-head">
+        <span class="stream-evt-type t-${cls}">${evtType}</span>
+        <span class="stream-evt-time">${fmtStreamTime(e.created_at)}</span>
+      </div>
+      <div class="stream-evt-tool">${tool}${e.document_id ? ` · doc#${e.document_id}` : ''}</div>
+    </div>`;
+  }).join('');
+}
+function setStreamFilter(f, btn) {
+  STREAM_STATE.filter = f;
+  document.querySelectorAll('.stream-filter').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  renderStreamPanel();
+}
+function clearStreamEvents() {
+  STREAM_STATE.events = [];
+  renderStreamPanel();
+  const c = document.getElementById('stream-toggle-counter'); if (c) c.textContent = '';
+}
+function openStreamModal(idx) {
+  const filter = STREAM_STATE.filter;
+  const filtered = STREAM_STATE.events.filter(e => filter === 'all' || classifyStreamEvent(e) === filter);
+  const evt = filtered[idx]; if (!evt) return;
+  const body = document.getElementById('stream-modal-body');
+  const title = document.getElementById('stream-modal-title');
+  title.textContent = `${evt.tool_name || evt.workflow_name || 'event'} · ${evt.event_type || '—'}`;
+  body.innerHTML = `
+    <div style="font-size:11px;color:var(--mute);margin-bottom:10px">
+      ${fmtStreamTime(evt.created_at)} · doc=${evt.document_id ?? '—'} · workflow=${evt.workflow_name ?? '—'} · node=${evt.node_name ?? '—'}
+    </div>
+    <h4 style="margin:8px 0 4px;font-size:11px">tool_input / metadata</h4>
+    <pre>${JSON.stringify(evt.tool_input ?? evt.metadata ?? evt.content ?? null, null, 2)}</pre>
+    <h4 style="margin:8px 0 4px;font-size:11px">tool_output / output</h4>
+    <pre>${JSON.stringify(evt.tool_output ?? evt.output ?? null, null, 2)}</pre>
+  `;
+  document.getElementById('stream-modal-backdrop').classList.add('open');
+}
+function closeStreamModal(ev) {
+  if (ev && ev.target && ev.target.id !== 'stream-modal-backdrop') return;
+  document.getElementById('stream-modal-backdrop').classList.remove('open');
+}
+function toggleStreamPanel() {
+  const p = document.getElementById('stream-panel');
+  const isOpen = p.classList.toggle('open');
+  if (isOpen && !STREAM_STATE.channel) startStreamSubscription();
+  if (isOpen) {
+    // Reset Counter wenn geöffnet
+    const c = document.getElementById('stream-toggle-counter'); if (c) c.textContent = '';
+  }
+}
+async function startStreamSubscription() {
+  setStreamMeta('verbinde …', '');
+  // Letzte 20 vorab laden
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/agent_events?select=id,tool_name,workflow_name,node_name,event_type,document_id,created_at,metadata,tool_input,tool_output&order=created_at.desc&limit=20`;
+    const r = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }});
+    if (r.ok) {
+      const rows = await r.json();
+      STREAM_STATE.events = rows.reverse(); // oldest→newest, neue oben anhängen
+      renderStreamPanel();
+    }
+  } catch (e) { console.warn('stream initial load', e); }
+
+  STREAM_STATE.channel = _supaClient.channel('global-agent-events-stream')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'agent_events' }, (payload) => {
+      const evt = payload.new || {};
+      STREAM_STATE.events.unshift(evt);
+      if (STREAM_STATE.events.length > 20) STREAM_STATE.events.length = 20;
+      renderStreamPanel();
+      // Counter wenn Panel zu
+      const panel = document.getElementById('stream-panel');
+      if (!panel.classList.contains('open')) {
+        const c = document.getElementById('stream-toggle-counter');
+        if (c) {
+          const cur = parseInt(c.textContent.replace(/[^\d]/g,'') || '0', 10) + 1;
+          c.textContent = `+${cur}`;
+        }
+      }
+    })
+    .subscribe((status) => {
+      const tog = document.getElementById('stream-panel-toggle');
+      if (status === 'SUBSCRIBED') {
+        STREAM_STATE.connected = true;
+        tog?.classList.add('live'); tog?.classList.remove('offline');
+        setStreamMeta('Realtime · agent_events', 'live');
+        renderStreamPanel();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        STREAM_STATE.connected = false;
+        tog?.classList.remove('live'); tog?.classList.add('offline');
+        setStreamMeta('Verbindung verloren · klick zum Neuverbinden', 'offline');
+      }
+    });
+}
+function setStreamMeta(text, cls) {
+  const m = document.getElementById('stream-panel-meta'); if (m) m.textContent = text;
+  const t = document.getElementById('stream-panel-toggle');
+  if (t) {
+    t.classList.toggle('live', cls === 'live');
+    t.classList.toggle('offline', cls === 'offline');
+  }
+}
 
 function showAuthGate(view = 'login') {
   document.getElementById('auth-gate').classList.add('visible');
@@ -5041,7 +5364,86 @@ function showSysTab(tabId, btn) {
   const panel = document.getElementById('sys-panel-' + tabId);
   if (panel) panel.classList.add('active');
   if (tabId === 'costs')    loadCostsView();
-  if (tabId === 'patterns') loadPatternHealthView();
+  if (tabId === 'patterns') { loadPatternHealthView(); loadPatternRulesLifecycle(); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PATTERN-RULES LIFECYCLE (Iter 20.4 — Workshop-Acceptance #14)
+//  Liste pattern_rules pro scope mit stage-Badge + verification + conflict + trust_score.
+// ═══════════════════════════════════════════════════════
+async function loadPatternRulesLifecycle() {
+  const el = document.getElementById('pr-lifecycle');
+  if (!el) return;
+  const sel = document.getElementById('pr-scope-filter');
+  const scope = sel?.value || 'all';
+  el.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade pattern_rules…</div>`;
+  const scopeFilter = scope === 'all' ? '' : `&scope=eq.${encodeURIComponent(scope)}`;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/pattern_rules?select=id,scope,pattern_key,stage,verification_count,conflict_count,trust_score,active,last_seen,created_at${scopeFilter}&order=trust_score.desc.nullslast,verification_count.desc.nullslast&limit=200`;
+    const r = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const rows = await r.json();
+    if (!rows.length) {
+      el.innerHTML = `<div style="padding:18px;text-align:center;color:var(--mute);font-size:12px">Keine pattern_rules für Scope „${scope}". Mig 057+061 deployed?</div>`;
+      return;
+    }
+    const stageBadge = (s) => {
+      const map = {
+        candidate: ['#fef3c7','#92400e','candidate'],
+        hint:      ['#dbeafe','#1e40af','hint'],
+        verified:  ['#d1fae5','#065f46','verified'],
+        shortcut:  ['#ede9fe','#5b21b6','shortcut'],
+        demoted:   ['#fee2e2','#991b1b','demoted'],
+      };
+      const [bg, fg, lbl] = map[s] || ['#e5e7eb','#374151', s || '—'];
+      return `<span style="background:${bg};color:${fg};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600">${lbl}</span>`;
+    };
+    const trustBar = (v) => {
+      const pct = Math.max(0, Math.min(1, Number(v) || 0)) * 100;
+      const col = pct >= 70 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444';
+      return `<div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:6px;background:var(--s2);border-radius:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col}"></div></div><span style="font-size:10px;color:var(--mute);min-width:32px">${pct.toFixed(0)}%</span></div>`;
+    };
+    const rowsHtml = rows.map(rr => {
+      const promoteBtnDisabled = (rr.stage === 'shortcut' || rr.stage === 'demoted');
+      const promoteTitle = promoteBtnDisabled
+        ? 'Stage am Endpunkt — keine weitere Promotion'
+        : 'Manueller Promoter (Skill noch nicht deployed — Iter 21+)';
+      return `<tr>
+        <td style="font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mute)">${rr.scope || '—'}</td>
+        <td style="font-family:ui-monospace,monospace;font-size:10.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(rr.pattern_key || '').replace(/"/g,'&quot;')}">${rr.pattern_key || '—'}</td>
+        <td>${stageBadge(rr.stage)}</td>
+        <td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px">${rr.verification_count ?? 0}</td>
+        <td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:${(rr.conflict_count||0) > 0 ? '#ef4444' : 'var(--mute)'}">${rr.conflict_count ?? 0}</td>
+        <td>${trustBar(rr.trust_score)}</td>
+        <td style="text-align:center">
+          <button onclick="manualPromote(${rr.id})" ${promoteBtnDisabled ? 'disabled' : ''} title="${promoteTitle}" style="background:${promoteBtnDisabled ? 'var(--s2)' : 'var(--blu)'};color:${promoteBtnDisabled ? 'var(--mute)' : 'white'};border:none;padding:3px 8px;border-radius:4px;font-size:10px;cursor:${promoteBtnDisabled ? 'not-allowed' : 'pointer'}">↑ promote</button>
+        </td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `
+      <table class="mig-table" style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--bg2);border-bottom:1px solid var(--s3)">
+          <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">scope</th>
+          <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">pattern_key</th>
+          <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">stage</th>
+          <th style="text-align:right;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600" title="verification_count">vc</th>
+          <th style="text-align:right;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600" title="conflict_count">cc</th>
+          <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600" title="trust_score 0-1">trust</th>
+          <th style="text-align:center;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">action</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div style="padding:10px 14px;font-size:10.5px;color:var(--mute);border-top:1px solid var(--s3)">
+        ${rows.length} Regeln · Lifecycle: candidate → hint → verified → shortcut (oder demoted bei conflict_count > vc/2). Promoter-Skill = Iter 21+.
+      </div>
+    `;
+  } catch (e) {
+    el.innerHTML = `<div style="padding:14px;color:#ef4444;font-size:12px">Fehler beim Laden pattern_rules: ${e.message}</div>`;
+  }
+}
+
+function manualPromote(ruleId) {
+  showToast('info', `Promoter-WF noch nicht deployed (Iter 21+). Rule #${ruleId} manuell vermerkt — kein Effekt.`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -6656,6 +7058,212 @@ async function reclassDoc(docId, driveFileId, driveFileName) {
   } finally {
     btn.disabled = false;
     btn.textContent = '🤖 Reclass';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BUCHHALTER-VERSAND-VORSCHAU (Iter 20.7 — US10)
+// Modal mit Empfänger/Subject/Body/Doc-Liste/Fehlend-Liste vor Versand.
+// ═══════════════════════════════════════════════════════════════════════
+let _apState = { selMonth: null, year: null, month: null, entity: null, docs: [], allDocTypes: [], activeDocTypes: null };
+
+function _apResolvePeriod() {
+  let selMonth;
+  if (gPeriod && gPeriod !== 'all') selMonth = gPeriod;
+  else { const now = new Date(); selMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`; }
+  const [year, month] = selMonth.split('-');
+  return { selMonth, year: parseInt(year), month: parseInt(month) };
+}
+function _apMonthRange(year, month) {
+  const start = `${year}-${String(month).padStart(2,'0')}-01`;
+  const endY = month === 12 ? year + 1 : year;
+  const endM = month === 12 ? 1 : month + 1;
+  const end = `${endY}-${String(endM).padStart(2,'0')}-01`;
+  return { start, end };
+}
+async function openAccountantPreview() {
+  const modal = document.getElementById('accountant-preview-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const { selMonth, year, month } = _apResolvePeriod();
+  _apState.selMonth = selMonth; _apState.year = year; _apState.month = month;
+  _apState.entity = (gEntity && gEntity !== 'all') ? gEntity : null;
+  const d = new Date(year, month - 1, 1);
+  const monthName = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  document.getElementById('ap-period-info').textContent = `${monthName} · Entity: ${_apState.entity || 'alle'} · Vorschau vor Versand`;
+
+  // Defaults für Empfänger + Subject + Body — werden aus system_config überschrieben falls vorhanden
+  let recipient = '', cc = '', signature = '', subjectTpl = 'Monatsabschluss {month}/{year}{entity_suffix}';
+  try {
+    const cfg = await supa(`system_config?key=in.(accountant_email,accountant_email_cc,accountant_subject_template,accountant_signature_html)&select=key,value`);
+    for (const r of (cfg || [])) {
+      if (r.key === 'accountant_email') recipient = r.value || '';
+      else if (r.key === 'accountant_email_cc') cc = r.value || '';
+      else if (r.key === 'accountant_subject_template') subjectTpl = r.value || subjectTpl;
+      else if (r.key === 'accountant_signature_html') signature = r.value || '';
+    }
+  } catch (e) { /* tolerant */ }
+
+  const entSuffix = _apState.entity ? ` · ${_apState.entity.toUpperCase()}` : '';
+  const subject = subjectTpl.replace('{month}', String(month).padStart(2,'0')).replace('{year}', String(year)).replace('{entity_suffix}', entSuffix);
+  document.getElementById('ap-recipient').value = recipient;
+  document.getElementById('ap-cc').value = cc;
+  document.getElementById('ap-subject').value = subject;
+
+  // Body-Default
+  const bodyDefault = `<p>Sehr geehrte Damen und Herren,</p>
+<p>anbei der Monatsabschluss <strong>${monthName}</strong>${entSuffix ? ` für <strong>${entSuffix.replace(' · ','')}</strong>` : ''}.</p>
+<p>Die Belege liegen wie gewohnt im geteilten Drive-Ordner. Bei Rückfragen melde ich mich.</p>
+<p>Mit freundlichen Grüßen<br>Jean-Chris Binetti</p>
+${signature || ''}`;
+  document.getElementById('ap-body').value = bodyDefault;
+
+  await _apLoadDocsAndMissing();
+}
+function closeAccountantPreview() {
+  const modal = document.getElementById('accountant-preview-modal');
+  if (modal) modal.style.display = 'none';
+}
+async function _apLoadDocsAndMissing() {
+  const docsList = document.getElementById('ap-docs-list');
+  const missList = document.getElementById('ap-missing-list');
+  const docsCount = document.getElementById('ap-docs-count');
+  const missCount = document.getElementById('ap-missing-count');
+  const chipsEl = document.getElementById('ap-doctype-chips');
+  docsList.innerHTML = `<div style="padding:14px;text-align:center;color:var(--mute);font-size:11px">Lade…</div>`;
+  missList.innerHTML = `<div style="padding:14px;text-align:center;color:var(--mute);font-size:11px">Lücken-Analyse…</div>`;
+
+  try {
+    const { start, end } = _apMonthRange(_apState.year, _apState.month);
+    let q = `documents?select=id,provider,entity,invoice_date,doc_type,amount,currency,drive_file_name,sent_to_accountant_at,skip_accountant&invoice_date=gte.${start}&invoice_date=lt.${end}&status=neq.rejected&order=invoice_date`;
+    let docs = await supa(q);
+    if (_apState.entity) docs = docs.filter(d => mapEntity(d.entity) === _apState.entity);
+    docs = docs.filter(d => !d.skip_accountant);
+    _apState.docs = docs;
+
+    // Doc-Type chips
+    const dtSet = new Set(docs.map(d => d.doc_type || '—'));
+    _apState.allDocTypes = Array.from(dtSet);
+    if (_apState.activeDocTypes === null) _apState.activeDocTypes = new Set(_apState.allDocTypes);
+    chipsEl.innerHTML = _apState.allDocTypes.map(dt => {
+      const active = _apState.activeDocTypes.has(dt);
+      return `<button class="ap-dt-chip" data-dt="${dt}" onclick="_apToggleDocType('${dt.replace(/'/g, "&apos;")}')" style="font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;background:${active ? 'var(--blu)' : 'transparent'};color:${active ? 'white' : 'var(--mute)'};border:1px solid ${active ? 'var(--blu)' : 'var(--s3)'}">${dt}</button>`;
+    }).join('');
+
+    _apRenderDocsList();
+
+    // Fehlende Docs — Vergleich gegen Vorjahres-Monat doc_type-Counts
+    const lyStart = `${_apState.year - 1}-${String(_apState.month).padStart(2,'0')}-01`;
+    const lyEndY = _apState.month === 12 ? _apState.year : _apState.year - 1;
+    const lyEndM = _apState.month === 12 ? 1 : _apState.month + 1;
+    const lyEnd = `${lyEndY}-${String(lyEndM).padStart(2,'0')}-01`;
+    let lyQ = `documents?select=doc_type,provider,entity&invoice_date=gte.${lyStart}&invoice_date=lt.${lyEnd}&status=neq.rejected`;
+    let ly = [];
+    try { ly = await supa(lyQ); } catch (e) { /* tolerant */ }
+    if (_apState.entity) ly = ly.filter(d => mapEntity(d.entity) === _apState.entity);
+
+    const lyByType = {};
+    for (const d of ly) {
+      const k = d.doc_type || '—';
+      lyByType[k] = (lyByType[k] || 0) + 1;
+    }
+    const curByType = {};
+    for (const d of docs) {
+      const k = d.doc_type || '—';
+      curByType[k] = (curByType[k] || 0) + 1;
+    }
+    const gaps = [];
+    for (const [dt, n] of Object.entries(lyByType)) {
+      const cur = curByType[dt] || 0;
+      if (cur < n) gaps.push({ doc_type: dt, expected: n, got: cur, delta: n - cur });
+    }
+    gaps.sort((a,b) => b.delta - a.delta);
+    if (!gaps.length) {
+      missList.innerHTML = `<div style="padding:14px;text-align:center;color:#10b981;font-size:11px">✅ Keine Lücken gegen ${_apState.year - 1}-${String(_apState.month).padStart(2,'0')}</div>`;
+      missCount.textContent = '0';
+    } else {
+      missCount.textContent = String(gaps.length);
+      missList.innerHTML = gaps.map(g => `
+        <div style="padding:8px 12px;border-bottom:1px dashed var(--s3);font-size:11px">
+          <div style="display:flex;justify-content:space-between"><strong>${g.doc_type}</strong><span style="color:#f59e0b;font-family:ui-monospace,monospace">−${g.delta}</span></div>
+          <div style="color:var(--mute);font-size:10.5px;margin-top:2px">Vorjahr ${g.expected} · diesen Monat ${g.got}</div>
+        </div>
+      `).join('');
+    }
+
+    docsCount.textContent = String(docs.length);
+    const warnLine = document.getElementById('ap-warn-line');
+    const noAmtCount = docs.filter(d => d.amount == null).length;
+    const noFileCount = docs.filter(d => !d.drive_file_name).length;
+    const issues = [];
+    if (noAmtCount) issues.push(`${noAmtCount} ohne Betrag`);
+    if (noFileCount) issues.push(`${noFileCount} ohne Drive-Datei`);
+    if (gaps.length) issues.push(`${gaps.length} fehlende Doc-Typen`);
+    warnLine.textContent = issues.length ? `⚠ ${issues.join(' · ')}` : `✅ Paket vollständig`;
+    warnLine.style.color = issues.length ? '#f59e0b' : '#10b981';
+  } catch (e) {
+    docsList.innerHTML = `<div style="padding:14px;color:#ef4444;font-size:11px">Fehler: ${e.message}</div>`;
+    missList.innerHTML = '';
+  }
+}
+function _apToggleDocType(dt) {
+  if (_apState.activeDocTypes.has(dt)) _apState.activeDocTypes.delete(dt);
+  else _apState.activeDocTypes.add(dt);
+  // Re-render chips
+  document.querySelectorAll('.ap-dt-chip').forEach(b => {
+    const active = _apState.activeDocTypes.has(b.dataset.dt);
+    b.style.background = active ? 'var(--blu)' : 'transparent';
+    b.style.color = active ? 'white' : 'var(--mute)';
+    b.style.borderColor = active ? 'var(--blu)' : 'var(--s3)';
+  });
+  _apRenderDocsList();
+}
+function _apRenderDocsList() {
+  const docsList = document.getElementById('ap-docs-list');
+  const docsCount = document.getElementById('ap-docs-count');
+  const filtered = _apState.docs.filter(d => _apState.activeDocTypes.has(d.doc_type || '—'));
+  docsCount.textContent = String(filtered.length);
+  if (!filtered.length) {
+    docsList.innerHTML = `<div style="padding:14px;text-align:center;color:var(--mute);font-size:11px">Keine Docs im Filter</div>`;
+    return;
+  }
+  docsList.innerHTML = filtered.map(d => `
+    <div style="padding:7px 11px;border-bottom:1px dashed var(--s3);font-size:11px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+      <div>
+        <div><strong>${d.provider || '—'}</strong> <span style="color:var(--mute);font-size:10px">#${d.id} · ${d.doc_type || '—'}</span></div>
+        <div style="color:var(--mute);font-size:10px">${d.invoice_date || '—'} · ${d.entity || '—'} ${d.drive_file_name ? '' : '· ⚠ ohne Datei'}</div>
+      </div>
+      <div style="font-family:ui-monospace,monospace;text-align:right">${d.amount != null ? `${parseFloat(d.amount).toFixed(2)} ${d.currency || ''}` : '<span style="color:#f59e0b">—</span>'}</div>
+    </div>
+  `).join('');
+}
+async function confirmAccountantSend() {
+  const btn = document.getElementById('ap-confirm-btn');
+  const recipient = document.getElementById('ap-recipient').value.trim();
+  const subject = document.getElementById('ap-subject').value.trim();
+  const body = document.getElementById('ap-body').value;
+  const cc = document.getElementById('ap-cc').value.trim();
+  if (!recipient) { toast('Empfänger fehlt', 'err'); return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Sende…';
+  try {
+    const res = await fetch(BUCHHALTER_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entity: _apState.entity, month: _apState.month, year: _apState.year,
+        recipient, cc: cc || null, subject, body_html: body,
+        doc_types: Array.from(_apState.activeDocTypes),
+        preview_confirmed: true, source: 'dashboard-preview'
+      })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    toast(`✅ Monatsabschluss ${_apState.selMonth} an ${recipient} gesendet`);
+    closeAccountantPreview();
+    loadMonatsabschluss();
+  } catch (e) {
+    toast('Fehler beim Senden: ' + e.message, 'err');
+    btn.disabled = false; btn.textContent = '📤 Versand bestätigen';
   }
 }
 
