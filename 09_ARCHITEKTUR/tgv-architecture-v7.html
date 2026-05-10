@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TGV Architektur · Modus B (Lehren)</title>
+
+<!-- Cytoscape v3 + dagre + node-html-label (CDN, kein npm) -->
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-node-html-label@1.2.2/dist/cytoscape-node-html-label.min.js"></script>
+
+<style>
+/* =========================================================================
+   FARB-SEMANTIK aus Brief §3.5 — als HEX, nicht als CSS-Vars in Cytoscape
+   ========================================================================= */
+:root {
+  --bg: #f7f8fa;
+  --bg-canvas: #fafbfc;
+  --bg-panel: #ffffff;
+  --bg-panel-2: #f0f2f5;
+  --bg-card: #ffffff;
+  --fg: #1a1d24;
+  --fg-muted: #5a6275;
+  --fg-dim: #8a93a6;
+  --border: #d8dde5;
+  --border-strong: #b8bfcc;
+
+  --c-grey:   #94a3b8;
+  --c-amber:  #f59e0b;
+  --c-violet: #8b5cf6;
+  --c-teal:   #14b8a6;
+  --c-blue:   #3b82f6;
+  --c-pink:   #ec4899;
+  --c-coral:  #fb7185;
+  --c-red:    #ef4444;
+  --c-green:  #10b981;
+
+  --c-grey-soft:   #e2e8f0;
+  --c-amber-soft:  #fef3c7;
+  --c-violet-soft: #ede9fe;
+  --c-teal-soft:   #ccfbf1;
+  --c-blue-soft:   #dbeafe;
+  --c-pink-soft:   #fce7f3;
+  --c-coral-soft:  #ffe4e6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --bg-canvas: #0f141c;
+    --bg-panel: #161b22;
+    --bg-panel-2: #1c2129;
+    --bg-card: #1a1f2a;
+    --fg: #e6e9ef;
+    --fg-muted: #9aa3b8;
+    --fg-dim: #6a7488;
+    --border: #2a313e;
+    --border-strong: #3a4252;
+
+    --c-grey-soft:   #2a3142;
+    --c-amber-soft:  #3d2e10;
+    --c-violet-soft: #2d1f4d;
+    --c-teal-soft:   #0f3d36;
+    --c-blue-soft:   #102d54;
+    --c-pink-soft:   #4a1a35;
+    --c-coral-soft:  #4a1f28;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  height: 100%; width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+}
+
+/* === HEADER ============================================================= */
+header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+  z-index: 100;
+}
+header h1 {
+  font-size: 15px; font-weight: 600;
+  margin: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+header .badge {
+  font-size: 11px; font-weight: 500;
+  padding: 3px 8px; border-radius: 10px;
+  background: var(--c-violet-soft); color: var(--c-violet);
+  border: 1px solid var(--c-violet);
+}
+header .meta {
+  font-size: 12px; color: var(--fg-muted); font-weight: 400;
+  margin-left: 8px;
+}
+
+.mode-toggle {
+  display: flex; gap: 4px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 13px; font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  position: relative;
+}
+.mode-btn.active { background: var(--c-violet); color: white; }
+.mode-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.mode-btn:not(:disabled):not(.active):hover { background: var(--border); color: var(--fg); }
+.mode-btn[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%; transform: translateX(-50%);
+  background: var(--fg);
+  color: var(--bg-panel);
+  font-size: 11px; font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Header-Button (Reset Layout) */
+.header-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.header-btn:hover {
+  background: var(--bg-panel);
+  border-color: var(--border-strong);
+  color: var(--fg);
+}
+.header-btn.has-saved {
+  border-color: var(--c-violet);
+  color: var(--c-violet);
+}
+.header-btn.has-saved::before {
+  content: '●';
+  font-size: 8px;
+  color: var(--c-violet);
+}
+
+/* === GRAPH CANVAS ======================================================= */
+#cy {
+  position: fixed;
+  top: 56px; left: 0;
+  right: 0; bottom: 0;
+  background: var(--bg-canvas);
+}
+body.panel-open #cy { right: 420px; }
+
+/* =========================================================================
+   N8N-STYLE NODE CARDS — gerendert via cytoscape-node-html-label.
+   Wichtig: Cytoscape positioniert das HTML-Element, daher KEIN absolute/top.
+   ========================================================================= */
+.tgv-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 2px solid var(--c-grey);
+  border-radius: 10px;
+  padding: 10px 14px 10px 10px;
+  min-width: 180px;
+  max-width: 240px;
+  font-family: inherit;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  position: relative;
+  /* Wichtig: pointer-events explizit auto, damit DOM-Events auf der Karte landen.
+     Cytoscape-Pan greift nur wenn das Event NICHT auf einer Karte landet. */
+  pointer-events: auto;
+}
+.tgv-card.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
+  z-index: 10;
+}
+@media (prefers-color-scheme: dark) {
+  .tgv-card { box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3); }
+}
+.tgv-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+.tgv-card.selected {
+  box-shadow: 0 0 0 3px var(--c-violet-soft), 0 4px 12px rgba(0,0,0,0.1);
+}
+.tgv-card .card-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: white;
+}
+.tgv-card .card-icon svg {
+  width: 20px; height: 20px;
+  stroke-width: 2;
+}
+.tgv-card .card-text {
+  display: flex; flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.tgv-card .card-title {
+  font-size: 12.5px; font-weight: 600;
+  color: var(--fg);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tgv-card .card-sub {
+  font-size: 10.5px; font-weight: 500;
+  color: var(--fg-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tgv-card .card-status {
+  position: absolute;
+  top: -6px; right: -6px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-canvas);
+}
+.tgv-card .card-status.active   { background: var(--c-green); }
+.tgv-card .card-status.inactive { background: var(--c-grey); }
+
+/* Color variants (border + icon-bg) */
+.tgv-card.col-grey   { border-color: var(--c-grey); }
+.tgv-card.col-grey   .card-icon { background: var(--c-grey); }
+.tgv-card.col-amber  { border-color: var(--c-amber); }
+.tgv-card.col-amber  .card-icon { background: var(--c-amber); }
+.tgv-card.col-violet { border-color: var(--c-violet); }
+.tgv-card.col-violet .card-icon { background: var(--c-violet); }
+.tgv-card.col-teal   { border-color: var(--c-teal); }
+.tgv-card.col-teal   .card-icon { background: var(--c-teal); }
+.tgv-card.col-blue   { border-color: var(--c-blue); }
+.tgv-card.col-blue   .card-icon { background: var(--c-blue); }
+.tgv-card.col-pink   { border-color: var(--c-pink); }
+.tgv-card.col-pink   .card-icon { background: var(--c-pink); }
+.tgv-card.col-coral  { border-color: var(--c-coral); }
+.tgv-card.col-coral  .card-icon { background: var(--c-coral); }
+
+/* Inactive workflows = dashed border + opacity */
+.tgv-card.is-inactive {
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+/* Special: Orchestrator (KI-Hervorhebung mit Sparkle-Korona) */
+.tgv-card.is-ki .card-title::after {
+  content: '✦';
+  margin-left: 4px;
+  color: var(--c-violet);
+  font-size: 11px;
+}
+
+/* Mode-A Karten: grösser, Titel deutlicher, prosige Sub */
+.tgv-card.is-mode-a {
+  min-width: 240px;
+  padding: 14px 18px 14px 14px;
+}
+.tgv-card.is-mode-a .card-icon {
+  width: 44px; height: 44px;
+}
+.tgv-card.is-mode-a .card-icon svg { width: 24px; height: 24px; }
+.tgv-card.is-mode-a .card-title { font-size: 14px; font-weight: 600; }
+.tgv-card.is-mode-a .card-sub { font-size: 11.5px; white-space: normal; }
+
+/* =========================================================================
+   SKILL-KARTEN mit Sorte-Header (v7)
+   Drei sichtbar unterschiedliche Sorten:
+   - Agent (LLM, Sonnet/Haiku) — lila Header mit Modell-Name
+   - Skill (deterministisch) — teal Header
+   - Embedding (Vektor-KI, kein Sprach-Prompt) — violet Header
+   ========================================================================= */
+.tgv-card.has-skill-header {
+  padding-top: 22px;
+  position: relative;
+}
+.tgv-card .skill-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 18px;
+  border-radius: 8px 8px 0 0;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-size: 9.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: white;
+}
+.tgv-card.skill-kind-agent .skill-header {
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+}
+.tgv-card.skill-kind-deterministic .skill-header {
+  background: linear-gradient(90deg, #14b8a6, #2dd4bf);
+}
+.tgv-card.skill-kind-embedding .skill-header {
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+}
+.tgv-card .skill-header .skill-kind-label { letter-spacing: 0.06em; }
+.tgv-card .skill-header .skill-model {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.9;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Mode-A KI-Karte zusätzlich hervorheben */
+.tgv-card.is-mode-a-ki {
+  min-width: 280px;
+  padding: 16px 20px 16px 16px;
+  box-shadow: 0 0 0 4px var(--c-violet-soft), 0 4px 14px rgba(139, 92, 246, 0.18);
+}
+.tgv-card.is-mode-a-ki .card-icon { width: 52px; height: 52px; }
+.tgv-card.is-mode-a-ki .card-icon svg { width: 28px; height: 28px; }
+.tgv-card.is-mode-a-ki .card-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--c-violet);
+}
+.tgv-card.is-mode-a-ki .card-sub { font-size: 12px; color: var(--fg); }
+
+/* Mode-A Endpoint (Buchhalter) — als finaler Output betont */
+.tgv-card.is-mode-a-endpoint {
+  min-width: 300px;
+  padding: 14px 18px 14px 14px;
+  box-shadow: 0 0 0 4px var(--c-amber-soft), 0 4px 14px rgba(245, 158, 11, 0.22);
+  border-width: 3px;
+}
+.tgv-card.is-mode-a-endpoint .card-icon { width: 48px; height: 48px; }
+.tgv-card.is-mode-a-endpoint .card-icon svg { width: 26px; height: 26px; }
+.tgv-card.is-mode-a-endpoint .card-title {
+  font-size: 15px; font-weight: 700;
+  color: var(--c-amber);
+}
+.tgv-card.is-mode-a-endpoint .card-sub { font-size: 12px; }
+
+/* Mode-A Phase-2-Karten — gestrichelt, halbtransparent, "kommt"-Marker */
+.tgv-card.is-mode-a-phase2 {
+  border-style: dashed;
+  border-width: 2px;
+  opacity: 0.72;
+}
+.tgv-card.is-mode-a-phase2::after {
+  content: 'Phase 2 · geplant';
+  position: absolute;
+  top: -10px; right: 10px;
+  background: var(--c-grey);
+  color: white;
+  font-size: 9.5px; font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Schritt-Badge oben links auf Mode-A-Karten mit step-Property */
+.tgv-card .step-badge {
+  position: absolute;
+  top: -10px; left: -10px;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--c-violet);
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  z-index: 2;
+}
+
+/* === SIDE PANEL ========================================================= */
+#panel {
+  position: fixed;
+  top: 56px; right: -420px; bottom: 0;
+  width: 420px;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  transition: right 0.25s ease;
+  z-index: 50;
+}
+body.panel-open #panel { right: 0; }
+.panel-header {
+  position: sticky; top: 0;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px;
+}
+.panel-header h2 {
+  font-size: 16px; font-weight: 600;
+  margin: 0 0 4px 0;
+  color: var(--fg);
+}
+.panel-header .panel-sub {
+  font-size: 12px; color: var(--fg-muted);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.panel-close {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.panel-close:hover { color: var(--fg); border-color: var(--border-strong); }
+.panel-body { padding: 16px 20px 80px 20px; }
+.panel-body section { margin-bottom: 20px; }
+.panel-body h3 {
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  margin: 0 0 8px 0;
+}
+.panel-body p {
+  font-size: 13px; line-height: 1.55;
+  margin: 0 0 8px 0;
+  color: var(--fg);
+}
+.panel-body code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  background: var(--bg-panel-2);
+  padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.panel-body pre {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11.5px; line-height: 1.5;
+  overflow-x: auto;
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 6px 12px;
+  font-size: 12.5px;
+}
+.kv dt {
+  color: var(--fg-muted); font-weight: 500;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+}
+.kv dd {
+  margin: 0; color: var(--fg);
+  word-break: break-word;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+}
+.tag {
+  display: inline-block;
+  font-size: 10.5px; font-weight: 600;
+  padding: 2px 7px; border-radius: 10px;
+  margin-right: 4px; margin-bottom: 3px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.tag-violet { background: var(--c-violet-soft); color: var(--c-violet); }
+.tag-teal   { background: var(--c-teal-soft);   color: var(--c-teal); }
+.tag-blue   { background: var(--c-blue-soft);   color: var(--c-blue); }
+.tag-amber  { background: var(--c-amber-soft);  color: var(--c-amber); }
+.tag-pink   { background: var(--c-pink-soft);   color: var(--c-pink); }
+.tag-grey   { background: var(--c-grey-soft);   color: var(--fg-muted); }
+
+.lifecycle {
+  display: flex; align-items: center; gap: 4px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.lifecycle-stage {
+  flex: 1 1 0;
+  min-width: 70px;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 6px;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border);
+}
+.lifecycle-stage .count {
+  font-size: 18px; font-weight: 700;
+  color: var(--c-violet);
+  display: block;
+}
+.lifecycle-stage .label {
+  font-size: 10.5px; color: var(--fg-muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.lifecycle-arrow { color: var(--fg-muted); font-size: 14px; }
+
+#legend {
+  position: fixed;
+  bottom: 16px; left: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  display: flex; gap: 14px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 32px);
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+#legend .leg-item {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--fg-muted);
+}
+#legend .swatch {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+#anti-drift {
+  position: fixed;
+  bottom: 16px; right: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--fg-muted);
+  display: flex; align-items: center; gap: 6px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  max-width: 360px;
+}
+body.panel-open #anti-drift { display: none; }
+
+.empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .tgv-card.fx-active { background: var(--c-violet-soft) !important; }
+  .tgv-card.fx-completed { background: var(--c-teal-soft) !important; }
+}
+
+/* =========================================================================
+   MODE C — Live-Animations auf Karten
+   ========================================================================= */
+@keyframes tgvPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--pulse-color, #8b5cf6); transform: scale(1); }
+  50%      { box-shadow: 0 0 18px 6px var(--pulse-color, #8b5cf6); transform: scale(1.04); }
+}
+@keyframes tgvFlash {
+  0%   { background: var(--c-green); border-color: var(--c-green); }
+  100% { background: var(--bg-card); }
+}
+@keyframes tgvLearning {
+  0%, 100% { box-shadow: 0 0 0 0 #ec4899; }
+  50%      { box-shadow: 0 0 22px 8px #ec4899; }
+}
+.tgv-card.fx-active   { animation: tgvPulse 1.5s ease-in-out; --pulse-color: #8b5cf6; }
+.tgv-card.fx-completed{ animation: tgvFlash 0.6s ease-out; }
+.tgv-card.fx-failed   { background: #fee2e2 !important; border-color: var(--c-red) !important; }
+.tgv-card.fx-failed .card-icon { background: var(--c-red) !important; }
+.tgv-card.fx-learning { animation: tgvLearning 1.2s ease-in-out 3; }
+
+/* =========================================================================
+   STATUS-BAR (Mode C only)
+   ========================================================================= */
+#status-bar {
+  position: fixed;
+  top: 56px; left: 0; right: 0;
+  height: 32px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  z-index: 90;
+}
+body[data-mode="c"] #status-bar { display: flex; }
+body[data-mode="c"] #cy { top: 88px; }
+body[data-mode="c"] #panel { top: 88px; }
+#status-bar .status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  background: var(--c-amber);
+  animation: tgvDotPulse 1.6s ease-in-out infinite;
+}
+#status-bar.live .status-dot { background: var(--c-green); animation: none; }
+#status-bar.offline .status-dot { background: var(--c-red); animation: none; }
+@keyframes tgvDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+#status-bar .stats {
+  display: flex; gap: 18px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+}
+#status-bar .stats span { color: var(--fg); }
+#status-bar .stats .lbl { color: var(--fg-muted); margin-right: 4px; }
+
+/* =========================================================================
+   MODE A — Counter-Panel rechts (Live-Zahlen aus Observability)
+   ========================================================================= */
+#mode-a-counters {
+  position: fixed;
+  top: 76px; right: 16px;
+  width: 280px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: none;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+body[data-mode="a"] #mode-a-counters { display: block; }
+body[data-mode="a"].panel-open #mode-a-counters { display: none; }
+#mode-a-counters h4 {
+  margin: 0 0 10px 0;
+  font-size: 12px; font-weight: 600;
+  color: var(--fg);
+  display: flex; align-items: center; gap: 6px;
+}
+#mode-a-counters .ctr-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 12px;
+}
+#mode-a-counters .ctr-row:last-child { border-bottom: none; }
+#mode-a-counters .ctr-num {
+  font-size: 18px; font-weight: 700;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+#mode-a-counters .ctr-label { color: var(--fg-muted); }
+#mode-a-counters .ctr-violet { color: var(--c-violet); }
+#mode-a-counters .ctr-pink   { color: var(--c-pink); }
+#mode-a-counters .ctr-amber  { color: var(--c-amber); }
+#mode-a-counters .ctr-teal   { color: var(--c-teal); }
+
+body[data-mode="a"] #anti-drift { display: none; }
+body[data-mode="a"] #legend .leg-item:nth-child(n+5) { display: none; }
+body[data-mode="c"] #anti-drift { max-width: 280px; }
+
+/* =========================================================================
+   MODE A — Glossar-Karten unten (Konzept-Aufklärer)
+   ========================================================================= */
+#mode-a-glossary {
+  position: fixed;
+  bottom: 16px; left: 16px;
+  width: 320px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: none;
+  z-index: 11;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+body[data-mode="a"] #mode-a-glossary { display: block; }
+body[data-mode="a"] #legend { display: none; }
+#mode-a-glossary h4 {
+  margin: 0 0 10px 0;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--fg-muted);
+}
+.glossary-row {
+  display: flex; gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.glossary-row:last-child { border-bottom: none; }
+.glossary-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+.glossary-row strong {
+  font-size: 12.5px; font-weight: 600;
+  color: var(--fg);
+  display: block;
+  margin-bottom: 2px;
+}
+.glossary-row p {
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    <span style="display:inline-flex;align-items:center;gap:6px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#8b5cf6"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+      TGV Architektur
+    </span>
+    <span class="badge" id="mode-badge">Modus B · Lehren</span>
+    <span class="meta" id="meta-line">v7 · Fix Pan/Drag + Reset · Stand 2026-05-09</span>
+  </h1>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button id="reset-layout" class="header-btn" title="Verschobene Knoten zurücksetzen (Layout neu rechnen)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      Layout zurücksetzen
+    </button>
+    <div class="mode-toggle" role="tablist">
+      <button class="mode-btn" data-mode="a">A · Erklären</button>
+      <button class="mode-btn active" data-mode="b">B · Lehren</button>
+      <button class="mode-btn" data-mode="c">C · Live</button>
+    </div>
+  </div>
+</header>
+
+<div id="status-bar">
+  <div>
+    <span class="status-dot"></span>
+    <strong id="status-label">Mock-Mode</strong>
+    <span style="margin-left: 10px; opacity: 0.7;">Random-Events alle 2.5 s · v4 schaltet auf Supabase Realtime</span>
+  </div>
+  <div class="stats">
+    <span><span class="lbl">started:</span><span id="stat-started">0</span></span>
+    <span><span class="lbl">completed:</span><span id="stat-completed">0</span></span>
+    <span><span class="lbl">failed:</span><span id="stat-failed">0</span></span>
+    <span><span class="lbl">corrections:</span><span id="stat-corrections">0</span></span>
+  </div>
+</div>
+
+<div id="mode-a-counters">
+  <h4>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#8b5cf6"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+    Was hat KI heute übernommen?
+  </h4>
+  <div class="ctr-row">
+    <span class="ctr-label">automatisch sortiert</span>
+    <span class="ctr-num ctr-violet">47</span>
+  </div>
+  <div class="ctr-row">
+    <span class="ctr-label">zur Rückfrage gestellt</span>
+    <span class="ctr-num ctr-pink">3</span>
+  </div>
+  <div class="ctr-row">
+    <span class="ctr-label">neue Muster gelernt</span>
+    <span class="ctr-num ctr-teal">12</span>
+  </div>
+  <div class="ctr-row">
+    <span class="ctr-label">an Buchhalter gesendet</span>
+    <span class="ctr-num ctr-amber">218</span>
+  </div>
+  <p style="font-size: 10.5px; color: var(--fg-muted); margin: 12px 0 0 0; line-height: 1.4;">
+    Mock-Werte. v6 zieht <code style="font-size:10px;">count(*) from agent_events where created_at &gt; today</code>.
+  </p>
+</div>
+
+<div id="mode-a-glossary">
+  <h4>Konzept-Aufklärer</h4>
+  <div class="glossary-row">
+    <div class="glossary-icon" style="background: var(--c-violet);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+    </div>
+    <div>
+      <strong>Agent</strong>
+      <p>Eine KI mit „Plan + Reagier"-Fähigkeit. Sie liest, denkt, entscheidet welche Skills laufen müssen, und prüft das Ergebnis.</p>
+    </div>
+  </div>
+  <div class="glossary-row">
+    <div class="glossary-icon" style="background: var(--c-teal);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div>
+      <strong>Skill</strong>
+      <p>Ein einzelner Spezial-Helfer. Kann genau eine Sache richtig gut — z.B. Rechnung lesen, CSV importieren, Beleg im Drive ablegen.</p>
+    </div>
+  </div>
+  <div class="glossary-row">
+    <div class="glossary-icon" style="background: var(--c-pink);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
+    </div>
+    <div>
+      <strong>Lern-Schleife</strong>
+      <p>Wenn der Mensch die KI korrigiert, merkt sich das System das Muster. Bei der nächsten Rechnung dieser Sorte ist die KI sicherer.</p>
+    </div>
+  </div>
+</div>
+
+<div id="cy"></div>
+
+<aside id="panel" aria-hidden="true">
+  <div class="panel-header">
+    <div>
+      <h2 id="panel-title">Knoten</h2>
+      <div class="panel-sub" id="panel-sub"></div>
+    </div>
+    <button class="panel-close" id="panel-close" aria-label="Schliessen">×</button>
+  </div>
+  <div class="panel-body" id="panel-body">
+    <div class="empty">Wähle einen Knoten im Graphen.</div>
+  </div>
+</aside>
+
+<div id="legend">
+  <div class="leg-item"><span class="swatch" style="background:#94a3b8"></span>Quellen/Inaktiv</div>
+  <div class="leg-item"><span class="swatch" style="background:#14b8a6"></span>Adapter/Skills/Dispatcher</div>
+  <div class="leg-item"><span class="swatch" style="background:#8b5cf6"></span>KI · Orchestrator · Wissen</div>
+  <div class="leg-item"><span class="swatch" style="background:#3b82f6"></span>Supabase · L5 Master</div>
+  <div class="leg-item"><span class="swatch" style="background:#f59e0b"></span>Drive · Mensch · Buchhalter</div>
+  <div class="leg-item"><span class="swatch" style="background:#ec4899"></span>HITL · learning_events</div>
+  <div class="leg-item"><span class="swatch" style="background:#fb7185"></span>Live-Layer · Observability</div>
+</div>
+
+<div id="anti-drift">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f59e0b"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+  <span><strong>Anti-Drift:</strong> L2 Orchestrator und L3 Dispatcher sind getrennte Knoten · Skills sind eigenständige Webhooks · Pattern-Rules ersetzen if/else.</span>
+</div>
+
+<script>
+/* =========================================================================
+   ICON LIBRARY — Lucide-Style + simple-icons als inline SVG strings.
+   Single-File-Pflicht: keine externen Requests.
+   ========================================================================= */
+const ICONS = {
+  // --- Lucide ---
+  mail:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+  inbox:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>',
+  folder:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>',
+  workflow:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></svg>',
+  zap:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>',
+  bot:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
+  sparkles:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .962L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>',
+  brain:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/></svg>',
+  lightbulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>',
+  database:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>',
+  table:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+  cog:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+  wrench:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+  fileText:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+  fileSpreadsheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>',
+  banknote:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>',
+  briefcase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>',
+  link2:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>',
+  upload:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>',
+  searchCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="m8 11 2 2 4-4"/></svg>',
+  receipt:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>',
+  hardDrive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/></svg>',
+  layoutDashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+  messageCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg>',
+  rotateCcw: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+  userCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>',
+  mailCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><path d="m16 19 2 2 4-4"/></svg>',
+  activity:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.5.5 0 0 1-.96 0L9.24 2.18a.5.5 0 0 0-.96 0l-2.35 8.36A2 2 0 0 1 4 12H2"/></svg>',
+  graduationCap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>',
+  euro:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M4 14h9"/><path d="M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"/></svg>',
+  // --- simple-icons (brand) — vereinfachte Slug-SVGs ---
+  gmail:     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/></svg>',
+  googleDrive:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.01 1.485c-2.082 0-3.754.02-3.743.047.01.02 1.708 3.001 3.774 6.62l3.76 6.574h3.76c2.081 0 3.753-.02 3.742-.047-.005-.02-1.708-3.001-3.775-6.62l-3.76-6.574zm-4.76 1.73a789.828 789.828 0 0 0-3.63 6.319L0 15.868l1.89 3.298 1.885 3.297 3.62-6.335 3.618-6.33-1.88-3.287C8.1 4.704 7.255 3.22 7.25 3.214zm2.259 12.653-.203.348c-.114.198-.96 1.672-1.88 3.287a423.93 423.93 0 0 1-1.698 2.97c-.01.026 3.24.042 7.222.042h7.244l1.796-3.157c.992-1.734 1.85-3.23 1.906-3.323l.104-.167h-7.249z"/></svg>',
+  ionos:     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm0 4.8c3.972 0 7.2 3.228 7.2 7.2 0 3.972-3.228 7.2-7.2 7.2-3.972 0-7.2-3.228-7.2-7.2 0-3.972 3.228-7.2 7.2-7.2z"/></svg>',
+  n8n:       '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.4736 6.3158c-1.1574 0-2.1372.7853-2.4271 1.8527h-2.5474c-1.3784 0-2.5495.998-2.7752 2.358l-.1377.825c-.1146.687-.7104 1.1894-1.4082 1.1894h-.4869c-.2898-1.0673-1.2696-1.8527-2.4271-1.8527-1.388 0-2.5158 1.1278-2.5158 2.5158s1.1278 2.5263 2.5158 2.5263c1.1575 0 2.1373-.7958 2.4271-1.8632h.4869c.6978 0 1.2936.5025 1.4082 1.1894l.1377.8358c.2257 1.36 1.3968 2.358 2.7752 2.358h.046c.2899 1.0673 1.2696 1.8526 2.4271 1.8526 1.388 0 2.5263-1.1277 2.5263-2.5263 0-1.388-1.1383-2.5158-2.5263-2.5158-1.1575 0-2.1373.7854-2.4271 1.853h-.046c-.6979 0-1.2936-.5026-1.4083-1.1895l-.1376-.8357c-.119-.7148-.4654-1.3508-.9603-1.821.4949-.4702.8412-1.1062.9603-1.821l.1376-.8252c.1147-.687.7104-1.1894 1.4083-1.1894h2.5474c.2898 1.0674 1.2696 1.8527 2.4271 1.8527 1.388 0 2.5263-1.1278 2.5263-2.5263 0-1.388-1.1383-2.5158-2.5263-2.5158zM2.5263 8.8316c-1.388 0-2.5263 1.1383-2.5263 2.5263s1.1383 2.5263 2.5263 2.5263 2.5263-1.1383 2.5263-2.5263S3.9143 8.8316 2.5263 8.8316z"/></svg>',
+  anthropic: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5527h3.7442L10.5363 3.541Zm-.3712 10.2882 2.2932-5.9509 2.2932 5.9509Z"/></svg>',
+  supabase:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579l.113 7.51c.014.985 1.259 1.408 1.873.636l9.262-11.65c1.093-1.378.113-3.406-1.645-3.406h-9.642z"/></svg>',
+};
+
+function iconSvg(name) {
+  return ICONS[name] || ICONS.cog;
+}
+
+/* =========================================================================
+   TGV_GRAPH — Knoten + Kanten als wiederverwendbare Datenstruktur
+   Strikt aus TGV_VISUALIZATION_BRIEF.md §2 + §3.1
+   ========================================================================= */
+const TGV_GRAPH = {
+  nodes: [
+    /* ---------- L0 QUELLEN ---------- */
+    { data: { id: 'src_outlook', kind: 'source', color: 'grey', icon: 'mail',     title: 'Outlook',          sub: 'jcbinetti@convis.com',   detail: 'outlook' }},
+    { data: { id: 'src_factures', kind: 'source', color: 'grey', icon: 'mail',     title: 'Outlook factures', sub: 'factures@convis.com',    detail: 'factures_outlook' }},
+    { data: { id: 'src_gmail', kind: 'source', color: 'grey', icon: 'gmail',    title: 'Gmail',            sub: '17+ Filter',             detail: 'gmail' }},
+    { data: { id: 'src_direct', kind: 'source', color: 'grey', icon: 'mail',     title: 'Direkt-Sender',    sub: 'Lieferanten',            detail: 'direct' }},
+    { data: { id: 'src_drop', kind: 'source', color: 'grey', icon: 'upload',   title: 'Drive-Drop',       sub: 'manuell',                detail: 'drop' }},
+
+    /* ---------- L1 ADAPTER ---------- */
+    { data: { id: 'mailbox', kind: 'mailbox',  color: 'amber', icon: 'ionos',       title: 'factures@convis.fr', sub: 'IMAP IONOS · 15 min',     detail: 'mailbox' }},
+    { data: { id: 'wf_a2', kind: 'workflow', color: 'teal',  icon: 'n8n',         title: 'WF A2 v02',          sub: 'Mail-Intake (Strangler)', status: 'inactive', detail: 'wf_a2' }},
+    { data: { id: 'drive_inbox', kind: 'drive',    color: 'amber', icon: 'googleDrive', title: 'TGV-CORE / INBOX',   sub: 'Drive-Folder',            detail: 'drive_inbox' }},
+    { data: { id: 'wf_b', kind: 'workflow', color: 'teal',  icon: 'n8n',         title: 'WF B Drive-Sweep',   sub: 'Refactor',                status: 'inactive', detail: 'wf_b' }},
+    { data: { id: 'wf_cascade', kind: 'workflow', color: 'teal',  icon: 'zap',         title: 'WF Cascade-Trigger', sub: 'v01.00 · ACTIVE',         status: 'active',   detail: 'wf_cascade' }},
+
+    /* ---------- L2 ORCHESTRATOR (KI) + KB ---------- */
+    { data: { id: 'orchestrator', kind: 'orchestrator', color: 'violet', icon: 'sparkles', title: 'tgv-skill-orchestrator', sub: 'Plan + ReAct · Haiku→Sonnet', isKi: true, detail: 'orchestrator' }},
+    { data: { id: 'pattern_rules', kind: 'knowledge', color: 'violet', icon: 'lightbulb', title: 'pattern_rules', sub: '220 Regeln · Lifecycle', detail: 'pattern_rules' }},
+    { data: { id: 'kb_suppliers', kind: 'knowledge', color: 'violet', icon: 'briefcase', title: 'kb_suppliers',  sub: '~256 Rows',              detail: 'kb_suppliers' }},
+    { data: { id: 'agent_prompts', kind: 'knowledge', color: 'violet', icon: 'fileText',  title: 'agent_prompts', sub: 'System-Prompts',         detail: 'agent_prompts' }},
+
+    /* ---------- L3 DISPATCHER ---------- */
+    { data: { id: 'dispatcher', kind: 'dispatcher', color: 'teal', icon: 'workflow', title: 'Cascade-Trigger', sub: 'State-Machine', detail: 'dispatcher' }},
+
+    /* ---------- L4 SKILLS (CORE) ---------- */
+    { data: { id: 'sk_pdf_invoice', kind: 'skill', skillKind: 'agent', skillModel: 'sonnet-4.6', color: 'violet', icon: 'receipt', title: 'pdf-invoice-extract', sub: 'Rechnung lesen', detail: 'sk_pdf_invoice' }},
+    { data: { id: 'sk_extract_contract', kind: 'skill', skillKind: 'agent', skillModel: 'sonnet-4.6', color: 'violet', icon: 'fileText', title: 'extract-contract-pdf', sub: 'Vertrag/Police lesen', detail: 'sk_extract_contract' }},
+    { data: { id: 'sk_classify_csv', kind: 'skill', skillKind: 'agent', skillModel: 'haiku-4.5', color: 'violet', icon: 'searchCheck', title: 'classify-csv', sub: 'CSV-Format erkennen', detail: 'sk_classify_csv' }},
+    { data: { id: 'sk_import_banking', kind: 'skill', skillKind: 'deterministic', color: 'teal', icon: 'banknote', title: 'import-banking-csv', sub: 'CSV → txn_master', detail: 'sk_import_banking' }},
+    { data: { id: 'sk_import_tt', kind: 'skill', skillKind: 'deterministic', color: 'teal', icon: 'fileSpreadsheet', title: 'import-timetrack-csv', sub: 'TimeTrack → DB', detail: 'sk_import_tt' }},
+    { data: { id: 'sk_resolve_supplier', kind: 'skill', skillKind: 'agent', skillModel: 'haiku-4.5', color: 'violet', icon: 'searchCheck', title: 'resolve-supplier', sub: 'Lieferant zuordnen', detail: 'sk_resolve_supplier' }},
+    { data: { id: 'sk_reconcile', kind: 'skill', skillKind: 'deterministic', color: 'teal', icon: 'link2', title: 'reconcile-payment', sub: 'Zahlung ↔ Rechnung match', detail: 'sk_reconcile' }},
+    { data: { id: 'sk_store_drive', kind: 'skill', skillKind: 'deterministic', color: 'amber', icon: 'googleDrive', title: 'store-file-to-drive', sub: 'EINZIGER mit Folder-IDs', detail: 'sk_store_drive' }},
+    { data: { id: 'sk_upsert_contract', kind: 'skill', skillKind: 'agent', skillModel: 'haiku-4.5', color: 'violet', icon: 'fileText', title: 'upsert-contract-from-inv', sub: 'Vertrag-Stub anlegen', detail: 'sk_upsert_contract' }},
+    { data: { id: 'sk_rag', kind: 'skill', skillKind: 'embedding', color: 'violet', icon: 'brain', title: 'rag-ingest / rag-search', sub: 'pgvector · Volltext', detail: 'sk_rag' }},
+    { data: { id: 'sk_tax', kind: 'skill', skillKind: 'agent', skillModel: 'sonnet-4.6', color: 'violet', icon: 'euro', title: 'tax-extract / tax-send', sub: 'Steuer-Pakete', detail: 'sk_tax' }},
+    { data: { id: 'sk_more', kind: 'skill_placeholder', color: 'grey', icon: 'cog',  title: '+ ca. 13 weitere',          sub: 'data-driven aus DB',     detail: 'sk_more' }},
+
+    /* ---------- L4 PROJEKT (Phase 2) ---------- */
+    { data: { id: 'sk_project_placeholder', kind: 'skill_placeholder', color: 'grey', icon: 'graduationCap', title: 'PROJEKT-Domain', sub: 'steuerberater · copywriter …', detail: 'projekt_phase2' }},
+
+    /* ---------- L5 MASTER-ENTITY ---------- */
+    { data: { id: 't_documents', kind: 'table', color: 'blue',  icon: 'database',        title: 'documents',     sub: 'Doc-SoT',         detail: 't_documents' }},
+    { data: { id: 't_prf_contracts', kind: 'table', color: 'blue',  icon: 'fileText',        title: 'prf_contracts', sub: 'Verträge Master', detail: 't_prf_contracts' }},
+    { data: { id: 't_kb_suppliers', kind: 'table', color: 'blue',  icon: 'briefcase',       title: 'kb_suppliers',  sub: '~256 Rows',       detail: 't_kb_suppliers' }},
+    { data: { id: 't_txn_master', kind: 'table', color: 'blue',  icon: 'banknote',        title: 'txn_master',    sub: '~1.165 Rows',     detail: 't_txn_master' }},
+    { data: { id: 't_prf_projects', kind: 'table', color: 'blue',  icon: 'briefcase',       title: 'prf_projects',  sub: 'C3-26-001_…',     detail: 't_prf_projects' }},
+    { data: { id: 't_tax_filings', kind: 'table', color: 'blue',  icon: 'euro',            title: 'tax_filings',   sub: 'Iter 8/16',       detail: 't_tax_filings' }},
+    { data: { id: 'drive_final', kind: 'drive', color: 'amber', icon: 'googleDrive',     title: 'TGV-CORE / DOCUMENTS', sub: 'finale Ablage', detail: 'drive_final' }},
+
+    /* ---------- L6 PERIODIC + INTERACTIVE ---------- */
+    { data: { id: 'wf_e', kind: 'workflow', color: 'amber', icon: 'mailCheck',       title: 'WF E Buchhalter',    sub: 'v1.7.2 · monatlich',     detail: 'wf_e' }},
+    { data: { id: 'dashboard', kind: 'ui',       color: 'teal',  icon: 'layoutDashboard', title: 'TGV Dashboard',      sub: 'v11.42 · Triage UI C',   detail: 'dashboard' }},
+    { data: { id: 'mcp_chatbot', kind: 'ui',       color: 'teal',  icon: 'messageCircle',   title: 'MCP-Chatbot',        sub: 'Tools',                  detail: 'mcp_chatbot' }},
+    { data: { id: 'wf_d_reclass', kind: 'workflow', color: 'teal',  icon: 'rotateCcw',       title: 'Reclass-Dispatcher', sub: 'WF D v0.2',              detail: 'wf_d' }},
+    { data: { id: 'hitl', kind: 'human',    color: 'pink',  icon: 'userCheck',       title: 'Mensch (HITL)',      sub: 'JCB · Korrekturen',      detail: 'hitl' }},
+
+    /* ---------- L7 OBSERVABILITY ---------- */
+    { data: { id: 'agent_events', kind: 'observability', color: 'coral', icon: 'activity', title: 'agent_events',    sub: 'Mig 015', detail: 'agent_events' }},
+    { data: { id: 'learning_events', kind: 'observability', color: 'pink',  icon: 'activity', title: 'learning_events', sub: 'Mig 050', detail: 'learning_events' }},
+    { data: { id: 'cost_metrics', kind: 'observability', color: 'coral', icon: 'euro',     title: 'cost_metrics',    sub: 'Mig 024', detail: 'cost_metrics' }},
+
+    /* =====================================================================
+       MODE-A-ONLY KARTEN — Loop um KI in der Mitte.
+       v7: Spezial-Helfer-Sammelbox bleibt + 4 Beispiel-Skill-Karten daneben
+       (zeigt die drei Sorten: Agent / deterministisch / Embedding)
+       Plus Phase-2-Projekt-Sub-Loop unten gestrichelt.
+       ===================================================================== */
+    { data: { id: 'a_sources',  modeA: true, kind: 'mode_a',     color: 'grey',   icon: 'inbox',       title: 'Belege kommen rein',          sub: 'Mail · Drive · 17+ Filter',                step: 1, detail: 'a_sources' }, position: { x: 80,  y: 80 }},
+    { data: { id: 'a_collect',  modeA: true, kind: 'mode_a',     color: 'amber',  icon: 'mail',        title: 'Sammeln',                     sub: 'factures@convis.fr',                       step: 2, detail: 'a_collect' }, position: { x: 80,  y: 240 }},
+    { data: { id: 'a_kb',       modeA: true, kind: 'mode_a',     color: 'violet', icon: 'lightbulb',   title: 'Erfahrungs-Wissen',           sub: '220 gelernte Muster',                              detail: 'a_kb' },     position: { x: 700, y: 80 }},
+    { data: { id: 'a_ki',       modeA: true, kind: 'mode_a_ki',  color: 'violet', icon: 'sparkles',    title: 'KI plant',                    sub: 'Agent · liest, denkt, entscheidet',        step: 3, detail: 'a_ki' },     position: { x: 420, y: 280 }},
+    { data: { id: 'a_helpers',  modeA: true, kind: 'mode_a',     color: 'teal',   icon: 'cog',         title: 'Spezial-Helfer arbeiten',     sub: '26 Skills · 3 Sorten',                     step: 4, detail: 'a_helpers' }, position: { x: 420, y: 460 }},
+
+    /* Beispiel-Skill-Karten (zeigen die 3 Sorten) */
+    { data: { id: 'a_sk_ex_agent1',     modeA: true, kind: 'mode_a_skill', skillKind: 'agent',         skillModel: 'sonnet-4.6', color: 'violet', icon: 'receipt',     title: 'pdf-invoice-extract',  sub: 'liest Rechnungen',  detail: 'sk_pdf_invoice' }, position: { x: 760, y: 460 }},
+    { data: { id: 'a_sk_ex_agent2',     modeA: true, kind: 'mode_a_skill', skillKind: 'agent',         skillModel: 'haiku-4.5',  color: 'violet', icon: 'searchCheck', title: 'resolve-supplier',     sub: 'erkennt Lieferanten', detail: 'sk_resolve_supplier' }, position: { x: 760, y: 560 }},
+    { data: { id: 'a_sk_ex_det',        modeA: true, kind: 'mode_a_skill', skillKind: 'deterministic',                           color: 'teal',   icon: 'banknote',    title: 'import-banking-csv',   sub: 'CSV → Datenbank',   detail: 'sk_import_banking' }, position: { x: 1080, y: 460 }},
+    { data: { id: 'a_sk_ex_emb',        modeA: true, kind: 'mode_a_skill', skillKind: 'embedding',                               color: 'violet', icon: 'brain',       title: 'rag-search',           sub: 'Volltext-Suche',     detail: 'sk_rag' }, position: { x: 1080, y: 560 }},
+
+    { data: { id: 'a_data',     modeA: true, kind: 'mode_a',     color: 'blue',   icon: 'database',    title: 'Daten landen sortiert',       sub: 'Datenbank · 6 Tabellen',                   step: 5, detail: 'a_data' },   position: { x: 420, y: 700 }},
+    { data: { id: 'a_drive',    modeA: true, kind: 'mode_a',     color: 'amber',  icon: 'googleDrive', title: 'Belege im Drive',             sub: 'pro Firma · pro Monat',                            detail: 'a_drive' },  position: { x: 760, y: 700 }},
+    { data: { id: 'a_human',    modeA: true, kind: 'mode_a',     color: 'pink',   icon: 'userCheck',   title: 'Mensch korrigiert',           sub: 'wenn KI unsicher ist',                     step: 6, detail: 'a_human' },  position: { x: 80,  y: 580 }},
+    { data: { id: 'a_acc',      modeA: true, kind: 'mode_a_endpoint', color: 'amber', icon: 'mailCheck', title: 'Buchhalter bekommt Paket',  sub: 'monatlich · automatisch',                  step: 7, detail: 'a_acc' },    position: { x: 420, y: 880 }},
+
+    /* Projekt-Sub-Loop (Phase 2 — gestrichelt, mit Phase-2-Markern) */
+    { data: { id: 'a_proj_detect',  modeA: true, kind: 'mode_a_phase2', color: 'grey', icon: 'searchCheck', title: 'Projekt-Erkennung',     sub: 'Phase 2 · ab Iter 18',                                detail: 'a_proj_detect' },  position: { x: 1080, y: 800 }},
+    { data: { id: 'a_proj_ki',      modeA: true, kind: 'mode_a_phase2', color: 'violet', icon: 'sparkles',  title: 'Projekt-Agent',         sub: 'plant im Projekt-Kontext',                            detail: 'a_proj_ki' },      position: { x: 1080, y: 920 }},
+    { data: { id: 'a_proj_skills',  modeA: true, kind: 'mode_a_phase2', color: 'teal',   icon: 'cog',       title: 'Projekt-Skills',        sub: 'steuerberater · copywriter · datenanalyst',           detail: 'projekt_phase2' }, position: { x: 1080, y: 1040 }},
+  ],
+
+  edges: [
+    /* L0 → L1 */
+    { data: { id: 'e1', source: 'src_outlook',  target: 'mailbox', label: 'OWA' }},
+    { data: { id: 'e2', source: 'src_factures', target: 'mailbox', label: 'Forwarder' }},
+    { data: { id: 'e3', source: 'src_gmail',    target: 'mailbox', label: '17+ Filter' }},
+    { data: { id: 'e4', source: 'src_direct',   target: 'mailbox' }},
+    { data: { id: 'e5', source: 'src_drop',     target: 'drive_inbox' }},
+    /* L1 intern */
+    { data: { id: 'e6', source: 'mailbox',     target: 'wf_a2' }},
+    { data: { id: 'e7', source: 'drive_inbox', target: 'wf_b' }},
+    { data: { id: 'e8', source: 'wf_a2',       target: 'wf_cascade', label: 'INSERT' }},
+    { data: { id: 'e9', source: 'wf_b',        target: 'wf_cascade', label: 'INSERT' }},
+    /* L1 → L2 */
+    { data: { id: 'e10', source: 'wf_cascade', target: 'orchestrator', label: 'kickstart' }},
+    /* KB → L2 (RAG, gestrichelt violet) */
+    { data: { id: 'e_kb1', source: 'pattern_rules', target: 'orchestrator', kind: 'rag' }},
+    { data: { id: 'e_kb2', source: 'kb_suppliers',  target: 'orchestrator', kind: 'rag' }},
+    { data: { id: 'e_kb3', source: 'agent_prompts', target: 'orchestrator', kind: 'rag' }},
+    /* L2 → L3 */
+    { data: { id: 'e11', source: 'orchestrator', target: 'dispatcher', label: 'skills_needed[]' }},
+    /* L3 → L4 */
+    { data: { id: 'e_d1',  source: 'dispatcher', target: 'sk_pdf_invoice' }},
+    { data: { id: 'e_d2',  source: 'dispatcher', target: 'sk_extract_contract' }},
+    { data: { id: 'e_d3',  source: 'dispatcher', target: 'sk_classify_csv' }},
+    { data: { id: 'e_d4',  source: 'dispatcher', target: 'sk_import_banking' }},
+    { data: { id: 'e_d5',  source: 'dispatcher', target: 'sk_import_tt' }},
+    { data: { id: 'e_d6',  source: 'dispatcher', target: 'sk_resolve_supplier' }},
+    { data: { id: 'e_d7',  source: 'dispatcher', target: 'sk_reconcile' }},
+    { data: { id: 'e_d8',  source: 'dispatcher', target: 'sk_store_drive' }},
+    { data: { id: 'e_d9',  source: 'dispatcher', target: 'sk_upsert_contract' }},
+    { data: { id: 'e_d10', source: 'dispatcher', target: 'sk_rag' }},
+    { data: { id: 'e_d11', source: 'dispatcher', target: 'sk_tax' }},
+    { data: { id: 'e_d12', source: 'dispatcher', target: 'sk_more' }},
+    /* L4 → L5 */
+    { data: { id: 'e_s1', source: 'sk_pdf_invoice',     target: 't_documents',     kind: 'write' }},
+    { data: { id: 'e_s2', source: 'sk_extract_contract',target: 't_prf_contracts', kind: 'write' }},
+    { data: { id: 'e_s3', source: 'sk_import_banking',  target: 't_txn_master',    kind: 'write' }},
+    { data: { id: 'e_s4', source: 'sk_import_tt',       target: 't_documents',     kind: 'write' }},
+    { data: { id: 'e_s5', source: 'sk_resolve_supplier',target: 't_kb_suppliers',  kind: 'write' }},
+    { data: { id: 'e_s6', source: 'sk_reconcile',       target: 't_txn_master',    kind: 'write' }},
+    { data: { id: 'e_s7', source: 'sk_store_drive',     target: 'drive_final',     kind: 'write' }},
+    { data: { id: 'e_s8', source: 'sk_upsert_contract', target: 't_prf_contracts', kind: 'write' }},
+    { data: { id: 'e_s9', source: 'sk_tax',             target: 't_tax_filings',   kind: 'write' }},
+    /* L5 → L6 */
+    { data: { id: 'e_l6_1', source: 't_documents',  target: 'dashboard' }},
+    { data: { id: 'e_l6_2', source: 't_documents',  target: 'wf_e' }},
+    { data: { id: 'e_l6_3', source: 't_txn_master', target: 'dashboard' }},
+    /* HITL-Schleife */
+    { data: { id: 'e_hitl1', source: 'dashboard',    target: 'hitl', kind: 'hitl' }},
+    { data: { id: 'e_hitl2', source: 'hitl',         target: 'learning_events', kind: 'hitl', label: 'Korrektur' }},
+    { data: { id: 'e_hitl3', source: 'hitl',         target: 'wf_d_reclass',    kind: 'hitl' }},
+    { data: { id: 'e_hitl4', source: 'wf_d_reclass', target: 'orchestrator',    kind: 'hitl', label: 're-trigger' }},
+    /* Telemetrie (gestrichelt coral) */
+    { data: { id: 'e_t1', source: 'orchestrator',     target: 'agent_events', kind: 'telemetry' }},
+    { data: { id: 'e_t2', source: 'dispatcher',       target: 'agent_events', kind: 'telemetry' }},
+    { data: { id: 'e_t3', source: 'sk_pdf_invoice',   target: 'agent_events', kind: 'telemetry' }},
+    { data: { id: 'e_t4', source: 'sk_pdf_invoice',   target: 'cost_metrics', kind: 'telemetry' }},
+    { data: { id: 'e_t5', source: 'orchestrator',     target: 'cost_metrics', kind: 'telemetry' }},
+    { data: { id: 'e_t6', source: 'learning_events',  target: 'pattern_rules', kind: 'telemetry', label: 'feeds back' }},
+
+    /* ===== MODE-A-ONLY EDGES — nummerierter Loop + Buchhalter-Endpunkt ===== */
+    { data: { id: 'ea1', source: 'a_sources', target: 'a_collect', modeA: true, label: '①' }},
+    { data: { id: 'ea2', source: 'a_collect', target: 'a_ki',      modeA: true, label: '② liest jeden Beleg' }},
+    { data: { id: 'ea3', source: 'a_kb',      target: 'a_ki',      modeA: true, kind: 'rag', label: 'Wissen' }},
+    { data: { id: 'ea4', source: 'a_ki',      target: 'a_helpers', modeA: true, label: '③ plant' }},
+
+    /* Helpers → Beispiel-Skill-Karten (visualisiert die 3 Sorten) */
+    { data: { id: 'ea_h1', source: 'a_helpers', target: 'a_sk_ex_agent1', modeA: true, kind: 'subtle' }},
+    { data: { id: 'ea_h2', source: 'a_helpers', target: 'a_sk_ex_agent2', modeA: true, kind: 'subtle' }},
+    { data: { id: 'ea_h3', source: 'a_helpers', target: 'a_sk_ex_det',    modeA: true, kind: 'subtle' }},
+    { data: { id: 'ea_h4', source: 'a_helpers', target: 'a_sk_ex_emb',    modeA: true, kind: 'subtle' }},
+
+    { data: { id: 'ea5', source: 'a_helpers', target: 'a_data',    modeA: true, label: '④ schreiben Daten' }},
+    { data: { id: 'ea6', source: 'a_helpers', target: 'a_drive',   modeA: true, label: '④ ablegen' }},
+    { data: { id: 'ea7', source: 'a_data',    target: 'a_human',   modeA: true, kind: 'hitl', label: '⑤ bei Unsicherheit' }},
+    { data: { id: 'ea8', source: 'a_human',   target: 'a_kb',      modeA: true, kind: 'hitl', label: '⑥ lernt' }},
+    { data: { id: 'ea9', source: 'a_data',    target: 'a_acc',     modeA: true, kind: 'monthly', label: '⑦ monatlich automatisch' }},
+
+    /* Projekt-Sub-Loop (Phase 2, gestrichelt) — vom Drive aus abzweigend */
+    { data: { id: 'ea_p1', source: 'a_drive',       target: 'a_proj_detect', modeA: true, kind: 'phase2', label: 'wenn Projekt-bezogen' }},
+    { data: { id: 'ea_p2', source: 'a_proj_detect', target: 'a_proj_ki',     modeA: true, kind: 'phase2' }},
+    { data: { id: 'ea_p3', source: 'a_proj_ki',     target: 'a_proj_skills', modeA: true, kind: 'phase2', label: 'plant Projekt-Skills' }},
+    { data: { id: 'ea_p4', source: 'a_proj_skills', target: 'a_proj_ki',     modeA: true, kind: 'phase2' }},
+  ]
+};
+
+/* =========================================================================
+   NODE_DETAILS — Side-Panel-Inhalte
+   ========================================================================= */
+const NODE_DETAILS = {
+  outlook:           { title: 'Outlook · jcbinetti@convis.com', sub: 'L0 Quelle', body: 'Server-Regel (OWA) leitet eingehende Mails an <code>factures@convis.fr</code>. Anti-Endlosschleife: leitet NICHT zu sich selbst weiter.' },
+  factures_outlook:  { title: 'Outlook · factures@convis.com', sub: 'L0 Quelle', body: 'Mail-Forwarder auf <code>factures@convis.fr</code>.' },
+  gmail:             { title: 'Gmail · jcbinetti@gmail.com', sub: 'L0 Quelle · 17+ Filter', body: 'Gmail-Filter für Stripe, Anthropic, Vercel, IONOS, Cursor, Voiceflow u.a. — alle leiten an <code>factures@convis.fr</code>.' },
+  direct:            { title: 'Direkt-Sender', sub: 'L0 Quelle', body: 'Lieferanten senden direkt an <code>factures@convis.fr</code>.' },
+  drop:              { title: 'Drive-Drop (manuell)', sub: 'L0 Quelle', body: 'Manueller Upload in <code>TGV-CORE/INBOX</code>.' },
+
+  mailbox:           { title: 'factures@convis.fr', sub: 'IMAP IONOS · Polling alle 15 min', body: 'Einzige zentrale Mailbox. Alle anderen Postfächer konvergieren hierher.' },
+  wf_a2:             { title: 'WF A2 v02 · Mail-Intake (Strangler)', sub: 'n8n · ID fJR8O8MZ2U7YkaGG · INACTIVE', body: 'INSERT-only Architektur: IMAP-Pull → INSERT in <code>documents</code> + <code>intake_text</code>. Strangler-Fork des Legacy-Monolithen WF A2 v9.3 (<code>fx9POuhD3ybynhat</code>).' },
+  drive_inbox:       { title: 'TGV-CORE / INBOX', sub: 'Drive-Folder · 1wH4pl4uguwvIYbZrMU0QlJtjVpaaL7bF', body: 'Eingangs-Folder im Shared Drive <code>0AB1RMdD8smYoUk9PVA</code>.' },
+  wf_b:              { title: 'WF B · Drive-Sweep', sub: 'n8n · ID c7B4trQwfyRFVm8m · INACTIVE während Refactor', body: 'GDrive-INBOX → Triage → Move-Chains. Wird im Refactor analog zu WF A2 in INSERT-only zerlegt.' },
+  wf_cascade:        { title: 'WF Cascade-Trigger v01.00', sub: 'n8n · ID RKh1lq9ruckrpR24 · ACTIVE', body: 'Webhook + MCP-Tool <code>run_inbox_cascade</code>. Dispatcher-Implementierung heute. Kickstart pro neu eingegangenem Doc, plus Backlog-Verarbeitung.' },
+
+  orchestrator:      { plan_react: true },
+  pattern_rules:     { lifecycle: true },
+  kb_suppliers:      { title: 'kb_suppliers', sub: 'Wissensbasis · ~256 Rows', body: 'Lieferanten-KB mit <code>provider_norm</code>, <code>aliases jsonb</code>, <code>default_entity</code>, <code>default_doc_type</code>, <code>iban</code>, <code>vat_id</code>.' },
+  agent_prompts:     { title: 'agent_prompts', sub: 'Wissensbasis · System-Prompts', body: 'System-Prompts und Few-Shot-Beispiele für LLM-Calls.' },
+
+  dispatcher:        { title: 'Cascade-Trigger (Dispatcher)', sub: 'L3 · State-Machine · WF v01.00', body: 'Dummer Executor. State-Machine über <code>documents.processing_state</code>:<br><code>inbox → planning → triaged → dispatching → re_triage / chain_pending → done | needs_review | parking</code><br>Schreibt pro Skill-Call eine Row in <code>agent_events</code>. Anti-Drift: Logik gehört NICHT in Adapter-WFs.' },
+
+  sk_pdf_invoice:     { skill: { name: 'tgv-pdf-invoice-extract',         version: '0.1.0', default_model: 'claude-sonnet-4-6', webhook_url: '/webhook/tgv-pdf-invoice-extract', requires_inputs: ['document_id','drive_file_id'], emits_events: ['skill.started','skill.completed','skill.failed'], domain: 'core', idempotency: 'document_id', purpose: 'Rechnung extrahieren (doc-block PDF).' }},
+  sk_extract_contract:{ skill: { name: 'tgv-extract-contract-pdf',        version: '0.3.0', default_model: 'claude-sonnet-4-6', webhook_url: '/webhook/tgv-extract-contract-pdf', requires_inputs: ['document_id'], emits_events: ['skill.started','skill.completed','skill.failed'], domain: 'core', idempotency: 'document_id', purpose: 'Vertrag extrahieren — deckt auch Versicherungs-Policen ab.' }},
+  sk_classify_csv:    { skill: { name: 'tgv-classify-csv',                 version: '0.1.0', default_model: 'claude-haiku-4-5',  webhook_url: '/webhook/tgv-classify-csv', requires_inputs: ['drive_file_id'], emits_events: ['skill.started','skill.completed','skill.failed'], domain: 'core', idempotency: 'drive_file_id', purpose: 'Bank-CSV-Format erkennen (BV_DE / BNP_FR / Cortal …).' }},
+  sk_import_banking:  { skill: { name: 'tgv-import-banking-csv',          version: '0.1.0', default_model: 'none',               webhook_url: '/webhook/tgv-import-banking-csv', requires_inputs: ['drive_file_id','csv_format'], emits_events: ['skill.started','skill.completed','skill.failed'], domain: 'core', idempotency: 'content_fingerprint', purpose: 'CSV → txn_master, IBAN→Entity-Mapping.' }},
+  sk_import_tt:       { skill: { name: 'tgv-import-timetrack-csv',        version: '0.1.0', default_model: 'none',               webhook_url: '/webhook/tgv-import-timetrack-csv', requires_inputs: ['drive_file_id'], emits_events: ['skill.started','skill.completed'], domain: 'core', idempotency: 'content_fingerprint', purpose: 'TimeTrack-CSV → tt_entries.' }},
+  sk_resolve_supplier:{ skill: { name: 'tgv-resolve-supplier',            version: '0.1.0', default_model: 'claude-haiku-4-5',  webhook_url: '/webhook/tgv-resolve-supplier', requires_inputs: ['provider_string'], emits_events: ['skill.completed'], domain: 'core', idempotency: 'provider_norm', purpose: 'Provider-String → kb_suppliers (Fuzzy + Upsert).' }},
+  sk_reconcile:       { skill: { name: 'tgv-reconcile-payment',           version: '0.1.0', default_model: 'none',               webhook_url: '/webhook/tgv-reconcile-payment', requires_inputs: ['document_id'], emits_events: ['skill.completed'], domain: 'core', idempotency: 'document_id', purpose: 'Invoice ↔ txn_master matchen (deterministic).' }},
+  sk_store_drive:     { skill: { name: 'tgv-store-file-to-drive',         version: '0.2.0', default_model: 'none',               webhook_url: '/webhook/tgv-store-file-to-drive', requires_inputs: ['document_id','target_path'], emits_events: ['skill.completed'], domain: 'core', idempotency: 'drive_file_id', purpose: 'EINZIGER Skill mit Drive-Routing-Wissen. Alle Folder-IDs leben hier.' }},
+  sk_upsert_contract: { skill: { name: 'tgv-upsert-contract-from-invoice', version: 'iter11', default_model: 'claude-haiku-4-5',  webhook_url: '/webhook/tgv-upsert-contract-from-invoice', requires_inputs: ['document_id','provider','contract_number'], emits_events: ['skill.completed'], domain: 'core', idempotency: 'provider+contract_number', purpose: 'Stub-from-Invoice: legt prf_contracts-Eintrag aus Rechnung an.' }},
+  sk_rag:             { skill: { name: 'tgv-rag-ingest / tgv-rag-search', version: 'iter8',  default_model: 'embedding',          webhook_url: '/webhook/tgv-rag-*', requires_inputs: ['document_id|query'], emits_events: ['skill.completed'], domain: 'core', idempotency: 'chunk_id', purpose: 'pgvector-RAG für Verträge und Projekte.' }},
+  sk_tax:             { skill: { name: 'tgv-tax-extract / tgv-tax-send', version: 'iter8',  default_model: 'claude-sonnet-4-6',  webhook_url: '/webhook/tgv-tax-*', requires_inputs: ['document_id|period'], emits_events: ['skill.completed'], domain: 'core', idempotency: 'document_id', purpose: 'Steuer-Pakete (Domain-Erweiterung Iter 16).' }},
+  sk_more:            { title: '+ ca. 13 weitere Skills', sub: 'data-driven aus DB', body: 'Beim Build: <pre>select name, version, default_model, webhook_url,\n       requires_inputs, emits_events, domain\nfrom skill_definitions\nwhere active=true and domain=\'core\'\norder by name;</pre>So bleibt die Visualisierung beim nächsten neuen Skill automatisch korrekt — keine Hardcodes.' },
+  projekt_phase2:     { title: 'PROJEKT-Domain (Phase 2)', sub: 'Iter 18+ · domain=project', body: 'Geplant: <code>steuerberater</code>, <code>copywriter</code>, <code>datenanalyst</code>, <code>projektleiter</code>. Architektur ist auf zwei Domänen ausgelegt (CORE + PROJEKT, plus SHARED) — heute alle 26 aktiven Skills domain=core (seit Mig 054).' },
+
+  t_documents:     { table: { name: 'documents', purpose: 'Doc-SoT — jede eingehende Datei.', columns: [['id','uuid'],['drive_file_id','text'],['doc_type','text'],['target_stream','text'],['entity','text'],['processing_state','enum'],['triage_attempts','int'],['skill_chain_depth','int'],['skills_needed','text[]'],['skills_done','text[]'],['intake_text','text'],['intake_text_html','text'],['parent_message_id','text'],['mail_sender','text'],['mail_date_received','timestamptz'],['contract_id','fk → prf_contracts'],['extracted_text_snippet','text'],['final_path','text']]}},
+  t_prf_contracts: { table: { name: 'prf_contracts', purpose: 'Verträge (Master) — inkl. Versicherungs-Policen.', columns: [['id','uuid'],['provider','text'],['customer','text'],['contract_number','text'],['contract_type','text'],['notice_period','text'],['renewal_date','date'],['entity','text'],['owner','text · RLS']]}},
+  t_kb_suppliers:  { table: { name: 'kb_suppliers', purpose: 'Lieferanten-Wissensbasis — ~256 Rows.', columns: [['id','uuid'],['provider_norm','text'],['aliases','jsonb'],['default_entity','text'],['default_doc_type','text'],['iban','text'],['vat_id','text']]}},
+  t_txn_master:    { table: { name: 'txn_master', purpose: 'Banking-Transaktionen — ~1.165 Rows.', columns: [['id','uuid'],['iban','text'],['datum','date'],['betrag','numeric'],['verwendungszweck','text'],['entity','text'],['document_id','fk → documents'],['parse_method','text'],['workflow_version','text']]}},
+  t_prf_projects:  { table: { name: 'prf_projects', purpose: 'Projekte (z.B. C3-26-001_KIVISAI).', columns: [['id','uuid'],['display_code','text'],['entity','text'],['start_date','date'],['end_date','date']]}},
+  t_tax_filings:   { table: { name: 'tax_filings', purpose: 'Steuerpakete (Iter 8/16).', columns: [['id','uuid'],['period','text'],['entity','text'],['tax_type','text'],['status','text']]}},
+  drive_final:     { title: 'TGV-CORE / DOCUMENTS', sub: 'finale Ablage', body: 'Pro Entity: <code>{YYYY}/{MM}/</code> für RECHNUNG/ZAHLUNGSBELEG/STEUER, <code>BANKING/{YYYY}/</code>, <code>CONTRACTS/{provider}_C-{contract_id}/</code>, <code>PROJECTS/{C3-26-001_Slug}/{01..04}_/</code>.<br><br>Drive-Routing wird <strong>ausschliesslich</strong> vom Skill <code>tgv-store-file-to-drive</code> v0.2 ausgeführt — Anti-Drift §2.14.' },
+
+  wf_e:        { title: 'WF E · Buchhalter-Versand', sub: 'n8n · ID XiV614kH0syjxU1T · v1.7.2', body: 'Monatlich, Webhook-getriggert. Sendet Buchhaltungs-Pakete an externen Buchhalter.' },
+  dashboard:   { title: 'TGV Dashboard v11.42', sub: 'https://jcbinetti.github.io/tgv-dashboard/', body: 'Tabs: Übersicht, Triage (UI Variante C, Iter 15.2), Linkrate-Monitor (Iter 15.5), System (Migrationen + Workflows), Costs.<br><br>Triage-Tab ist heute der primäre HITL-Eingang.' },
+  mcp_chatbot: { title: 'MCP-Chatbot', sub: 'Tool-Liste', body: 'Tools u.a.: <code>get_account_status</code>, <code>get_pending_documents</code>, <code>start_conversation</code>, <code>record_decision</code>, <code>remember_rule</code>, <code>run_inbox_cascade</code>, <code>trigger_skill_router</code>.' },
+  wf_d:        { title: 'Reclass-Dispatcher · WF D v0.2', sub: 'n8n · ID RDA4Hv8058hqxTOf', body: 'User-getriggerte Re-Klassifikation aus dem Dashboard heraus.' },
+  hitl:        { title: 'Mensch (Human-in-the-Loop)', sub: 'JCB · UI Variante C', body: 'Korrekturen aus dem Triage-Tab landen in <code>learning_events</code> und füttern den Pattern-Rules-Lifecycle (System wird klüger).' },
+
+  agent_events:    { title: 'agent_events', sub: 'L7 · Mig 015', body: 'Telemetrie pro Skill-Call. Felder: <code>id</code>, <code>workflow_name</code>, <code>node_name</code>, <code>event_type</code> (started/completed/failed), <code>document_id</code>, <code>created_at</code>, <code>metadata jsonb</code>.<br><br>In Mode C: pulsiert Skill-Knoten lila auf <code>started</code>, grün-Flash auf <code>completed</code>, bleibt rot auf <code>failed</code>.' },
+  learning_events: { title: 'learning_events', sub: 'L7 · Mig 050', body: 'Eine Row pro User-Korrektur in UI Variante C. Felder: <code>id</code>, <code>context_doc_id</code>, <code>decision_id</code>, <code>skill_name</code>, <code>field</code>, <code>system_suggestion jsonb</code>, <code>user_choice jsonb</code>, <code>was_correction bool</code>, <code>confidence_pre</code>, <code>created_at</code>.<br><br>In Mode C: HITL-Knoten blinkt pink, bei <code>was_correction=true</code> extra-stark + Pattern-Rules-Counter +1.' },
+  cost_metrics:    { title: 'cost_metrics', sub: 'L7 · Mig 024', body: 'Pro LLM-Call: <code>skill_name</code>, <code>model</code>, <code>tokens_in</code>, <code>tokens_out</code>, <code>cost_eur</code>, <code>latency_ms</code>, <code>created_at</code>.<br><br>In Mode C: optionaler €-Pulse entlang der Kante Skill→L5.' },
+
+  /* ===== MODE A — Detail-Texte mit Tooltip-Erklärung in Klartext ===== */
+  a_sources: { title: 'Belege kommen rein', sub: 'Mail · Drive · Filter', body: 'Rechnungen und Verträge kommen aus vielen Quellen — Outlook, Gmail, manueller Drive-Upload, oder direkt von Lieferanten. <br><br>Damit nichts verloren geht, wird alles auf <strong>eine zentrale Mailbox</strong> umgeleitet (<code>factures@convis.fr</code>).<br><br><em>Im Modus B siehst du die echten Quellen: Outlook, Gmail mit 17+ Filtern, etc.</em>' },
+  a_collect: { title: 'Sammeln', sub: 'eine zentrale Adresse', body: '<code>factures@convis.fr</code> wird alle 15 Minuten abgerufen. Anti-Endlosschleife: leitet nicht zu sich selbst.' },
+  a_ki: { title: 'KI plant', sub: 'der Orchestrator', body: 'Eine KI (Claude Haiku 4.5, mit Eskalation auf Sonnet bei Unsicherheit) liest jeden eingehenden Beleg und entscheidet:<ul style="padding-left: 18px; margin: 8px 0;"><li>Was ist das? (Rechnung · Vertrag · Banking-CSV …)</li><li>Welche Firma betrifft es?</li><li>Welche Spezial-Helfer müssen jetzt arbeiten?</li></ul>Das spart die manuelle Sortierung von ~200 Belegen pro Monat.<br><br><em>Modus B zeigt den technischen Namen: <code>tgv-skill-orchestrator</code>.</em>' },
+  a_kb: { title: 'Erfahrungs-Wissen', sub: '220 gelernte Muster', body: 'Die KI hat über die Zeit <strong>220 Muster</strong> gelernt — z.B. „Anthropic-Rechnungen gehören immer zu Firma C3" oder „CSVs mit Spalten X+Y+Z sind BNP-Paribas-Banking". <br><br>Bei jeder neuen Rechnung schaut die KI in dieses Erfahrungs-Wissen — Faustregel: je mehr sie verarbeitet, desto schneller wird sie.<br><br><em>Modus B: <code>pattern_rules</code>-Tabelle, Lifecycle candidate→hint→verified→shortcut.</em>' },
+  a_helpers: { title: 'Spezial-Helfer arbeiten', sub: '26 Worker', body: 'Jeder Helfer kann genau eine Sache richtig gut — Rechnung lesen, Banking-CSV importieren, Vertrag extrahieren, Beleg im Drive ablegen, Zahlung mit Rechnung abgleichen, … <br><br>Die KI von Schritt 1 plant pro Beleg, welche Helfer in welcher Reihenfolge laufen.<br><br><em>Modus B zeigt alle 26 Helfer einzeln mit Webhook und Modell.</em>' },
+  a_data: { title: 'Daten landen sortiert', sub: 'Datenbank', body: 'Strukturierte Daten landen in einer Datenbank: Rechnungen, Verträge, Banking-Transaktionen, Projekte. Jederzeit auswertbar — pro Firma, pro Monat, pro Lieferant.<br><br><em>Modus B zeigt die 6 Tabellen einzeln mit Schema.</em>' },
+  a_drive: { title: 'Belege im Drive', sub: 'pro Firma · pro Monat', body: 'Jeder Beleg landet als PDF im richtigen Drive-Ordner — z.B. <code>C3-Convis-GmbH/2026/05/RECHNUNG/</code>. Manuell muss da niemand mehr was umbenennen oder verschieben.' },
+  a_human: { title: 'Mensch korrigiert', sub: 'wenn KI unsicher ist', body: 'Wenn die KI sich nicht sicher ist (z.B. ein neuer Lieferant, eine seltene Rechnungs-Form), landet der Beleg im Triage-Tab des Dashboards. Mensch klickt einmal die richtige Antwort — und das System lernt daraus für alle künftigen Belege dieser Sorte.<br><br>Das ist der wichtigste Lern-Eingang. Jede Korrektur macht die KI bei der nächsten Rechnung dieser Sorte sicherer.' },
+  a_acc: { title: 'Buchhalter bekommt Paket', sub: 'monatlich · automatisch', body: 'Einmal im Monat wird automatisch ein Buchhaltungs-Paket pro Firma erzeugt und an den externen Buchhalter geschickt — alle Rechnungen, alle Belege, alle Banking-Daten, sortiert.' },
+
+  a_proj_detect: { title: 'Projekt-Erkennung', sub: 'Phase 2 · ab Iter 18+', body: 'Geplant: Ein Skill der erkennt „dieser Beleg gehört zu Projekt C3-26-001 KIVISAI". Heute wird das vom Orchestrator selbst gemacht (im Plan-Call), in Phase 2 wird es ein eigener spezialisierter Skill.<br><br><span style="color:var(--c-grey);font-style:italic;">Heute noch nicht implementiert.</span>' },
+  a_proj_ki:     { title: 'Projekt-Agent', sub: 'Phase 2 · ab Iter 18+', body: 'Ein zweiter Agent (zusätzlich zum Haupt-Orchestrator), der innerhalb eines Projekt-Kontexts plant. Anders als der Haupt-Orchestrator hat er Zugriff auf Projekt-spezifische Skills wie Steuerberater-Vorbereitung, Copywriting, Datenanalyse.<br><br><span style="color:var(--c-grey);font-style:italic;">Geplant für die PROJEKT-Domain (Brief §2.13). Heute haben alle 26 Skills <code>domain=core</code>.</span>' },
+};
+
+/* =========================================================================
+   COLOR CONSTANTS — Cytoscape akzeptiert keine var(--…) in Style-Regeln,
+   daher echte Hex-Werte hier zentral.
+   ========================================================================= */
+const COL = {
+  grey:'#94a3b8', amber:'#f59e0b', violet:'#8b5cf6', teal:'#14b8a6',
+  blue:'#3b82f6', pink:'#ec4899', coral:'#fb7185',
+  border: '#b8bfcc', borderDark: '#3a4252',
+};
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const EDGE_COLOR = isDark ? COL.borderDark : COL.border;
+
+/* =========================================================================
+   CYTOSCAPE INIT
+   ========================================================================= */
+cytoscape.use(window.cytoscapeDagre);
+
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: [...TGV_GRAPH.nodes, ...TGV_GRAPH.edges],
+
+  // v6: DOM-basiertes Drag — Cytoscape selbst soll Knoten NICHT bewegen,
+  // sonst gibt es Konflikt zwischen Pan und Drag.
+  autoungrabify: true,
+
+  layout: {
+    name: 'dagre',
+    rankDir: 'TB',
+    nodeSep: 40,
+    edgeSep: 16,
+    rankSep: 100,
+    padding: 30,
+    animate: false,
+  },
+
+  wheelSensitivity: 0.25,
+  minZoom: 0.2,
+  maxZoom: 2.5,
+
+  style: [
+    /* HTML-Label-Knoten: Cytoscape-Knoten selbst unsichtbar machen,
+       das HTML-Label übernimmt das Rendering komplett. */
+    {
+      selector: 'node',
+      style: {
+        'background-opacity': 0,
+        'border-width': 0,
+        'label': '',
+        'shape': 'rectangle',
+        'width': 220,
+        'height': 60,
+      }
+    },
+    /* Skills+Skills_placeholder etwas kleiner */
+    {
+      selector: 'node[kind = "skill"], node[kind = "skill_placeholder"], node[kind = "table"], node[kind = "knowledge"], node[kind = "observability"]',
+      style: { 'width': 210, 'height': 60 }
+    },
+    /* Mode-A-Sammelboxen — größer, mehr Luft */
+    {
+      selector: 'node[kind = "mode_a"]',
+      style: { 'width': 280, 'height': 80 }
+    },
+    {
+      selector: 'node[kind = "mode_a_ki"]',
+      style: { 'width': 320, 'height': 100 }
+    },
+    {
+      selector: 'node[kind = "mode_a_endpoint"]',
+      style: { 'width': 320, 'height': 92 }
+    },
+    /* Mode-A Skill-Beispiel-Karten (kompakter mit Sorte-Header) */
+    {
+      selector: 'node[kind = "mode_a_skill"]',
+      style: { 'width': 260, 'height': 90 }
+    },
+    /* Mode-A Phase-2-Karten (gestrichelt, transparent) */
+    {
+      selector: 'node[kind = "mode_a_phase2"]',
+      style: { 'width': 260, 'height': 80 }
+    },
+    /* === EDGES === */
+    {
+      selector: 'edge',
+      style: {
+        'curve-style': 'bezier',
+        'width': 1.5,
+        'line-color': EDGE_COLOR,
+        'target-arrow-color': EDGE_COLOR,
+        'target-arrow-shape': 'triangle',
+        'arrow-scale': 1.0,
+        'label': 'data(label)',
+        'font-size': 11,
+        'font-weight': 600,
+        'color': isDark ? '#e6e9ef' : '#1a1d24',
+        'text-background-color': isDark ? '#1a1f2a' : '#ffffff',
+        'text-background-opacity': 1,
+        'text-background-padding': 5,
+        'text-background-shape': 'roundrectangle',
+        'text-border-width': 1,
+        'text-border-color': isDark ? '#3a4252' : '#d8dde5',
+        'text-border-opacity': 1,
+        'text-rotation': 'autorotate',
+      }
+    },
+    /* RAG-Kontext = gestrichelt violet */
+    {
+      selector: 'edge[kind = "rag"]',
+      style: {
+        'line-style': 'dashed',
+        'line-color': COL.violet,
+        'target-arrow-color': COL.violet,
+        'width': 1.5,
+        'opacity': 0.75,
+      }
+    },
+    /* Write-Edges (Skill→Tabelle) */
+    {
+      selector: 'edge[kind = "write"]',
+      style: {
+        'line-color': COL.blue,
+        'target-arrow-color': COL.blue,
+        'width': 1.8,
+        'opacity': 0.85,
+      }
+    },
+    /* HITL-Edges = pink */
+    {
+      selector: 'edge[kind = "hitl"]',
+      style: {
+        'line-color': COL.pink,
+        'target-arrow-color': COL.pink,
+        'width': 1.8,
+      }
+    },
+    /* Telemetrie = dünn coral, gestrichelt */
+    {
+      selector: 'edge[kind = "telemetry"]',
+      style: {
+        'line-style': 'dashed',
+        'line-color': COL.coral,
+        'target-arrow-color': COL.coral,
+        'width': 1.0,
+        'opacity': 0.55,
+      }
+    },
+    /* Monthly-Edge — Buchhalter-Output, prominent amber */
+    {
+      selector: 'edge[kind = "monthly"]',
+      style: {
+        'line-color': COL.amber,
+        'target-arrow-color': COL.amber,
+        'width': 3.5,
+        'arrow-scale': 1.3,
+        'font-weight': 600,
+      }
+    },
+    /* Subtle-Edge — Helpers → Beispiel-Skills (dünn, kein Pfeilkopf-Spam) */
+    {
+      selector: 'edge[kind = "subtle"]',
+      style: {
+        'line-color': isDark ? '#3a4252' : '#cbd2dd',
+        'target-arrow-color': isDark ? '#3a4252' : '#cbd2dd',
+        'width': 1,
+        'opacity': 0.6,
+        'arrow-scale': 0.75,
+      }
+    },
+    /* Phase-2-Edges — gestrichelt grau, "kommt" */
+    {
+      selector: 'edge[kind = "phase2"]',
+      style: {
+        'line-style': 'dashed',
+        'line-color': COL.grey,
+        'target-arrow-color': COL.grey,
+        'width': 1.4,
+        'opacity': 0.65,
+      }
+    },
+  ],
+});
+
+/* =========================================================================
+   HTML-LABEL-RENDERING — n8n-style Karten als echtes HTML pro Knoten
+   ========================================================================= */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+cy.nodeHtmlLabel([
+  {
+    query: 'node',
+    halign: 'center',
+    valign: 'center',
+    halignBox: 'center',
+    valignBox: 'center',
+    cssClass: 'tgv-card-wrapper',
+    tpl: function(data) {
+      const skillKind = data.skillKind; // 'agent' | 'deterministic' | 'embedding' | undef
+      const cls = [
+        'tgv-card',
+        `col-${data.color || 'grey'}`,
+        data.status === 'inactive' ? 'is-inactive' : '',
+        data.isKi ? 'is-ki' : '',
+        data.kind === 'mode_a' ? 'is-mode-a' : '',
+        data.kind === 'mode_a_ki' ? 'is-mode-a is-mode-a-ki' : '',
+        data.kind === 'mode_a_endpoint' ? 'is-mode-a is-mode-a-endpoint' : '',
+        data.kind === 'mode_a_skill' ? 'is-mode-a' : '',
+        data.kind === 'mode_a_phase2' ? 'is-mode-a is-mode-a-phase2' : '',
+        skillKind ? 'has-skill-header' : '',
+        skillKind ? `skill-kind-${skillKind}` : '',
+      ].filter(Boolean).join(' ');
+
+      const status = data.status
+        ? `<span class="card-status ${data.status}" title="${data.status}"></span>`
+        : '';
+
+      const stepBadge = data.step
+        ? `<span class="step-badge">${data.step}</span>`
+        : '';
+
+      const skillHeader = skillKind ? `
+        <div class="skill-header">
+          <span class="skill-kind-label">${skillKind === 'agent' ? 'Agent · LLM' : skillKind === 'deterministic' ? 'Skill · deterministisch' : 'Embedding · Vektor'}</span>
+          <span class="skill-model">${escapeHtml(data.skillModel || '')}</span>
+        </div>` : '';
+
+      return `
+        <div class="${cls}" data-node-id="${escapeHtml(data.id)}">
+          ${skillHeader}
+          ${stepBadge}
+          <div class="card-icon">${iconSvg(data.icon || 'cog')}</div>
+          <div class="card-text">
+            <div class="card-title">${escapeHtml(data.title || data.label || data.id)}</div>
+            <div class="card-sub">${escapeHtml(data.sub || '')}</div>
+          </div>
+          ${status}
+        </div>
+      `;
+    }
+  }
+]);
+
+cy.fit(undefined, 40);
+
+/* =========================================================================
+   DOM-DRAG — v6 Neuimplementierung.
+   Problem: Cytoscape-Knoten sind unter HTML-Card-Overlays. Mouse-Events
+   landen auf der Karte, nicht auf dem Cytoscape-Knoten darunter — also
+   triggert Cytoscape Pan statt Node-Drag.
+   Lösung: native DOM-Events auf der Karte. Bei mousedown Drag-Start,
+   bei mousemove Cytoscape-Position synchron updaten, bei mouseup speichern.
+   Cytoscape's eigenes Drag ist via autoungrabify deaktiviert.
+   ========================================================================= */
+let dragState = null;
+
+function getCardElement(target) {
+  // Walk up DOM bis wir eine .tgv-card finden, oder null
+  let el = target;
+  while (el && el !== document.body) {
+    if (el.classList && el.classList.contains('tgv-card')) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+document.getElementById('cy').addEventListener('mousedown', (evt) => {
+  const cardEl = getCardElement(evt.target);
+  if (!cardEl) return; // nicht auf einer Karte → Cytoscape macht Pan
+  const nodeId = cardEl.dataset.nodeId;
+  if (!nodeId) return;
+  const node = cy.getElementById(nodeId);
+  if (!node.length) return;
+
+  // Drag-Start: Cytoscape muss komplett ausgeschaltet werden,
+  // sonst pant es zusätzlich beim Drag.
+  evt.preventDefault();
+  evt.stopPropagation();
+  cy.userPanningEnabled(false);
+  cy.boxSelectionEnabled(false);
+
+  dragState = {
+    nodeId,
+    cardEl,
+    startMouseX: evt.clientX,
+    startMouseY: evt.clientY,
+    startNodeX: node.position('x'),
+    startNodeY: node.position('y'),
+    moved: false,
+  };
+  cardEl.classList.add('is-dragging');
+}, true); // capture phase — vor Cytoscape
+
+document.addEventListener('mousemove', (evt) => {
+  if (!dragState) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+  const dx = evt.clientX - dragState.startMouseX;
+  const dy = evt.clientY - dragState.startMouseY;
+  if (!dragState.moved && Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+  dragState.moved = true;
+
+  const zoom = cy.zoom();
+  const node = cy.getElementById(dragState.nodeId);
+  if (!node.length) return;
+  node.position({
+    x: dragState.startNodeX + dx / zoom,
+    y: dragState.startNodeY + dy / zoom,
+  });
+}, true);
+
+document.addEventListener('mouseup', (evt) => {
+  if (!dragState) return;
+  const { cardEl, nodeId, moved } = dragState;
+  cardEl.classList.remove('is-dragging');
+
+  // Cytoscape wieder aktivieren — egal ob Drag oder Click
+  cy.userPanningEnabled(true);
+  cy.boxSelectionEnabled(true);
+
+  if (moved) {
+    const node = cy.getElementById(nodeId);
+    if (node.length) {
+      saveNodePosition(nodeId, node.position());
+    }
+    cardEl.dataset.suppressClick = '1';
+    setTimeout(() => { delete cardEl.dataset.suppressClick; }, 0);
+  }
+  dragState = null;
+}, true);
+
+// Click-Handler auf den Karten: öffnet Side-Panel, wenn nicht gerade gedraggt wurde
+document.getElementById('cy').addEventListener('click', (evt) => {
+  const cardEl = getCardElement(evt.target);
+  if (!cardEl) return;
+  if (cardEl.dataset.suppressClick) return;
+  const nodeId = cardEl.dataset.nodeId;
+  if (!nodeId) return;
+  const node = cy.getElementById(nodeId);
+  if (!node.length) return;
+  const data = node.data();
+  if (data.detail) {
+    document.querySelectorAll('.tgv-card.selected').forEach(el => el.classList.remove('selected'));
+    cardEl.classList.add('selected');
+    openPanel(data.detail, { title: data.title || data.label, sub: data.kind });
+  }
+});
+
+/* =========================================================================
+   SIDE-PANEL CONTROLLER
+   ========================================================================= */
+const panelEl = document.getElementById('panel');
+const panelTitle = document.getElementById('panel-title');
+const panelSub = document.getElementById('panel-sub');
+const panelBody = document.getElementById('panel-body');
+
+function openPanel(detailKey, fallback) {
+  const d = NODE_DETAILS[detailKey];
+  if (!d) {
+    panelTitle.textContent = fallback?.title || 'Knoten';
+    panelSub.textContent = fallback?.sub || '';
+    panelBody.innerHTML = `<div class="empty">Keine Detail-Definition für <code>${detailKey}</code>.</div>`;
+  } else if (d.skill) {
+    renderSkill(d.skill);
+  } else if (d.table) {
+    renderTable(d.table);
+  } else if (d.plan_react) {
+    renderOrchestrator(d);
+  } else if (d.lifecycle) {
+    renderPatternRules(d);
+  } else {
+    panelTitle.textContent = d.title;
+    panelSub.textContent = d.sub || '';
+    panelBody.innerHTML = `<section><p>${d.body || ''}</p></section>`;
+  }
+  document.body.classList.add('panel-open');
+  panelEl.setAttribute('aria-hidden', 'false');
+  setTimeout(() => cy.resize(), 280);
+}
+
+function closePanel() {
+  document.body.classList.remove('panel-open');
+  panelEl.setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('.tgv-card.selected').forEach(el => el.classList.remove('selected'));
+  setTimeout(() => cy.resize(), 280);
+}
+
+function renderSkill(s) {
+  panelTitle.textContent = s.name;
+  panelSub.innerHTML = `<span class="tag tag-${s.domain === 'core' ? 'teal' : 'grey'}">${s.domain}</span> v${s.version}`;
+  const inputs = (s.requires_inputs || []).map(x => `<code>${x}</code>`).join(', ');
+  const events = (s.emits_events || []).map(x => `<code>${x}</code>`).join(', ');
+  const isAgent = s.default_model && s.default_model !== 'none' && s.default_model !== 'embedding';
+  panelBody.innerHTML = `
+    <section>
+      <h3>${isAgent ? 'Agent' : 'Skill'} — was ist das?</h3>
+      <p style="font-size: 12px; color: var(--fg-muted);">
+        ${isAgent
+          ? 'Ein <strong>Agent</strong> ist ein Skill, der eine LLM (Sprach-KI) verwendet — er kann lesen, deuten, entscheiden. Hier: <code>' + s.default_model + '</code>. Atomar (eine Sache), aber mit „Verstand".'
+          : 'Ein <strong>Skill</strong> ist ein atomarer n8n-Webhook der genau eine Sache richtig gut kann. Deterministisch, ohne LLM. Schnell und billig.'}
+      </p>
+    </section>
+    <section><h3>Zweck</h3><p>${s.purpose || '—'}</p></section>
+    <section>
+      <h3>Konfiguration</h3>
+      <dl class="kv">
+        <dt>name</dt>           <dd>${s.name}</dd>
+        <dt>version</dt>        <dd>${s.version}</dd>
+        <dt>default_model</dt>  <dd>${s.default_model}</dd>
+        <dt>webhook_url</dt>    <dd>${s.webhook_url}</dd>
+        <dt>idempotency</dt>    <dd>${s.idempotency || '—'}</dd>
+        <dt>domain</dt>         <dd>${s.domain}</dd>
+      </dl>
+    </section>
+    <section><h3>Inputs</h3><p>${inputs || '—'}</p></section>
+    <section><h3>Emits Events</h3><p>${events || '—'}</p></section>
+    <section><h3>ⓘ Mock-Daten</h3><p style="color:var(--fg-muted);font-size:12px;">In v6 aus <code>select * from skill_definitions</code> live.</p></section>
+  `;
+}
+
+function renderTable(t) {
+  panelTitle.textContent = t.name;
+  panelSub.innerHTML = `<span class="tag tag-blue">L5 · Master-Entity</span> Supabase`;
+  const cols = (t.columns || []).map(([n, ty]) => `<dt>${n}</dt><dd>${ty}</dd>`).join('');
+  panelBody.innerHTML = `
+    <section><h3>Zweck</h3><p>${t.purpose}</p></section>
+    <section><h3>Spalten (Auswahl)</h3><dl class="kv">${cols}</dl></section>
+    <section><h3>Beispiel-Query</h3><pre>select * from ${t.name}\norder by created_at desc\nlimit 10;</pre></section>
+  `;
+}
+
+function renderOrchestrator() {
+  panelTitle.textContent = 'tgv-skill-orchestrator';
+  panelSub.innerHTML = `<span class="tag tag-violet">KI · L2</span> Mig 018`;
+  panelBody.innerHTML = `
+    <section><h3>Rolle</h3><p>EIN Skill, Plan + ReAct-Loop. Plant pro eingehendem Doc, welche atomaren Worker-Skills laufen müssen, und schreibt das Ergebnis als <code>documents.skills_needed text[]</code>. Der Dispatcher führt aus.</p></section>
+    <section>
+      <h3>Konfiguration</h3>
+      <dl class="kv">
+        <dt>webhook</dt>        <dd>/webhook/tgv-skill-orchestrator</dd>
+        <dt>default_model</dt>  <dd>claude-haiku-4-5</dd>
+        <dt>escalation</dt>     <dd>→ Sonnet bei niedriger Confidence</dd>
+        <dt>idempotency</dt>    <dd>document_id</dd>
+      </dl>
+    </section>
+    <section>
+      <h3>Plan + ReAct-Loop</h3>
+      <pre>iter 1  = Plan-Call
+          → setzt skills_needed text[]
+iter 2..N = ReAct mit Skill-Outputs als Kontext
+
+Anti-Loop:
+  triage_attempts &lt; 3
+  skill_chain_depth &lt; 5</pre>
+    </section>
+    <section>
+      <h3>RAG-Kontext beim Plan-Call</h3>
+      <p>
+        <span class="tag tag-violet">pattern_rules</span> Lifecycle-Filter <code>stage IN ('hint','verified','shortcut')</code><br>
+        <span class="tag tag-violet">kb_suppliers</span> ~256 Rows<br>
+        <span class="tag tag-violet">agent_prompts</span> System-Prompts<br>
+        <span class="tag tag-grey">mail_processing_patterns</span> legacy, optional
+      </p>
+    </section>
+    <section>
+      <h3>Emits Events</h3>
+      <p><code>orchestrator.plan</code> · <code>orchestrator.idempotent_skip</code> · <code>orchestrator.low_confidence</code></p>
+    </section>
+    <section>
+      <h3>⚠ Anti-Drift</h3>
+      <p style="color:var(--fg-muted);font-size:12px;">L2 (Orchestrator) und L3 (Dispatcher) sind <strong>getrennte Knoten</strong>. Niemals in einer Box. Memory <code>project_orchestrator_vision</code>, STOP-Trigger Zeile 4.</p>
+    </section>
+  `;
+}
+
+function renderPatternRules() {
+  panelTitle.textContent = 'pattern_rules';
+  panelSub.innerHTML = `<span class="tag tag-violet">Wissensbasis · KI</span> Mig 023+025 · 220 Regeln`;
+  panelBody.innerHTML = `
+    <section>
+      <h3>Lifecycle (KONZEPT §5)</h3>
+      <p>220 Regeln aus dem Erfahrungsschatz. Sie ersetzen verteilte if/else-Branches im Code — und steigen über Verifikationen zu deterministischen Shortcuts auf.</p>
+      <div class="lifecycle">
+        <div class="lifecycle-stage"><span class="count">47</span><span class="label">candidate</span></div>
+        <span class="lifecycle-arrow">→</span>
+        <div class="lifecycle-stage"><span class="count">28</span><span class="label">hint</span></div>
+        <span class="lifecycle-arrow">→</span>
+        <div class="lifecycle-stage"><span class="count">12</span><span class="label">verified</span></div>
+        <span class="lifecycle-arrow">→</span>
+        <div class="lifecycle-stage"><span class="count">3</span><span class="label">shortcut</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--fg-muted);">Counter sind Mock-Daten. v3: <code>select stage, count(*) from pattern_rules group by stage</code>.</p>
+    </section>
+    <section>
+      <h3>Übergänge</h3>
+      <pre>candidate (frisch, keine Verifikation)
+   ↓ ≥ 5 LLM-Übereinstimmungen
+hint (im LLM-Prompt als "high-confidence hint")
+   ↓ ≥ 20 Verifikationen + 0 Konflikte
+verified (Pre-Filter setzt Wert, LLM kann widersprechen)
+   ↓ ≥ 100 Verifikationen + Trust=99
+shortcut (deterministisch, LLM jeder 100ste Stichprobe)</pre>
+    </section>
+    <section><h3>Lern-Eingang</h3><p>Jede User-Korrektur in UI Variante C → <code>learning_events</code> → speist Lifecycle-Counter. Pulsiert in Mode C wenn <code>was_correction=true</code>.</p></section>
+  `;
+}
+
+/* =========================================================================
+   EVENTS — Click auf den Hintergrund schliesst das Panel.
+   Card-Click läuft über den DOM-click-Handler oben (DOM-Drag-Block).
+   ========================================================================= */
+cy.on('tap', (evt) => {
+  if (evt.target === cy) closePanel();
+});
+
+document.getElementById('panel-close').addEventListener('click', closePanel);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePanel();
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.disabled) return;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const mode = btn.dataset.mode;
+    applyMode(mode);
+  });
+});
+
+/* =========================================================================
+   APPLY MODE — schaltet zwischen A / B / C ohne Reload
+   ========================================================================= */
+const STORAGE_KEY = 'tgv-arch-v4-positions';
+
+function loadSavedPositions() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch { return null; }
+}
+
+function saveNodePosition(nodeId, pos) {
+  const all = loadSavedPositions() || {};
+  all[nodeId] = { x: Math.round(pos.x), y: Math.round(pos.y) };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    updateResetButtonState();
+  } catch {}
+}
+
+function clearSavedPositions() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  updateResetButtonState();
+}
+
+function updateResetButtonState() {
+  const btn = document.getElementById('reset-layout');
+  if (!btn) return;
+  const hasSaved = !!loadSavedPositions();
+  btn.classList.toggle('has-saved', hasSaved);
+}
+
+const MODE_BADGE = {
+  a: 'Modus A · Erklären',
+  b: 'Modus B · Lehren',
+  c: 'Modus C · Live (Mock)',
+};
+
+const MODE_NODE_FILTER = {
+  // Mode B: alle Knoten ausser modeA-Sammelboxen
+  b: (n) => !n.data('modeA'),
+  // Mode A: nur modeA-Sammelboxen
+  a: (n) => n.data('modeA') === true,
+  // Mode C: wie B
+  c: (n) => !n.data('modeA'),
+};
+
+const MODE_EDGE_FILTER = {
+  b: (e) => !e.data('modeA'),
+  a: (e) => e.data('modeA') === true,
+  c: (e) => !e.data('modeA'),
+};
+
+let currentMode = 'b';
+let mockEventTimer = null;
+
+function applyMode(mode, fresh = false) {
+  currentMode = mode;
+  document.body.dataset.mode = mode;
+  document.getElementById('mode-badge').textContent = MODE_BADGE[mode];
+
+  closePanel();
+
+  // Knoten + Kanten filtern — keine Layer-Compounds mehr seit v5
+  cy.batch(() => {
+    cy.nodes().forEach(n => {
+      n.style('display', MODE_NODE_FILTER[mode](n) ? 'element' : 'none');
+    });
+    cy.edges().forEach(e => {
+      e.style('display', MODE_EDGE_FILTER[mode](e) ? 'element' : 'none');
+    });
+  });
+
+  if (mode === 'a') {
+    // Mode A: localStorage-Positionen oder feste Positionen aus TGV_GRAPH
+    const saved = fresh ? null : loadSavedPositions();
+    cy.batch(() => {
+      cy.nodes(':visible').forEach(n => {
+        if (saved && saved[n.id()]) {
+          n.position(saved[n.id()]);
+        } else {
+          // feste Position aus TGV_GRAPH-Definition
+          const def = TGV_GRAPH.nodes.find(d => d.data.id === n.id());
+          if (def && def.position) n.position(def.position);
+        }
+      });
+    });
+    cy.layout({
+      name: 'preset',
+      animate: false,
+      fit: false,
+    }).run();
+  } else {
+    // Mode B/C: dagre. Aber: wenn localStorage-Positionen für sichtbare Knoten
+    // existieren, diese als preset nehmen — sonst frisch dagre.
+    const saved = fresh ? null : loadSavedPositions();
+    const visibleNodes = cy.nodes(':visible');
+    const haveAllSaved = !fresh && visibleNodes.length > 0 &&
+      visibleNodes.toArray().every(n => saved && saved[n.id()]);
+
+    if (haveAllSaved) {
+      cy.batch(() => {
+        visibleNodes.forEach(n => {
+          const p = saved[n.id()];
+          n.position({ x: p.x, y: p.y });
+        });
+      });
+      cy.layout({ name: 'preset', animate: false, fit: false }).run();
+    } else {
+      cy.layout({
+        name: 'dagre',
+        rankDir: 'TB',
+        nodeSep: 50,
+        edgeSep: 18,
+        rankSep: 110,
+        padding: 30,
+        animate: false,
+      }).run();
+      // Falls nur teilweise gespeicherte Positionen vorhanden, nachträglich anwenden
+      if (!fresh && saved) {
+        cy.batch(() => {
+          Object.keys(saved).forEach(id => {
+            const n = cy.getElementById(id);
+            if (n.length && n.style('display') !== 'none') {
+              n.position(saved[id]);
+            }
+          });
+        });
+      }
+    }
+  }
+
+  // v7: Skills sind jetzt Teil des Graphs (keine HTML-Liste rechts mehr),
+  // also einfach fit auf alle Knoten.
+  cy.fit(undefined, mode === 'a' ? 60 : 40);
+
+  // Mode C: Mock-Stream + Edge-Flow starten/stoppen
+  if (mode === 'c') {
+    startMockStream();
+    startEdgeFlow();
+  } else {
+    stopMockStream();
+    stopEdgeFlow();
+  }
+}
+
+/* =========================================================================
+   EDGE FLOW ANIMATION (Mode C)
+   "Marching ants" entlang aktiver Pfade — visualisiert Datenfluss.
+   v5: 2.5s Animation, breiter, deutlicher; PLUS dauerhafter Pulse
+   auf Haupt-Pipeline-Edges damit man immer "Bewegung" sieht.
+   ========================================================================= */
+let edgeFlowActive = false;
+let backgroundFlowTimer = null;
+
+// Hauptpfad-Edges für dauerhaften Hintergrund-Pulse (in Mode C)
+const BG_FLOW_EDGES = ['e10', 'e11', 'e_d1', 'e_d2', 'e_d3', 'e_d4', 'e_s1', 'e_s2', 'e_s7'];
+
+function startEdgeFlow() {
+  edgeFlowActive = true;
+  // Hintergrund-Pulse: alle ~1.4s eine Edge aus BG_FLOW_EDGES highlighten
+  if (backgroundFlowTimer) clearInterval(backgroundFlowTimer);
+  backgroundFlowTimer = setInterval(() => {
+    if (!edgeFlowActive) return;
+    const eid = BG_FLOW_EDGES[Math.floor(Math.random() * BG_FLOW_EDGES.length)];
+    const e = cy.getElementById(eid);
+    if (e.length && e.style('display') !== 'none') {
+      animateEdge(e, 1500);
+    }
+  }, 1400);
+}
+
+function stopEdgeFlow() {
+  edgeFlowActive = false;
+  if (backgroundFlowTimer) { clearInterval(backgroundFlowTimer); backgroundFlowTimer = null; }
+  cy.edges().forEach(e => {
+    e.stop(true, true);
+    e.removeStyle('line-style');
+    e.removeStyle('line-dash-pattern');
+    e.removeStyle('line-dash-offset');
+    e.removeStyle('width');
+  });
+}
+
+function animateEdge(e, duration) {
+  if (!e || !e.length) return;
+  e.stop(true, true);
+  const baseW = parseFloat(e.style('width')) || 1.5;
+  e.style({
+    'line-style': 'dashed',
+    'line-dash-pattern': [10, 6],
+    'line-dash-offset': 0,
+    'width': baseW + 1.2,
+  });
+  const start = performance.now();
+  function step(ts) {
+    const elapsed = ts - start;
+    if (elapsed >= duration) {
+      e.removeStyle('line-style');
+      e.removeStyle('line-dash-pattern');
+      e.removeStyle('line-dash-offset');
+      e.removeStyle('width');
+      return;
+    }
+    // schneller "Fluss" Richtung Ziel — höhere Geschwindigkeit als v4
+    const offset = -((elapsed / duration) * 60);
+    e.style('line-dash-offset', offset);
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function flashEdgesForNode(nodeId) {
+  if (!edgeFlowActive) return;
+  const node = cy.getElementById(nodeId);
+  if (!node.length) return;
+  // Vollen Pfad: incoming + outgoing
+  const incoming = node.incomers('edge').filter(e => !e.data('modeA') && e.style('display') !== 'none');
+  const outgoing = node.outgoers('edge').filter(e => !e.data('modeA') && e.style('display') !== 'none');
+  const edges = incoming.union(outgoing);
+  edges.forEach(e => animateEdge(e, 2400));
+}
+
+
+const MOCK_STATS = { started: 0, completed: 0, failed: 0, corrections: 0 };
+let mockEventCounter = 0;
+
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function emitMockEvent() {
+  // Knoten die animiert werden können (Skills + Orchestrator + Dispatcher)
+  const candidates = cy.nodes().filter(n => {
+    const k = n.data('kind');
+    return ['skill', 'orchestrator', 'dispatcher'].includes(k);
+  });
+  if (!candidates.length) return;
+
+  const target = candidates[Math.floor(Math.random() * candidates.length)];
+  const cardEl = document.querySelector(`.tgv-card[data-node-id="${CSS.escape(target.id())}"]`);
+  if (!cardEl) return;
+
+  // Verteilung: 60% started/completed-Paar, 8% failed, 12% learning, sonst nur started
+  const r = Math.random();
+  mockEventCounter++;
+
+  if (r < 0.08) {
+    // failure
+    cardEl.classList.remove('fx-active', 'fx-completed');
+    cardEl.classList.add('fx-failed');
+    MOCK_STATS.failed++;
+  } else if (r < 0.20) {
+    // learning event auf HITL-Knoten
+    const hitlEl = document.querySelector('.tgv-card[data-node-id="hitl"]');
+    if (hitlEl) {
+      hitlEl.classList.remove('fx-learning');
+      void hitlEl.offsetWidth; // restart animation
+      hitlEl.classList.add('fx-learning');
+    }
+    MOCK_STATS.corrections++;
+  } else {
+    // happy path: started → 800-1500 ms → completed
+    cardEl.classList.remove('fx-failed', 'fx-completed');
+    void cardEl.offsetWidth;
+    cardEl.classList.add('fx-active');
+    flashEdgesForNode(target.id());
+    MOCK_STATS.started++;
+    setTimeout(() => {
+      cardEl.classList.remove('fx-active');
+      void cardEl.offsetWidth;
+      cardEl.classList.add('fx-completed');
+      MOCK_STATS.completed++;
+      updateStats();
+      setTimeout(() => cardEl.classList.remove('fx-completed'), 700);
+    }, 800 + Math.random() * 700);
+  }
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('stat-started').textContent = MOCK_STATS.started;
+  document.getElementById('stat-completed').textContent = MOCK_STATS.completed;
+  document.getElementById('stat-failed').textContent = MOCK_STATS.failed;
+  document.getElementById('stat-corrections').textContent = MOCK_STATS.corrections;
+}
+
+function startMockStream() {
+  if (mockEventTimer) return;
+  emitMockEvent();
+  mockEventTimer = setInterval(() => emitMockEvent(), 1300 + Math.random() * 700);
+}
+
+function stopMockStream() {
+  if (mockEventTimer) {
+    clearInterval(mockEventTimer);
+    mockEventTimer = null;
+  }
+  // alle Effekt-Klassen abräumen
+  document.querySelectorAll('.tgv-card.fx-active, .tgv-card.fx-completed, .tgv-card.fx-failed, .tgv-card.fx-learning')
+    .forEach(el => el.classList.remove('fx-active', 'fx-completed', 'fx-failed', 'fx-learning'));
+}
+
+// Initialer Modus = B (Default)
+applyMode('b');
+updateResetButtonState();
+
+/* =========================================================================
+   DRAG + RESET — v6: Drag läuft über DOM (siehe DOM-DRAG-Block oben).
+   Hier nur noch Reset-Handler.
+   ========================================================================= */
+document.getElementById('reset-layout').addEventListener('click', () => {
+  if (loadSavedPositions() && !confirm('Verschobene Knoten zurücksetzen? Das aktuelle Layout geht verloren.')) {
+    return;
+  }
+  // 1) localStorage leeren
+  clearSavedPositions();
+
+  // 2) Cytoscape-Positionen explizit invalidieren
+  cy.batch(() => {
+    cy.nodes().forEach(n => {
+      n.position({ x: 0, y: 0 });
+    });
+  });
+
+  // 3) Modus neu anwerfen mit fresh-flag — frisches Layout
+  applyMode(currentMode, /* fresh: */ true);
+
+  // 4) Force-refresh des HTML-Label-Plugins:
+  //    nodeHtmlLabel hört auf 'render', 'pan', 'zoom' — manchmal kommt
+  //    bei Position-Änderungen ohne Pan/Zoom kein Repaint. Ein kleiner
+  //    künstlicher Pan-by-0 triggert das viewport-Event garantiert.
+  setTimeout(() => {
+    cy.panBy({ x: 0, y: 0 });
+    // Plus: nodeHtmlLabel hat eine update-Methode auf cy
+    if (typeof cy.nodeHtmlLabel === 'function') {
+      // re-init: Plugin checkt elements und positioniert HTML labels neu
+      cy.nodes().forEach(n => n.emit('position'));
+    }
+  }, 50);
+});
+
+window.addEventListener('resize', () => cy.resize());
+</script>
+
+</body>
+</html>
