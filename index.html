@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.44 — 2026-05-09 — Iter 16.UI Polish-Pack: B4 Toast statt alert + Card-Fadeout, B5 Search-Placeholder discoverable, B8 Modal-Backdrop fix (CSS-vars aliases) -->
+<!-- TGV Dashboard v11.45 — 2026-05-09 — Iter 16: Architektur-Tab (iframe-Embed v7, 7-Layer Cytoscape, lazy-loaded, Deep-Link #architektur) -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.44">
-<title>TGV Dashboard v11.44 — Financial OS</title>
+<meta name="version" content="11.45">
+<title>TGV Dashboard v11.45 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1490,6 +1490,11 @@ body.chat-open #main-content {
       <span class="nav-label">System</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('architektur', this)" title="TGV-Architektur Visualisierung v7 (Cytoscape, 7-Layer, 3 Modi)">
+      <span class="nav-icon">🏗</span>
+      <span class="nav-label">Architektur</span>
+    </button>
+
     <div class="sidebar-footer">
       TGV Financial OS <span id="sidebar-version">v?</span><br>
       Jean-Chris Binetti
@@ -2541,6 +2546,31 @@ body.chat-open #main-content {
 
     </div>
 
+    <!-- ═══════════════════════════════════════════════
+         PAGE: ARCHITEKTUR (Iter 16 / Dashboard v11.45)
+         Standalone Cytoscape-Visualisierung v7 als iframe.
+         Quelle: 09_ARCHITEKTUR/tgv-architecture-v7.html
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-architektur">
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <h1>🏗 Architektur</h1>
+          <p>Interaktive 7-Layer-Topologie · Modi A Erklären / B Lehren / C Live-Mock · Cytoscape + dagre · Drag&amp;Drop, localStorage-Persistenz</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <a href="./09_ARCHITEKTUR/tgv-architecture-v7.html" target="_blank" rel="noopener"
+             class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:6px 12px;text-decoration:none;">↗ In neuem Tab</a>
+        </div>
+      </div>
+      <div style="margin-top:8px;border:1px solid var(--s3);border-radius:8px;overflow:hidden;background:var(--bg1);">
+        <iframe id="architektur-frame"
+                data-src="./09_ARCHITEKTUR/tgv-architecture-v7.html"
+                style="width:100%;height:calc(100vh - 200px);min-height:600px;border:0;display:block;"
+                title="TGV Architektur Visualisierung v7"
+                loading="lazy"></iframe>
+      </div>
+    </div>
+
   </div><!-- /#main-content -->
 </div><!-- /#layout -->
 
@@ -2943,13 +2973,20 @@ function showPage(pageId, btn) {
   if (pageId === 'mailrules') loadMailRules();
   if (pageId === 'linkrate') loadLinkrate();
   if (pageId === 'triage') loadTriage();
+  if (pageId === 'architektur') loadArchitektur();
+}
+
+// Lazy-load Architektur-iframe nur beim ersten Anzeigen (CDN-Last vermeiden bis benötigt)
+function loadArchitektur() {
+  const f = document.getElementById('architektur-frame');
+  if (f && !f.src && f.dataset.src) f.src = f.dataset.src;
 }
 
 // Deep-link via hash: #system, #inbox, #finanzen, etc.
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
