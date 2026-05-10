@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.55 — 2026-05-10 — Iter 20 Block A PR2 UX-Polish auf Block-B-Basis (v11.54): Status-Badges + 3-Werte-Tripel + resizable Side-Panel + Hängend-Tab + Provider-Combobox + DB-Snapshot + Quota-Override + Linkrate-Cursor-Fix. Behält Block B (US14 query_documents + MCP-Hub + Mail-Test). -->
+<!-- TGV Dashboard v11.56 — 2026-05-11 — Iter 20 Block A Hotfix aus Live-Test (F1-F4): Card-Success-Banner mit Diff + Reopen + Skill-Aktivität-Reveal (F1); Side-Panel Chat-Button mit Doc-Kontext-Prompt (F2); Skill-Gap echtes Modal mit Roadmap-Link statt prompt+alert (F3); Buchhalter-Versand-Karte im Steckbrief mit Manuell-Add für JEDEN Doc-Typ (F4). -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -1291,6 +1291,12 @@ body.sp-resizing { cursor: ew-resize !important; user-select: none; }
 .quota-drift-pill.warn { background: rgba(245,158,11,0.18); color: var(--orng); }
 .quota-drift-pill.ok   { background: rgba(16,185,129,0.18); color: var(--grn); }
 
+/* v11.56 F1 — Banner-Countdown-Animation */
+@keyframes bannerCountdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
 
 #side-panel-backdrop {
   position: fixed;
@@ -1901,7 +1907,10 @@ body.chat-open #main-content {
       <h3 id="side-panel-title">Doc-Detail</h3>
       <div class="side-panel-header-sub" id="side-panel-subtitle">—</div>
     </div>
-    <button class="side-panel-close" onclick="closeSidePanel()" title="Schließen (Esc)" aria-label="Side-Panel schließen">×</button>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button onclick="spOpenChatWithDocContext()" title="Chat mit Doc-Kontext öffnen — Pre-Prompt nennt Doc-ID/Provider/Betrag, du tippst Anmerkung (z.B. „Storno", „Gutschrift folgt", „Klärung mit Provider laufend")" style="background:rgba(255,255,255,0.06);border:1px solid var(--bdr);color:var(--tx);font-size:11px;padding:5px 10px;border-radius:4px;cursor:pointer;font-family:inherit;" aria-label="Chat zu diesem Doc öffnen">💬 Anmerkung im Chat</button>
+      <button class="side-panel-close" onclick="closeSidePanel()" title="Schließen (Esc)" aria-label="Side-Panel schließen">×</button>
+    </div>
   </div>
   <div class="side-panel-body" id="side-panel-body">
     <!-- populated by openSidePanel(doc) -->
@@ -8307,36 +8316,103 @@ async function triageLogLearning(docId, suggestion, choice, source = 'ui-c-15.2'
 }
 
 // Iter 15.8 — Skill-Gap-Suggestion: User nominiert fehlenden Skill
-async function triageSuggestSkillGap(docId) {
-  const description = prompt(
-    '💡 Diesen Skill bräuchte ich… (Workshop 15.8 → skill_gap_signals)\n\n' +
-    'Beschreibe kurz was der Skill tun soll (Freitext) und optional einen Skill-Namen-Vorschlag (z.B. "tgv-skill-classify-recurring"):',
-    ''
-  );
-  if (!description) return;
+// v11.56 F3 — Skill-Gap-Modal statt prompt+alert (User-Live-Test-Bug)
+function triageSuggestSkillGap(docId) {
+  // Vorhandenes Modal entfernen falls offen
+  document.getElementById('skill-gap-modal-bg')?.remove();
 
-  const suggestedName = prompt(
-    'Optional: Skill-Name-Vorschlag (z.B. "tgv-skill-detect-currency-mismatch"). Leer lassen wenn unklar:',
-    ''
-  );
+  const docHint = (typeof gTriageDocs !== 'undefined' && gTriageDocs)
+    ? (gTriageDocs.find(d => d.id === docId) || {})
+    : {};
+  const docLabel = `#${docId} · ${docHint.doc_type || '?'} · ${docHint.provider || '— kein Provider —'}`;
 
+  const wrap = document.createElement('div');
+  wrap.id = 'skill-gap-modal-bg';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9998;display:flex;align-items:center;justify-content:center;';
+  wrap.innerHTML = `
+    <div style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;width:min(520px,92vw);max-height:85vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,0.45);">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bdr);background:var(--bg1);display:flex;justify-content:space-between;align-items:center;border-top-left-radius:8px;border-top-right-radius:8px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;color:var(--tx);">💡 Diesen Skill bräuchte ich…</div>
+          <div style="font-size:10px;color:var(--tx2);margin-top:2px;font-family:monospace;">Kontext-Doc: ${escHtml(docLabel)}</div>
+        </div>
+        <button onclick="document.getElementById('skill-gap-modal-bg').remove()" style="background:none;border:0;color:var(--tx2);font-size:22px;cursor:pointer;padding:0 6px;line-height:1;" aria-label="Schließen">×</button>
+      </div>
+      <div style="padding:16px 18px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Was soll der Skill tun? *</label>
+        <textarea id="sg-description" rows="4" placeholder="z.B. „Erkenne wiederkehrende Belastungen pro Provider und gruppiere sie als Abo, statt jede Einzeltransaktion separat zu klassifizieren."" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:4px;padding:8px 10px;font-size:12px;font-family:inherit;resize:vertical;"></textarea>
+
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 4px;">Skill-Name-Vorschlag (optional)</label>
+        <input id="sg-name" type="text" placeholder="z.B. tgv-skill-classify-recurring" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:4px;padding:6px 10px;font-size:12px;font-family:monospace;">
+
+        <div id="sg-status" style="margin-top:10px;font-size:11px;min-height:14px;color:var(--tx2);"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--bdr);">
+          <button onclick="document.getElementById('skill-gap-modal-bg').remove()" style="background:transparent;border:1px solid var(--bdr);color:var(--tx);padding:7px 14px;border-radius:4px;font-size:12px;cursor:pointer;">Abbrechen</button>
+          <button id="sg-submit" onclick="triageSuggestSkillGapSubmit(${docId})" style="background:var(--blu);color:white;border:0;padding:7px 16px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;">Vorschlag speichern</button>
+        </div>
+
+        <div style="margin-top:10px;font-size:10px;color:var(--tx2);font-style:italic;line-height:1.5;">
+          📚 Wird in <code style="font-family:monospace;background:var(--bg1);padding:1px 5px;border-radius:3px;">skill_gap_signals</code>-Tabelle gespeichert (Mig 056). Aufnahme in Iter-Roadmap-Lern-Loop.
+          Review-UI für Vorschläge folgt in Iter 21+ (heute: nur DB-Eintrag, sichtbar via Chat „zeig mir alle skill_gap_signals").
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) wrap.remove(); });
+  setTimeout(() => document.getElementById('sg-description')?.focus(), 50);
+}
+
+async function triageSuggestSkillGapSubmit(docId) {
+  const desc = document.getElementById('sg-description')?.value.trim();
+  const name = document.getElementById('sg-name')?.value.trim();
+  const status = document.getElementById('sg-status');
+  const btn = document.getElementById('sg-submit');
+  if (!desc) {
+    if (status) status.innerHTML = '<span style="color:var(--orng);">⚠️ Beschreibung ist Pflicht.</span>';
+    document.getElementById('sg-description')?.focus();
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Speichere…'; }
+  if (status) status.textContent = '';
   try {
-    // Iter 15.8 separate Tabelle skill_gap_signals (Mig 056) — Roadmap-Lern-Loop
     const row = {
       context_doc_id: docId,
-      description: description,
-      suggested_name: suggestedName?.trim() || null,
+      description: desc,
+      suggested_name: name || null,
       status: 'new',
-      raw_payload: { source: 'ui-c-15.8.gap-suggestion', user_agent: navigator.userAgent.slice(0, 100) },
+      raw_payload: { source: 'ui-c-v11.56.gap-modal', user_agent: navigator.userAgent.slice(0, 100) },
     };
     const { error } = await _supaClient.from('skill_gap_signals').insert(row);
-    if (!error) {
-      alert(`✅ Skill-Vorschlag gespeichert.\n\n"${description}"\n\nFließt in Roadmap-Lern-Loop (siehe Iter 16 Roadmap-Tab).`);
-    } else {
-      alert(`Speichern fehlgeschlagen: ${error.message}`);
+    if (error) {
+      if (status) status.innerHTML = `<span style="color:var(--red);">❌ Speichern fehlgeschlagen: ${escHtml(error.message)}</span>`;
+      if (btn) { btn.disabled = false; btn.textContent = 'Erneut versuchen'; }
+      return;
     }
+    // Erfolg: Modal-Inhalt austauschen mit Bestätigung
+    const bg = document.getElementById('skill-gap-modal-bg');
+    if (bg) {
+      bg.querySelector('div > div:last-child').innerHTML = `
+        <div style="text-align:center;padding:18px 8px;">
+          <div style="font-size:32px;margin-bottom:8px;">✅</div>
+          <div style="font-weight:600;font-size:14px;color:var(--grn);margin-bottom:8px;">Vorschlag gespeichert</div>
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:14px;line-height:1.5;">
+            „${escHtml(desc.slice(0, 140))}${desc.length > 140 ? '…' : ''}"
+            ${name ? `<br><code style="font-family:monospace;font-size:10px;background:var(--bg1);padding:1px 5px;border-radius:3px;display:inline-block;margin-top:6px;">${escHtml(name)}</code>` : ''}
+          </div>
+          <div style="font-size:10px;color:var(--tx2);font-style:italic;margin-bottom:16px;">
+            Eintrag in <code>skill_gap_signals</code>. Aufnahme in Roadmap erfolgt manuell beim nächsten Iter-Brief.
+            Du kannst alle Vorschläge im Chat abfragen: <em>„zeig mir alle skill_gap_signals"</em>.
+          </div>
+          <button onclick="document.getElementById('skill-gap-modal-bg').remove()" style="background:var(--blu);color:white;border:0;padding:8px 22px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;">OK</button>
+        </div>`;
+      // Auto-close nach 6s
+      setTimeout(() => document.getElementById('skill-gap-modal-bg')?.remove(), 6000);
+    }
+    if (typeof triageToast === 'function') triageToast('💡 Skill-Vorschlag gespeichert.', 'success');
   } catch (e) {
-    alert(`Fehler: ${e.message}`);
+    if (status) status.innerHTML = `<span style="color:var(--red);">❌ Fehler: ${escHtml(e.message)}</span>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'Erneut versuchen'; }
   }
 }
 
@@ -8402,9 +8478,8 @@ function triageToast(message, type) {
   }, type === 'err' ? 6000 : 3500);
 }
 
-// Card fade-out + remove (B4)
+// Card fade-out + remove (B4) — DEPRECATED ab v11.56 zugunsten triageReplaceCardWithSuccess (F1)
 function triageFadeRemoveCard(docId) {
-  // The card has no stable id — find via the #docId header
   const cards = document.querySelectorAll('#triage-cards > .card');
   for (const c of cards) {
     if (c.textContent && c.textContent.indexOf('#' + docId) === 0 || c.innerHTML.indexOf('#' + docId + ' ·') >= 0) {
@@ -8418,10 +8493,103 @@ function triageFadeRemoveCard(docId) {
   }
 }
 
+// v11.56 F1 — Card bleibt mit Success-Banner statt sofort wegzufaden.
+// User hat 8s Zeit zu sehen WAS gelaufen ist, kann Steckbrief reopen, kann Diff prüfen.
+// Nach 8s: erst dann fade-out + remove.
+function triageReplaceCardWithSuccess(docId, skillsRun, beforeSnapshot) {
+  const cards = document.querySelectorAll('#triage-cards > .card');
+  let target = null;
+  for (const c of cards) {
+    if (c.innerHTML.indexOf('#' + docId + ' ·') >= 0) { target = c; break; }
+  }
+  if (!target) return;
+
+  // Banner ersetzt Card-Inhalt komplett (kompakt) mit Reopen + Refresh-State-after
+  const skillsHtml = skillsRun.map(s => `<code style="font-size:10px;background:rgba(16,185,129,0.15);color:var(--grn);padding:1px 6px;border-radius:3px;margin-right:3px;">${s}</code>`).join('');
+  const beforeProvider = beforeSnapshot?.provider || '?';
+  const beforeEntity = beforeSnapshot?.entity || '?';
+  const beforeConf = beforeSnapshot?.confidence_score != null ? beforeSnapshot.confidence_score + '%' : '?';
+
+  target.style.background = 'linear-gradient(90deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02))';
+  target.style.borderLeft = '3px solid var(--grn)';
+  target.style.transition = 'opacity 400ms ease';
+  target.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:12px;justify-content:space-between;flex-wrap:wrap;">
+      <div style="flex:1;min-width:240px;">
+        <div style="font-weight:600;color:var(--grn);font-size:14px;margin-bottom:4px;">✅ Doc #${docId}: ${skillsRun.length} Skill(s) gestartet</div>
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:6px;">${skillsHtml}</div>
+        <div style="font-size:11px;color:var(--tx2);">
+          <strong>Vorher:</strong> ${escHtml(beforeProvider)} · ${escHtml(beforeEntity)} · Doc-Felder ${escHtml(beforeConf)}
+          <span id="sp-diff-${docId}" style="margin-left:6px;color:var(--tx2);">· lade Nachher-Stand…</span>
+        </div>
+        <div style="font-size:10px;color:var(--tx2);margin-top:6px;font-style:italic;">📚 in learning_events geloggt · Cascade läuft im Backend (5–9 Sek)</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <button onclick="openSidePanelForDocId(${docId})" title="Steckbrief mit Skill-Aktivität öffnen" style="background:var(--blu);color:white;border:0;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:500;">📋 Steckbrief öffnen</button>
+        <button onclick="triageRefreshSingleCard(${docId})" title="Diese Card aktualisieren (1 Lese-Call, 0 n8n-Exec)" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);border-radius:4px;padding:5px 10px;font-size:10px;cursor:pointer;">↻ Card aktualisieren</button>
+      </div>
+    </div>
+    <div id="banner-${docId}-progress" style="margin-top:8px;height:2px;background:var(--bg1);border-radius:1px;overflow:hidden;">
+      <div style="height:100%;width:100%;background:var(--grn);transform-origin:left;animation:bannerCountdown 8s linear forwards;"></div>
+    </div>`;
+
+  // Nachher-Stand asynchron nachladen (nach 3s wenn Cascade durch ist)
+  setTimeout(async () => {
+    try {
+      const headers = await _supaAuthHeaders();
+      const url = `${SUPABASE_URL}/rest/v1/documents?id=eq.${docId}&select=provider,entity,confidence_score,doc_type,processing_state,accounting_status`;
+      const r = await fetch(url, { headers });
+      if (r.ok) {
+        const arr = await r.json();
+        const after = arr[0] || {};
+        const diffs = [];
+        if (beforeSnapshot && after.provider !== beforeSnapshot.provider) diffs.push(`provider: ${escHtml(beforeSnapshot.provider||'—')} → <strong>${escHtml(after.provider||'—')}</strong>`);
+        if (beforeSnapshot && after.entity !== beforeSnapshot.entity) diffs.push(`entity: ${escHtml(beforeSnapshot.entity||'—')} → <strong>${escHtml(after.entity||'—')}</strong>`);
+        if (beforeSnapshot && after.confidence_score !== beforeSnapshot.confidence_score) diffs.push(`Doc-Felder-Sicherheit: ${beforeSnapshot.confidence_score||'—'}% → <strong>${after.confidence_score||'—'}%</strong>`);
+        if (beforeSnapshot && after.processing_state !== beforeSnapshot.processing_state) diffs.push(`Status: ${escHtml(beforeSnapshot.processing_state||'—')} → <strong>${escHtml(after.processing_state||'—')}</strong>`);
+        const diffEl = document.getElementById('sp-diff-' + docId);
+        if (diffEl) {
+          if (diffs.length) {
+            diffEl.innerHTML = `<br><strong style="color:var(--grn);">Geändert:</strong> ${diffs.join(' · ')}`;
+          } else {
+            diffEl.innerHTML = '<br><span style="color:var(--tx2);font-style:italic;">Keine Felder-Änderung sichtbar (Cascade evtl. noch im Lauf — Steckbrief öffnen für Skill-Aktivität)</span>';
+          }
+        }
+      }
+    } catch (e) { /* silent */ }
+  }, 3000);
+
+  // Nach 8s fade out + remove + soft reload
+  setTimeout(() => {
+    target.style.opacity = '0';
+    setTimeout(() => {
+      target.remove();
+      if (typeof loadTriage === 'function') loadTriage();
+    }, 450);
+  }, 8000);
+}
+
+// v11.56 F1 — Card-Refresh: einzelne Card aus DB nachladen ohne loadTriage()
+async function triageRefreshSingleCard(docId) {
+  if (typeof loadTriage === 'function') loadTriage();
+}
+
 async function triageApplyDoc(docId) {
   const sel = gTriageSelections.get(docId);
   if (!sel || sel.size === 0) { triageToast('Keine Skills ausgewählt.', 'warn'); return; }
   if (!confirm(`Cascade für Doc #${docId} starten?\nSkills: ${[...sel].join(', ')}`)) return;
+
+  // v11.56 F1 — Snapshot vor Apply für Diff-Anzeige im Success-Banner
+  const docSnapshot = (typeof gTriageDocs !== 'undefined' && gTriageDocs)
+    ? gTriageDocs.find(d => d.id === docId)
+    : null;
+  const beforeSnapshot = docSnapshot ? {
+    provider: docSnapshot.provider,
+    entity: docSnapshot.entity,
+    confidence_score: docSnapshot.confidence_score,
+    processing_state: docSnapshot.processing_state,
+    doc_type: docSnapshot.doc_type,
+  } : null;
 
   // Iter 15.3 — Log user choice into learning_events BEFORE triggering router
   const orig = gTriageOriginalSuggested.get(docId) || new Set();
@@ -8435,11 +8603,8 @@ async function triageApplyDoc(docId) {
       body: JSON.stringify({ doc_id: docId, _trigger: 'ui-c-16.UI.apply', _skills_requested: [...sel] })
     });
     if (resp.ok) {
-      // B4 — Toast statt blocking alert + Card-Fadeout statt 2s wait
-      triageToast(`✅ Doc #${docId}: ${sel.size} Skill(s) gestartet.\n📚 in learning_events geloggt.`, 'success');
-      triageFadeRemoveCard(docId);
-      // Reload nach kurzem Delay damit der DB-State (status, confidence) frisch ist
-      setTimeout(loadTriage, 2200);
+      // v11.56 F1: Card bleibt 8s mit Success-Banner statt direkt zu verschwinden
+      triageReplaceCardWithSuccess(docId, [...sel], beforeSnapshot);
     } else {
       const body = (await resp.text()).slice(0, 240);
       triageToast(`Fehler HTTP ${resp.status}\n${body}`, 'err');
@@ -9692,20 +9857,10 @@ const ACTION_GROUPS = [
           { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
           { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 30 },
         ],
-        exec: { kind: 'postgrest_table',
-          columns: [
-            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'invoice_date', label: 'Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
-            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
-            { key: 'provider', label: 'Provider' },
-            { key: 'doc_type', label: 'Typ' },
-            { key: 'amount', label: 'Betrag', fmt: (v, r) => v != null ? `${Number(v).toFixed(2)} ${r.currency||'EUR'}` : '—' },
-            { key: 'status', label: 'Status' },
-          ],
-          build: (p) => {
-            const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
-            return `documents?select=id,invoice_date,entity,provider,amount,currency,status,doc_type&status=in.(inbox,needs_review,pending_review)&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}`;
-          }}},
+        exec: { kind: 'postgrest', build: (p) => {
+          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+          return `documents?select=id,invoice_date,entity,provider,amount,status,doc_type&status=in.(inbox,needs_review,pending_review)&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}`;
+        }}},
       { name: 'get_transactions', what: 'Bank-Transaktionen filtern (entity, Monat, Jahr, Reconcile-Status).',
         when: 'Wenn du Banking-Daten checken willst — z.B. "alle pending C3 Apr 2026".',
         params: [
@@ -9715,29 +9870,19 @@ const ACTION_GROUPS = [
           { key: 'review_status', label: 'Status', type: 'select', options: ['all','pending_review','auto_reconciled','manual_reconciled','no_match'], default: 'all' },
           { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 30 },
         ],
-        exec: { kind: 'postgrest_table',
-          columns: [
-            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'booking_date', label: 'Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
-            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
-            { key: 'counterparty_raw', label: 'Empfänger', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
-            { key: 'amount', label: 'Betrag €', fmt: (v) => v != null ? Number(v).toFixed(2) : '—' },
-            { key: 'review_status', label: 'Status' },
-            { key: 'document_id', label: 'Doc', fmt: (v) => v ? `<code>#${v}</code>` : '<span style="color:var(--orng)">∅</span>' },
-          ],
-          build: (p) => {
-            const filters = [];
-            if (p.entity && p.entity !== 'all') filters.push(`entity=eq.${encodeURIComponent(p.entity)}`);
-            if (p.review_status && p.review_status !== 'all') filters.push(`review_status=eq.${encodeURIComponent(p.review_status)}`);
-            if (p.month && p.year) {
-              const mm = String(p.month).padStart(2,'0');
-              const start = `${p.year}-${mm}-01`;
-              const nextMonth = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
-              filters.push(`booking_date=gte.${start}`);
-              filters.push(`booking_date=lt.${nextMonth}`);
-            }
-            return `txn_master?select=id,booking_date,entity,counterparty_raw,amount,review_status,document_id&${filters.join('&')}&order=booking_date.desc&limit=${p.limit||30}`;
-          }}},
+        exec: { kind: 'postgrest', build: (p) => {
+          const filters = [];
+          if (p.entity && p.entity !== 'all') filters.push(`entity=eq.${encodeURIComponent(p.entity)}`);
+          if (p.review_status && p.review_status !== 'all') filters.push(`review_status=eq.${encodeURIComponent(p.review_status)}`);
+          if (p.month && p.year) {
+            const mm = String(p.month).padStart(2,'0');
+            const start = `${p.year}-${mm}-01`;
+            const nextMonth = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
+            filters.push(`booking_date=gte.${start}`);
+            filters.push(`booking_date=lt.${nextMonth}`);
+          }
+          return `txn_master?select=id,booking_date,entity,counterparty_raw,amount,review_status,document_id&${filters.join('&')}&order=booking_date.desc&limit=${p.limit||30}`;
+        }}},
       { name: 'get_monthly_summary', what: 'Monatsübersicht pro Entität: Ausgaben + Doc-Count.',
         when: 'Vor Buchhalter-Versand — Plausi-Check über Kategorien.',
         params: [
@@ -9754,22 +9899,12 @@ const ACTION_GROUPS = [
       { name: 'get_contracts_expiring', what: 'Verträge die in N Tagen ablaufen (notice_deadline).',
         when: 'Ende-Monats-Routine — was muss gekündigt werden.',
         params: [{ key: 'days', label: 'Tage voraus', type: 'integer', default: 60 }],
-        exec: { kind: 'postgrest_table',
-          columns: [
-            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'name', label: 'Vertrag' },
-            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
-            { key: 'supplier', label: 'Lieferant' },
-            { key: 'monthly_amount', label: '€/Monat', fmt: (v) => v != null ? Number(v).toFixed(2) : '—' },
-            { key: 'notice_deadline', label: 'Kündig-Frist', fmt: (v) => v ? `<strong>${String(v).slice(0,10)}</strong>` : '—' },
-            { key: 'end_date', label: 'End-Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
-          ],
-          build: (p) => {
-            const d = new Date(); d.setDate(d.getDate() + (+p.days||60));
-            const future = d.toISOString().slice(0,10);
-            const today = new Date().toISOString().slice(0,10);
-            return `prf_contracts?select=id,name,entity,supplier,monthly_amount,notice_deadline,end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
-          }}},
+        exec: { kind: 'postgrest', build: (p) => {
+          const d = new Date(); d.setDate(d.getDate() + (+p.days||60));
+          const future = d.toISOString().slice(0,10);
+          const today = new Date().toISOString().slice(0,10);
+          return `prf_contracts?select=id,name,entity,supplier,monthly_amount,notice_deadline,end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
+        }}},
       { name: 'get_account_status', what: 'Pro Bankkonto: letztes Buchungsdatum + frühestes + Lücke.',
         when: 'Wenn du wissen willst, ob CSV-Imports aktuell sind.',
         params: [{ key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' }],
@@ -9790,17 +9925,7 @@ const ACTION_GROUPS = [
       { name: 'get_skill_registry', what: 'Liste aller Skills aus skill_definitions inkl. Webhook-Status.',
         when: 'Diagnose: welche Skills sind LIVE / welche Stub.',
         params: [],
-        exec: { kind: 'postgrest_table',
-          columns: [
-            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'skill_name', label: 'Skill', fmt: (v) => `<code>${esc(v||'')}</code>` },
-            { key: 'version', label: 'Version' },
-            { key: 'domain', label: 'Domain' },
-            { key: 'webhook_url', label: 'Webhook', fmt: (v) => v ? '<span style="color:var(--grn)">✓ live</span>' : '<span style="color:var(--tx2)">stub</span>' },
-            { key: 'active', label: 'Aktiv', fmt: (v) => v ? '✓' : '✗' },
-            { key: 'description', label: 'Beschreibung', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,60))}${v.length>60?'…':''}</span>` : '—' },
-          ],
-          build: () => 'skill_definitions?select=id,skill_name,version,description,webhook_url,active,domain&order=domain,skill_name' }},
+        exec: { kind: 'postgrest', build: () => 'skill_definitions?select=id,skill_name,version,description,webhook_url,active,domain&order=domain,skill_name' }},
       { name: 'get_conversation_context', what: 'Letzte Events einer Agent-Konversation (Audit-Trail).',
         when: 'Debug: was hat der Orchestrator zuletzt für eine Doc-Pipeline gemacht.',
         params: [
@@ -9909,48 +10034,20 @@ const ACTION_GROUPS = [
           { key: 'sort_by',   label: 'Sortieren nach', type: 'select', options: ['date_received','invoice_date','amount','entity','provider'], default: 'date_received' },
           { key: 'limit',     label: 'Max. Ergebnisse', type: 'integer', default: 50 },
         ],
-        // Hub-Pfad: Tabellen-Render (für Klick-Browse). Chat-Pfad nutzt weiterhin executeTool() für Text-Antwort an Claude.
-        exec: { kind: 'query_documents_table',
-          columns: [
-            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'invoice_date', label: 'Datum', fmt: (v, r) => (v || r.date_received || '').slice(0,10) },
-            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
-            { key: 'provider', label: 'Provider' },
-            { key: 'doc_type', label: 'Typ' },
-            { key: 'amount', label: 'Betrag', fmt: (v, r) => v != null ? `${Number(v).toFixed(2)} ${r.currency||'EUR'}` : '—' },
-            { key: 'status', label: 'Status' },
-            { key: 'subject', label: 'Subject', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
-          ]
-        }},
-      { name: 'search_documents', what: 'Sucht in documents — Provider + Subject + (optional) Mail-Body (intake_text Mig 053).',
-        when: 'Doc-ID unbekannt; z.B. "Voiceflow Gutschrift" (Term steht oft im Mail-Body, nicht im Provider).',
+        exec: { kind: 'tool_call', toolName: 'query_documents' }},
+      { name: 'search_documents', what: 'Volltext-Suche in documents (provider/subject/category).',
+        when: 'Wenn du ein bestimmtes Doc finden willst, Doc-ID unbekannt.',
         params: [
-          { key: 'query',           label: 'Suchbegriff', type: 'string', default: '' },
-          { key: 'entity',          label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
-          { key: 'doc_type',        label: 'Doc-Type (optional)', type: 'select', options: ['', ..._ACT_DOC_TYPES], default: '' },
-          { key: 'include_body',    label: 'Auch Mail-Body durchsuchen (intake_text)', type: 'boolean', default: true },
-          { key: 'limit',           label: 'Max. Ergebnisse', type: 'integer', default: 30 },
+          { key: 'query',  label: 'Suchbegriff', type: 'string', default: '' },
+          { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
+          { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 20 },
         ],
-        exec: { kind: 'postgrest_table',
-          columns: [
-            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'invoice_date', label: 'Datum', fmt: (v, r) => (v || r.date_received || '').slice(0,10) },
-            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
-            { key: 'provider', label: 'Provider' },
-            { key: 'doc_type', label: 'Typ' },
-            { key: 'amount', label: 'Betrag', fmt: (v, r) => v != null ? `${Number(v).toFixed(2)} ${r.currency||'EUR'}` : '—' },
-            { key: 'status', label: 'Status' },
-            { key: 'subject', label: 'Subject', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
-          ],
-          build: (p) => {
-            if (!p.query) throw new Error('Suchbegriff Pflicht');
-            const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
-            const orParts = [`provider.ilike.*${q}*`, `subject.ilike.*${q}*`];
-            if (p.include_body) orParts.push(`intake_text.ilike.*${q}*`);
-            const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
-            const dt  = p.doc_type ? `&doc_type=eq.${encodeURIComponent(p.doc_type)}` : '';
-            return `documents?select=id,invoice_date,date_received,entity,provider,amount,currency,doc_type,status,subject&or=(${orParts.join(',')})&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}${dt}`;
-          }}},
+        exec: { kind: 'postgrest', build: (p) => {
+          if (!p.query) throw new Error('Suchbegriff Pflicht');
+          const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
+          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+          return `documents?select=id,invoice_date,entity,provider,amount,doc_type,status,subject&or=(provider.ilike.*${q}*,subject.ilike.*${q}*)&order=date_received.desc&limit=${p.limit||20}${ent}`;
+        }}},
       { name: 'search_knowledge', what: 'Sucht in agent_knowledge nach Prozessen/Regeln.',
         when: 'Bei technischen Fragen über Workflows oder Skills.',
         params: [
@@ -10145,78 +10242,6 @@ function _mcpCollectParams(tool) {
   return out;
 }
 
-// v11.56: Tabellen-Render statt JSON-Dump für Hub-Listen-Outputs (User-Feedback 2026-05-11)
-function _mcpRenderTable(rows, columns) {
-  const cols = (columns && columns.length) ? columns : Object.keys(rows[0]||{}).map(k => ({ key: k, label: k }));
-  let h = '<div style="overflow-x:auto;border:1px solid var(--bdr);border-radius:4px;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
-  h += '<thead><tr style="background:var(--bg1);">';
-  for (const c of cols) h += `<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--bdr);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx2);">${esc(c.label)}</th>`;
-  // Action-Spalte: 📄 Detail (Side-Panel) wenn row.id existiert
-  const hasIdColumn = rows.length && rows[0].id != null;
-  if (hasIdColumn) h += `<th style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--bdr);width:50px;"></th>`;
-  h += '</tr></thead><tbody>';
-  for (const r of rows) {
-    h += '<tr style="border-bottom:1px solid var(--bdr);">';
-    for (const c of cols) {
-      const v = r[c.key];
-      const cell = c.fmt ? c.fmt(v, r) : (v == null ? '—' : esc(String(v)));
-      h += `<td style="padding:5px 8px;vertical-align:top;">${cell}</td>`;
-    }
-    if (hasIdColumn) {
-      h += `<td style="padding:5px 4px;text-align:center;"><button onclick="mcpRunRowDetail(${r.id});event.stopPropagation();" title="Side-Panel öffnen für Doc #${r.id}" style="background:transparent;border:1px solid var(--bdr);color:var(--blu);padding:2px 6px;border-radius:3px;font-size:11px;cursor:pointer;">📄</button></td>`;
-    }
-    h += '</tr>';
-  }
-  h += '</tbody></table></div>';
-  return h;
-}
-
-function _mcpRenderGroupedTable(rows, groupBy, columns) {
-  // Gruppieren in Buckets + Sum berechnen
-  const buckets = {};
-  for (const r of rows) {
-    let k;
-    if (groupBy === 'entity')         k = r.entity || '—';
-    else if (groupBy === 'supplier')  k = r.provider || '—';
-    else if (groupBy === 'month')     k = (r.invoice_date || r.date_received || '').slice(0,7) || '—';
-    else if (groupBy === 'category_l1') k = r.category_l1 || '—';
-    else k = '?';
-    const b = (buckets[k] = buckets[k] || { count: 0, sum: 0, currency: r.currency || 'EUR', rows: [] });
-    b.count++;
-    if (r.amount != null) { const n = Number(r.amount); if (!isNaN(n)) b.sum += n; }
-    b.rows.push(r);
-  }
-  const keys = Object.entries(buckets).sort((a,b) => b[1].count - a[1].count);
-  let h = `<div style="font-size:11px;color:var(--tx2);margin-bottom:8px;">📊 group_by=<code>${esc(groupBy)}</code> · ${rows.length} docs in ${keys.length} Gruppen</div>`;
-  for (const [k, b] of keys) {
-    h += `<details open style="margin-bottom:8px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg1);">
-      <summary style="padding:6px 10px;cursor:pointer;font-weight:600;font-size:12px;display:flex;justify-content:space-between;gap:8px;">
-        <span>● ${esc(k)}</span>
-        <span style="color:var(--tx2);font-size:11px;font-weight:400;">${b.count} docs · Σ ${b.sum.toFixed(2)} ${esc(b.currency)}</span>
-      </summary>
-      <div style="padding:6px 10px 10px;">${_mcpRenderTable(b.rows, columns)}</div>
-    </details>`;
-  }
-  return h;
-}
-
-// Klick auf 📄 in der Hub-Tabelle → schließt das Modal, geht zu Triage, öffnet Side-Panel
-async function mcpRunRowDetail(docId) {
-  mcpRunClose();
-  if (typeof openSidePanelForDocId === 'function') {
-    // Need triage data loaded for global side-panel context
-    if (typeof gTriageDocs === 'undefined' || !gTriageDocs || !gTriageDocs.find(d => d.id === docId)) {
-      // Fallback: direct fetch
-      try {
-        const rows = await supa(`documents?id=eq.${docId}&select=*`);
-        if (rows.length && typeof openSidePanel === 'function') openSidePanel(rows[0]);
-      } catch (e) { toast('Konnte Doc nicht laden: '+e.message, 'err'); }
-    } else {
-      openSidePanelForDocId(docId);
-    }
-  }
-}
-
 function _mcpFmtConfirmTpl(tpl, params) {
   return (tpl||'').replace(/\{(\w+)\}/g, (_, k) => {
     if (k === 'dry_run_note') return params.dry_run ? ' (Trockenlauf)' : ' (LIVE!)';
@@ -10253,55 +10278,6 @@ async function mcpRunExecute() {
     if (ex.kind === 'note') {
       out.textContent = '🛈 ' + ex.text;
       summary = 'note';
-    } else if (ex.kind === 'postgrest_table') {
-      // v11.56: Tabellen-Render statt JSON-Dump für Listen-Outputs
-      const path = ex.build(params);
-      const data = await supa(path);
-      if (!Array.isArray(data) || !data.length) {
-        out.textContent = '— keine Treffer.';
-        summary = '0 Treffer';
-      } else {
-        out.innerHTML = _mcpRenderTable(data, ex.columns) +
-          `<div style="font-size:10px;color:var(--tx2);margin-top:8px;">${data.length} Treffer · Klick auf eine Spalte zum Sortieren · "📄 Detail" öffnet Side-Panel.</div>`;
-        summary = `${data.length} Treffer (Tabelle)`;
-      }
-    } else if (ex.kind === 'query_documents_table') {
-      // v11.56: query_documents im Hub mit Tabellen-Render statt Text-Antwort
-      // Wenn group_by gesetzt → gruppierte Tabelle (mit Sum-Footer pro Bucket)
-      // Sonst → flache Tabelle
-      const VALID_ENT  = new Set(_ACT_ENTITIES);
-      const VALID_TYPE = new Set(_ACT_DOC_TYPES);
-      const VALID_ST   = new Set(['inbox','needs_review','pending_review','approved','rejected']);
-      const VALID_GRP  = new Set(['entity','supplier','month','category_l1']);
-      const VALID_SRT  = new Set(['date_received','invoice_date','amount','entity','provider']);
-      if (params.entity   && !VALID_ENT.has(params.entity))   throw new Error(`entity="${params.entity}" nicht erlaubt`);
-      if (params.doc_type && !VALID_TYPE.has(params.doc_type)) throw new Error(`doc_type="${params.doc_type}" nicht erlaubt`);
-      if (params.status   && !VALID_ST.has(params.status))    throw new Error(`status="${params.status}" nicht erlaubt`);
-      if (params.group_by && !VALID_GRP.has(params.group_by)) throw new Error(`group_by="${params.group_by}" nicht erlaubt`);
-      if (params.sort_by  && !VALID_SRT.has(params.sort_by))  throw new Error(`sort_by="${params.sort_by}" nicht erlaubt`);
-      const limit = Math.max(1, Math.min(+params.limit || 50, 200));
-      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category_l1,subject'];
-      if (params.date_from) filters.push(`invoice_date=gte.${encodeURIComponent(params.date_from)}`);
-      if (params.date_to)   filters.push(`invoice_date=lt.${encodeURIComponent(params.date_to)}`);
-      if (params.entity)    filters.push(`entity=eq.${encodeURIComponent(params.entity)}`);
-      if (params.doc_type)  filters.push(`doc_type=eq.${encodeURIComponent(params.doc_type)}`);
-      if (params.status)    filters.push(`status=eq.${encodeURIComponent(params.status)}`);
-      if (params.supplier) {
-        const term = String(params.supplier).replace(/[%,*]/g,' ').trim();
-        if (term) filters.push(`provider=ilike.*${encodeURIComponent(term)}*`);
-      }
-      filters.push(`order=${params.sort_by || 'date_received'}.desc.nullslast`);
-      filters.push(`limit=${limit}`);
-      const data = await supa(`documents?${filters.join('&')}`);
-      if (!data.length) { out.textContent = '— keine Dokumente.'; summary = '0 docs'; }
-      else if (params.group_by) {
-        out.innerHTML = _mcpRenderGroupedTable(data, params.group_by, ex.columns);
-        summary = `${data.length} docs in Gruppen`;
-      } else {
-        out.innerHTML = _mcpRenderTable(data, ex.columns) +
-          `<div style="font-size:10px;color:var(--tx2);margin-top:8px;">${data.length} Dokumente · Hint: "Gruppieren nach" wechselt zu Sum-Gruppierung.</div>`;
-        summary = `${data.length} docs`;
-      }
     } else if (ex.kind === 'tool_call') {
       // Delegiert an die bestehende executeTool()-Logik (TGV_TOOLS-Array), z.B. query_documents.
       // Vorteil: ein Ort für Validierung + Output-Formatierung — gleich wie der Chat ihn nutzt.
@@ -10784,6 +10760,10 @@ function openSidePanel(doc) {
       ${skillsHtml}
     </div>
     <div class="side-panel-section">
+      <h4>📤 Buchhalter-Versand</h4>
+      <div id="sp-accounting-card">${_spAccountingCardHtml(doc)}</div>
+    </div>
+    <div class="side-panel-section">
       <h4>📂 Drive-Pfad <span style="font-weight:400;color:var(--tx2);font-size:10px;">(wo das Doc liegt)</span> ${helpIcon('drive_path')}</h4>
       ${_spDrivePathHtml(doc)}
     </div>
@@ -10970,6 +10950,126 @@ function spToggleDbSnapshot(btn) {
     span.textContent = (open ? '▾' : '▴') + ' Alle Felder ' + (open ? 'anzeigen' : 'ausblenden') + ` (${cnt})`;
   }
   btn.setAttribute('aria-expanded', String(!open));
+}
+
+// v11.56 F4 — Buchhalter-Versand-Karte: Status + Manuell-Add für JEDEN Doc-Typ
+// Datenmodell: documents.accounting_status ∈ {null|pending|sent|excluded} + accounting_sent_at + target_stream
+// Defaults aus target_stream (RECHNUNG/STEUER → auto-pending), aber User kann jeden Typ manuell hinzufügen.
+function _spAccountingCardHtml(doc) {
+  const st = doc.accounting_status || null;
+  const sentAt = doc.accounting_sent_at || null;
+  const isAccountingType = doc.target_stream === 'RECHNUNG' || doc.target_stream === 'STEUER';
+  const docType = doc.doc_type || '?';
+
+  // 4 States bestimmen
+  let state, badge, text, actions;
+  if (st === 'sent') {
+    state = 'sent';
+    badge = '<span style="background:rgba(16,185,129,0.15);color:var(--grn);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">✅ VERSENDET</span>';
+    const dateStr = sentAt ? (sentAt.slice(0,10).split('-').reverse().join('.')) : '—';
+    text = `Versendet am <strong>${_spEsc(dateStr)}</strong>${sentAt ? ` (${_spEsc(sentAt.slice(11,16))} UTC)` : ''}.<br>Sichtbar im „Buchhalter-Vorschau"-Tab unter Aktionen.`;
+    actions = `<button onclick="spAccountingMarkUnsent()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;" title="Versand-Status zurücksetzen (z.B. wenn versehentlich gesendet)">↺ Status zurücksetzen</button>`;
+  } else if (st === 'pending') {
+    state = 'pending';
+    badge = '<span style="background:rgba(59,130,246,0.15);color:var(--blu);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">⏳ IN QUEUE</span>';
+    text = `In der Versand-Queue. Geht beim nächsten Buchhalter-Batch raus (manueller Trigger via „Aktionen"-Tab).`;
+    actions = `<button onclick="spAccountingExclude()" style="background:transparent;color:var(--orng);border:1px solid var(--orng);padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;" title="Doc aus Versand entfernen (accounting_status=excluded)">🚫 Aus Versand entfernen</button>`;
+  } else if (st === 'excluded') {
+    state = 'excluded';
+    badge = '<span style="background:rgba(239,68,68,0.12);color:var(--red);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">🚫 AUSGESCHLOSSEN</span>';
+    text = `Manuell aus Versand ausgeschlossen. Geht NICHT zum Buchhalter (auch wenn target_stream=${_spEsc(doc.target_stream||'?')}).`;
+    actions = `<button onclick="spAccountingAddManual()" style="background:var(--blu);color:white;border:0;padding:5px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:500;" title="Doc wieder in Versand-Queue aufnehmen (accounting_status=pending)">📤 Doch versenden</button>`;
+  } else {
+    // Kein Status gesetzt
+    if (isAccountingType) {
+      state = 'auto-pending';
+      badge = '<span style="background:rgba(59,130,246,0.10);color:var(--blu);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">📤 GEPLANT</span>';
+      text = `Geht automatisch zum Buchhalter (target_stream=<code style="background:var(--bg1);padding:1px 5px;border-radius:3px;font-size:10px;">${_spEsc(doc.target_stream)}</code>). Beim nächsten Batch-Trigger im „Aktionen"-Tab.`;
+      actions = `<button onclick="spAccountingExclude()" style="background:transparent;color:var(--orng);border:1px solid var(--orng);padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;" title="Doc als 'excluded' markieren">🚫 Doch nicht versenden</button>`;
+    } else {
+      state = 'not-planned';
+      badge = `<span style="background:var(--bg1);color:var(--tx2);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">— NICHT GEPLANT</span>`;
+      text = `Nicht für Buchhalter geplant (Doc-Type: <strong>${_spEsc(docType)}</strong>, target_stream: <code style="background:var(--bg1);padding:1px 5px;border-radius:3px;font-size:10px;">${_spEsc(doc.target_stream||'—')}</code>).<br>Du kannst das Doc trotzdem manuell zum Buchhalter senden — z.B. Verträge / Versicherungspolicen / wichtige Korrespondenz die fürs Buchhaltungs-Archiv relevant sind.`;
+      actions = `<button onclick="spAccountingAddManual()" style="background:var(--blu);color:white;border:0;padding:6px 14px;border-radius:4px;font-size:12px;cursor:pointer;font-weight:500;" title="Doc manuell in Buchhalter-Versand-Queue aufnehmen">📤 Manuell zum Buchhalter hinzufügen</button>`;
+    }
+  }
+
+  return `<div style="background:var(--bg1);border-radius:5px;padding:12px 14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.6px;">Status</div>
+      ${badge}
+    </div>
+    <div style="font-size:12px;color:var(--tx);line-height:1.5;margin-bottom:10px;">${text}</div>
+    <div id="sp-accounting-status" style="font-size:11px;color:var(--tx2);min-height:14px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">${actions}</div>
+  </div>`;
+}
+
+async function _spAccountingPatch(payload, statusMsg) {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  const statusEl = document.getElementById('sp-accounting-status');
+  if (statusEl) statusEl.textContent = statusMsg + '…';
+  try {
+    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+    const url = `${SUPABASE_URL}/rest/v1/documents?id=eq.${doc.id}`;
+    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error(`PATCH ${res.status}`);
+    Object.assign(doc, payload);
+    // Card neu rendern
+    const card = document.getElementById('sp-accounting-card');
+    if (card) card.innerHTML = _spAccountingCardHtml(doc);
+    if (typeof loadInbox === 'function') setTimeout(loadInbox, 600);
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red);">❌ ${escHtml(e.message)}</span>`;
+  }
+}
+function spAccountingAddManual() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  if (!confirm(`Doc #${doc.id} (${doc.doc_type || '?'} · ${doc.provider || '—'}) zum Buchhalter-Versand hinzufügen?\n\nWird beim nächsten Batch in der "Aktionen"-Versand-Vorschau angezeigt.`)) return;
+  _spAccountingPatch({ accounting_status: 'pending' }, '📤 setze pending');
+}
+function spAccountingExclude() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  if (!confirm(`Doc #${doc.id} aus Buchhalter-Versand entfernen?\n\nWird auf accounting_status='excluded' gesetzt — geht NICHT mit dem nächsten Batch raus.`)) return;
+  _spAccountingPatch({ accounting_status: 'excluded' }, '🚫 setze excluded');
+}
+function spAccountingMarkUnsent() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  if (!confirm(`Versand-Status für Doc #${doc.id} zurücksetzen?\n\naccounting_status=null + accounting_sent_at=null. Bei target_stream=RECHNUNG/STEUER landet Doc wieder automatisch im nächsten Batch.`)) return;
+  _spAccountingPatch({ accounting_status: null, accounting_sent_at: null }, '↺ reset');
+}
+
+// v11.56 F2 — Chat mit Doc-Kontext öffnen (Pre-Prompt aus aktuellem Side-Panel-Doc)
+function spOpenChatWithDocContext() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  const amount = doc.amount != null
+    ? Number(doc.amount).toLocaleString('de-DE', { style: 'currency', currency: doc.currency || 'EUR', maximumFractionDigits: 2 })
+    : '—';
+  const ctxLine = `[Doc #${doc.id} · ${doc.doc_type || '?'} · ${doc.provider || '— kein Provider —'} · ${amount} · ${doc.entity || '?'}]`;
+  const prompt = `${ctxLine}\nMeine Anmerkung: `;
+  // Chat öffnen falls geschlossen
+  if (typeof chatOpen !== 'undefined' && !chatOpen) {
+    if (typeof toggleChat === 'function') toggleChat();
+  } else {
+    const panel = document.getElementById('chat-panel');
+    if (panel && !panel.classList.contains('open') && typeof toggleChat === 'function') toggleChat();
+  }
+  setTimeout(() => {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+    input.value = prompt;
+    input.focus();
+    // Cursor ans Ende positionieren
+    try { input.setSelectionRange(prompt.length, prompt.length); } catch (e) {}
+    // Auto-resize falls textarea
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 200) + 'px';
+  }, 350);
 }
 
 // v11.53 T6 — Side-Panel Resize (Drag-Handle links)
