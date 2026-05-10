@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.56">
-<title>TGV Dashboard v11.56 — Financial OS</title>
+<meta name="version" content="11.57">
+<title>TGV Dashboard v11.57 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -9857,10 +9857,20 @@ const ACTION_GROUPS = [
           { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
           { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 30 },
         ],
-        exec: { kind: 'postgrest', build: (p) => {
-          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
-          return `documents?select=id,invoice_date,entity,provider,amount,status,doc_type&status=in.(inbox,needs_review,pending_review)&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}`;
-        }}},
+        exec: { kind: 'postgrest_table',
+          columns: [
+            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
+            { key: 'invoice_date', label: 'Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
+            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
+            { key: 'provider', label: 'Provider' },
+            { key: 'doc_type', label: 'Typ' },
+            { key: 'amount', label: 'Betrag', fmt: (v, r) => v != null ? `${Number(v).toFixed(2)} ${r.currency||'EUR'}` : '—' },
+            { key: 'status', label: 'Status' },
+          ],
+          build: (p) => {
+            const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+            return `documents?select=id,invoice_date,entity,provider,amount,currency,status,doc_type&status=in.(inbox,needs_review,pending_review)&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}`;
+          }}},
       { name: 'get_transactions', what: 'Bank-Transaktionen filtern (entity, Monat, Jahr, Reconcile-Status).',
         when: 'Wenn du Banking-Daten checken willst — z.B. "alle pending C3 Apr 2026".',
         params: [
@@ -9870,19 +9880,29 @@ const ACTION_GROUPS = [
           { key: 'review_status', label: 'Status', type: 'select', options: ['all','pending_review','auto_reconciled','manual_reconciled','no_match'], default: 'all' },
           { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 30 },
         ],
-        exec: { kind: 'postgrest', build: (p) => {
-          const filters = [];
-          if (p.entity && p.entity !== 'all') filters.push(`entity=eq.${encodeURIComponent(p.entity)}`);
-          if (p.review_status && p.review_status !== 'all') filters.push(`review_status=eq.${encodeURIComponent(p.review_status)}`);
-          if (p.month && p.year) {
-            const mm = String(p.month).padStart(2,'0');
-            const start = `${p.year}-${mm}-01`;
-            const nextMonth = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
-            filters.push(`booking_date=gte.${start}`);
-            filters.push(`booking_date=lt.${nextMonth}`);
-          }
-          return `txn_master?select=id,booking_date,entity,counterparty_raw,amount,review_status,document_id&${filters.join('&')}&order=booking_date.desc&limit=${p.limit||30}`;
-        }}},
+        exec: { kind: 'postgrest_table',
+          columns: [
+            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
+            { key: 'booking_date', label: 'Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
+            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
+            { key: 'counterparty_raw', label: 'Empfänger', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
+            { key: 'amount', label: 'Betrag €', fmt: (v) => v != null ? Number(v).toFixed(2) : '—' },
+            { key: 'review_status', label: 'Status' },
+            { key: 'document_id', label: 'Doc', fmt: (v) => v ? `<code>#${v}</code>` : '<span style="color:var(--orng)">∅</span>' },
+          ],
+          build: (p) => {
+            const filters = [];
+            if (p.entity && p.entity !== 'all') filters.push(`entity=eq.${encodeURIComponent(p.entity)}`);
+            if (p.review_status && p.review_status !== 'all') filters.push(`review_status=eq.${encodeURIComponent(p.review_status)}`);
+            if (p.month && p.year) {
+              const mm = String(p.month).padStart(2,'0');
+              const start = `${p.year}-${mm}-01`;
+              const nextMonth = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
+              filters.push(`booking_date=gte.${start}`);
+              filters.push(`booking_date=lt.${nextMonth}`);
+            }
+            return `txn_master?select=id,booking_date,entity,counterparty_raw,amount,review_status,document_id&${filters.join('&')}&order=booking_date.desc&limit=${p.limit||30}`;
+          }}},
       { name: 'get_monthly_summary', what: 'Monatsübersicht pro Entität: Ausgaben + Doc-Count.',
         when: 'Vor Buchhalter-Versand — Plausi-Check über Kategorien.',
         params: [
@@ -9899,12 +9919,22 @@ const ACTION_GROUPS = [
       { name: 'get_contracts_expiring', what: 'Verträge die in N Tagen ablaufen (notice_deadline).',
         when: 'Ende-Monats-Routine — was muss gekündigt werden.',
         params: [{ key: 'days', label: 'Tage voraus', type: 'integer', default: 60 }],
-        exec: { kind: 'postgrest', build: (p) => {
-          const d = new Date(); d.setDate(d.getDate() + (+p.days||60));
-          const future = d.toISOString().slice(0,10);
-          const today = new Date().toISOString().slice(0,10);
-          return `prf_contracts?select=id,name,entity,supplier,monthly_amount,notice_deadline,end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
-        }}},
+        exec: { kind: 'postgrest_table',
+          columns: [
+            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
+            { key: 'name', label: 'Vertrag' },
+            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
+            { key: 'supplier', label: 'Lieferant' },
+            { key: 'monthly_amount', label: '€/Monat', fmt: (v) => v != null ? Number(v).toFixed(2) : '—' },
+            { key: 'notice_deadline', label: 'Kündig-Frist', fmt: (v) => v ? `<strong>${String(v).slice(0,10)}</strong>` : '—' },
+            { key: 'end_date', label: 'End-Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
+          ],
+          build: (p) => {
+            const d = new Date(); d.setDate(d.getDate() + (+p.days||60));
+            const future = d.toISOString().slice(0,10);
+            const today = new Date().toISOString().slice(0,10);
+            return `prf_contracts?select=id,name,entity,supplier,monthly_amount,notice_deadline,end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
+          }}},
       { name: 'get_account_status', what: 'Pro Bankkonto: letztes Buchungsdatum + frühestes + Lücke.',
         when: 'Wenn du wissen willst, ob CSV-Imports aktuell sind.',
         params: [{ key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' }],
@@ -9925,7 +9955,17 @@ const ACTION_GROUPS = [
       { name: 'get_skill_registry', what: 'Liste aller Skills aus skill_definitions inkl. Webhook-Status.',
         when: 'Diagnose: welche Skills sind LIVE / welche Stub.',
         params: [],
-        exec: { kind: 'postgrest', build: () => 'skill_definitions?select=id,skill_name,version,description,webhook_url,active,domain&order=domain,skill_name' }},
+        exec: { kind: 'postgrest_table',
+          columns: [
+            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
+            { key: 'skill_name', label: 'Skill', fmt: (v) => `<code>${esc(v||'')}</code>` },
+            { key: 'version', label: 'Version' },
+            { key: 'domain', label: 'Domain' },
+            { key: 'webhook_url', label: 'Webhook', fmt: (v) => v ? '<span style="color:var(--grn)">✓ live</span>' : '<span style="color:var(--tx2)">stub</span>' },
+            { key: 'active', label: 'Aktiv', fmt: (v) => v ? '✓' : '✗' },
+            { key: 'description', label: 'Beschreibung', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,60))}${v.length>60?'…':''}</span>` : '—' },
+          ],
+          build: () => 'skill_definitions?select=id,skill_name,version,description,webhook_url,active,domain&order=domain,skill_name' }},
       { name: 'get_conversation_context', what: 'Letzte Events einer Agent-Konversation (Audit-Trail).',
         when: 'Debug: was hat der Orchestrator zuletzt für eine Doc-Pipeline gemacht.',
         params: [
@@ -10034,20 +10074,48 @@ const ACTION_GROUPS = [
           { key: 'sort_by',   label: 'Sortieren nach', type: 'select', options: ['date_received','invoice_date','amount','entity','provider'], default: 'date_received' },
           { key: 'limit',     label: 'Max. Ergebnisse', type: 'integer', default: 50 },
         ],
-        exec: { kind: 'tool_call', toolName: 'query_documents' }},
-      { name: 'search_documents', what: 'Volltext-Suche in documents (provider/subject/category).',
-        when: 'Wenn du ein bestimmtes Doc finden willst, Doc-ID unbekannt.',
+        // Hub-Pfad: Tabellen-Render (für Klick-Browse). Chat-Pfad nutzt weiterhin executeTool() für Text-Antwort an Claude.
+        exec: { kind: 'query_documents_table',
+          columns: [
+            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
+            { key: 'invoice_date', label: 'Datum', fmt: (v, r) => (v || r.date_received || '').slice(0,10) },
+            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
+            { key: 'provider', label: 'Provider' },
+            { key: 'doc_type', label: 'Typ' },
+            { key: 'amount', label: 'Betrag', fmt: (v, r) => v != null ? `${Number(v).toFixed(2)} ${r.currency||'EUR'}` : '—' },
+            { key: 'status', label: 'Status' },
+            { key: 'subject', label: 'Subject', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
+          ]
+        }},
+      { name: 'search_documents', what: 'Sucht in documents — Provider + Subject + (optional) Mail-Body (intake_text Mig 053).',
+        when: 'Doc-ID unbekannt; z.B. "Voiceflow Gutschrift" (Term steht oft im Mail-Body, nicht im Provider).',
         params: [
-          { key: 'query',  label: 'Suchbegriff', type: 'string', default: '' },
-          { key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
-          { key: 'limit',  label: 'Max. Ergebnisse', type: 'integer', default: 20 },
+          { key: 'query',           label: 'Suchbegriff', type: 'string', default: '' },
+          { key: 'entity',          label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' },
+          { key: 'doc_type',        label: 'Doc-Type (optional)', type: 'select', options: ['', ..._ACT_DOC_TYPES], default: '' },
+          { key: 'include_body',    label: 'Auch Mail-Body durchsuchen (intake_text)', type: 'boolean', default: true },
+          { key: 'limit',           label: 'Max. Ergebnisse', type: 'integer', default: 30 },
         ],
-        exec: { kind: 'postgrest', build: (p) => {
-          if (!p.query) throw new Error('Suchbegriff Pflicht');
-          const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
-          const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
-          return `documents?select=id,invoice_date,entity,provider,amount,doc_type,status,subject&or=(provider.ilike.*${q}*,subject.ilike.*${q}*)&order=date_received.desc&limit=${p.limit||20}${ent}`;
-        }}},
+        exec: { kind: 'postgrest_table',
+          columns: [
+            { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
+            { key: 'invoice_date', label: 'Datum', fmt: (v, r) => (v || r.date_received || '').slice(0,10) },
+            { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
+            { key: 'provider', label: 'Provider' },
+            { key: 'doc_type', label: 'Typ' },
+            { key: 'amount', label: 'Betrag', fmt: (v, r) => v != null ? `${Number(v).toFixed(2)} ${r.currency||'EUR'}` : '—' },
+            { key: 'status', label: 'Status' },
+            { key: 'subject', label: 'Subject', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
+          ],
+          build: (p) => {
+            if (!p.query) throw new Error('Suchbegriff Pflicht');
+            const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
+            const orParts = [`provider.ilike.*${q}*`, `subject.ilike.*${q}*`];
+            if (p.include_body) orParts.push(`intake_text.ilike.*${q}*`);
+            const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
+            const dt  = p.doc_type ? `&doc_type=eq.${encodeURIComponent(p.doc_type)}` : '';
+            return `documents?select=id,invoice_date,date_received,entity,provider,amount,currency,doc_type,status,subject&or=(${orParts.join(',')})&order=date_received.desc.nullslast&limit=${p.limit||30}${ent}${dt}`;
+          }}},
       { name: 'search_knowledge', what: 'Sucht in agent_knowledge nach Prozessen/Regeln.',
         when: 'Bei technischen Fragen über Workflows oder Skills.',
         params: [
@@ -10130,6 +10198,39 @@ const ACTION_GROUPS = [
           if (!p.decision_type) throw new Error('decision_type Pflicht');
           return { decision_type: p.decision_type, reason: p.reason||'', creates_rule: !!p.creates_rule, user_confirmed: true };
         }, confirm: 'Decision "{decision_type}" loggen?' }},
+      { name: 'view_skill_economics', what: 'Annahmen-Tabelle anzeigen (manuelle Zeit + Cascade-Multi + n8n-Cost pro Skill).',
+        when: 'Wenn du die KPI-Banner-Werte im Side-Panel verifizieren oder anpassen willst.',
+        params: [],
+        exec: { kind: 'postgrest_table',
+          columns: [
+            { key: 'skill_name', label: 'Skill', fmt: (v) => `<code>${esc(v||'')}</code>` },
+            { key: 'manual_time_minutes', label: 'Manual (min)', fmt: (v) => v != null ? Number(v).toFixed(0) : '—' },
+            { key: 'cascade_multiplier', label: 'Cascade ×', fmt: (v) => v != null ? Number(v).toFixed(0) : '1' },
+            { key: 'n8n_cost_per_exec_eur', label: '€/Exec', fmt: (v) => v != null ? Number(v).toFixed(4) : '0.0074' },
+            { key: 'llm_cost_per_run_eur', label: '€/Run LLM', fmt: (v) => v != null ? Number(v).toFixed(4) : '<span style="color:var(--tx2)">aus tokens</span>' },
+            { key: 'notes', label: 'Notes', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,40))}${v.length>40?'…':''}</span>` : '—' },
+          ],
+          build: () => 'skill_economics?select=skill_name,manual_time_minutes,cascade_multiplier,n8n_cost_per_exec_eur,llm_cost_per_run_eur,notes&order=manual_time_minutes.desc.nullslast' }},
+      { name: 'update_skill_economic', what: 'Annahmen für 1 Skill ändern: manuelle Zeit + Cascade-Multi (Auto-Learning emittiert learning_events).',
+        when: 'Wenn die Default-Schätzung nicht passt — z.B. "tax-extract dauert manuell 15min nicht 6".',
+        params: [
+          { key: 'skill_name',          label: 'Skill-Name (exakt)', type: 'string', default: 'tgv-skill-tax-extract' },
+          { key: 'manual_time_minutes', label: 'Manual Time (min)', type: 'integer', default: 5 },
+          { key: 'cascade_multiplier',  label: 'Cascade-Multi', type: 'integer', default: 1 },
+          { key: 'n8n_cost_per_exec_eur', label: '€/Exec (default 0.0074)', type: 'string', default: '0.0074' },
+          { key: 'notes',               label: 'Notes (warum)', type: 'string', default: '' },
+        ],
+        exec: { kind: 'upsert', table: 'skill_economics', conflict: 'skill_name', body: (p) => {
+          if (!p.skill_name) throw new Error('skill_name Pflicht');
+          return {
+            skill_name: p.skill_name,
+            manual_time_minutes: +p.manual_time_minutes || 0,
+            cascade_multiplier:  +p.cascade_multiplier  || 1,
+            n8n_cost_per_exec_eur: parseFloat(p.n8n_cost_per_exec_eur) || 0.0074,
+            notes: p.notes || null,
+            updated_at: new Date().toISOString(),
+          };
+        }, confirm: 'Skill-Economics "{skill_name}" → {manual_time_minutes}min manual, cascade×{cascade_multiplier} setzen?' }},
       { name: 'remember_rule', what: 'Speichert eine Routing/Triage-Regel in mail_routing_rules.',
         when: 'Wenn du eine wiederkehrende Mail-Regel manuell pflegen willst.',
         params: [
@@ -10242,6 +10343,78 @@ function _mcpCollectParams(tool) {
   return out;
 }
 
+// v11.56: Tabellen-Render statt JSON-Dump für Hub-Listen-Outputs (User-Feedback 2026-05-11)
+function _mcpRenderTable(rows, columns) {
+  const cols = (columns && columns.length) ? columns : Object.keys(rows[0]||{}).map(k => ({ key: k, label: k }));
+  let h = '<div style="overflow-x:auto;border:1px solid var(--bdr);border-radius:4px;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
+  h += '<thead><tr style="background:var(--bg1);">';
+  for (const c of cols) h += `<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--bdr);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--tx2);">${esc(c.label)}</th>`;
+  // Action-Spalte: 📄 Detail (Side-Panel) wenn row.id existiert
+  const hasIdColumn = rows.length && rows[0].id != null;
+  if (hasIdColumn) h += `<th style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--bdr);width:50px;"></th>`;
+  h += '</tr></thead><tbody>';
+  for (const r of rows) {
+    h += '<tr style="border-bottom:1px solid var(--bdr);">';
+    for (const c of cols) {
+      const v = r[c.key];
+      const cell = c.fmt ? c.fmt(v, r) : (v == null ? '—' : esc(String(v)));
+      h += `<td style="padding:5px 8px;vertical-align:top;">${cell}</td>`;
+    }
+    if (hasIdColumn) {
+      h += `<td style="padding:5px 4px;text-align:center;"><button onclick="mcpRunRowDetail(${r.id});event.stopPropagation();" title="Side-Panel öffnen für Doc #${r.id}" style="background:transparent;border:1px solid var(--bdr);color:var(--blu);padding:2px 6px;border-radius:3px;font-size:11px;cursor:pointer;">📄</button></td>`;
+    }
+    h += '</tr>';
+  }
+  h += '</tbody></table></div>';
+  return h;
+}
+
+function _mcpRenderGroupedTable(rows, groupBy, columns) {
+  // Gruppieren in Buckets + Sum berechnen
+  const buckets = {};
+  for (const r of rows) {
+    let k;
+    if (groupBy === 'entity')         k = r.entity || '—';
+    else if (groupBy === 'supplier')  k = r.provider || '—';
+    else if (groupBy === 'month')     k = (r.invoice_date || r.date_received || '').slice(0,7) || '—';
+    else if (groupBy === 'category_l1') k = r.category_l1 || '—';
+    else k = '?';
+    const b = (buckets[k] = buckets[k] || { count: 0, sum: 0, currency: r.currency || 'EUR', rows: [] });
+    b.count++;
+    if (r.amount != null) { const n = Number(r.amount); if (!isNaN(n)) b.sum += n; }
+    b.rows.push(r);
+  }
+  const keys = Object.entries(buckets).sort((a,b) => b[1].count - a[1].count);
+  let h = `<div style="font-size:11px;color:var(--tx2);margin-bottom:8px;">📊 group_by=<code>${esc(groupBy)}</code> · ${rows.length} docs in ${keys.length} Gruppen</div>`;
+  for (const [k, b] of keys) {
+    h += `<details open style="margin-bottom:8px;border:1px solid var(--bdr);border-radius:4px;background:var(--bg1);">
+      <summary style="padding:6px 10px;cursor:pointer;font-weight:600;font-size:12px;display:flex;justify-content:space-between;gap:8px;">
+        <span>● ${esc(k)}</span>
+        <span style="color:var(--tx2);font-size:11px;font-weight:400;">${b.count} docs · Σ ${b.sum.toFixed(2)} ${esc(b.currency)}</span>
+      </summary>
+      <div style="padding:6px 10px 10px;">${_mcpRenderTable(b.rows, columns)}</div>
+    </details>`;
+  }
+  return h;
+}
+
+// Klick auf 📄 in der Hub-Tabelle → schließt das Modal, geht zu Triage, öffnet Side-Panel
+async function mcpRunRowDetail(docId) {
+  mcpRunClose();
+  if (typeof openSidePanelForDocId === 'function') {
+    // Need triage data loaded for global side-panel context
+    if (typeof gTriageDocs === 'undefined' || !gTriageDocs || !gTriageDocs.find(d => d.id === docId)) {
+      // Fallback: direct fetch
+      try {
+        const rows = await supa(`documents?id=eq.${docId}&select=*`);
+        if (rows.length && typeof openSidePanel === 'function') openSidePanel(rows[0]);
+      } catch (e) { toast('Konnte Doc nicht laden: '+e.message, 'err'); }
+    } else {
+      openSidePanelForDocId(docId);
+    }
+  }
+}
+
 function _mcpFmtConfirmTpl(tpl, params) {
   return (tpl||'').replace(/\{(\w+)\}/g, (_, k) => {
     if (k === 'dry_run_note') return params.dry_run ? ' (Trockenlauf)' : ' (LIVE!)';
@@ -10278,6 +10451,55 @@ async function mcpRunExecute() {
     if (ex.kind === 'note') {
       out.textContent = '🛈 ' + ex.text;
       summary = 'note';
+    } else if (ex.kind === 'postgrest_table') {
+      // v11.56: Tabellen-Render statt JSON-Dump für Listen-Outputs
+      const path = ex.build(params);
+      const data = await supa(path);
+      if (!Array.isArray(data) || !data.length) {
+        out.textContent = '— keine Treffer.';
+        summary = '0 Treffer';
+      } else {
+        out.innerHTML = _mcpRenderTable(data, ex.columns) +
+          `<div style="font-size:10px;color:var(--tx2);margin-top:8px;">${data.length} Treffer · Klick auf eine Spalte zum Sortieren · "📄 Detail" öffnet Side-Panel.</div>`;
+        summary = `${data.length} Treffer (Tabelle)`;
+      }
+    } else if (ex.kind === 'query_documents_table') {
+      // v11.56: query_documents im Hub mit Tabellen-Render statt Text-Antwort
+      // Wenn group_by gesetzt → gruppierte Tabelle (mit Sum-Footer pro Bucket)
+      // Sonst → flache Tabelle
+      const VALID_ENT  = new Set(_ACT_ENTITIES);
+      const VALID_TYPE = new Set(_ACT_DOC_TYPES);
+      const VALID_ST   = new Set(['inbox','needs_review','pending_review','approved','rejected']);
+      const VALID_GRP  = new Set(['entity','supplier','month','category_l1']);
+      const VALID_SRT  = new Set(['date_received','invoice_date','amount','entity','provider']);
+      if (params.entity   && !VALID_ENT.has(params.entity))   throw new Error(`entity="${params.entity}" nicht erlaubt`);
+      if (params.doc_type && !VALID_TYPE.has(params.doc_type)) throw new Error(`doc_type="${params.doc_type}" nicht erlaubt`);
+      if (params.status   && !VALID_ST.has(params.status))    throw new Error(`status="${params.status}" nicht erlaubt`);
+      if (params.group_by && !VALID_GRP.has(params.group_by)) throw new Error(`group_by="${params.group_by}" nicht erlaubt`);
+      if (params.sort_by  && !VALID_SRT.has(params.sort_by))  throw new Error(`sort_by="${params.sort_by}" nicht erlaubt`);
+      const limit = Math.max(1, Math.min(+params.limit || 50, 200));
+      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category_l1,subject'];
+      if (params.date_from) filters.push(`invoice_date=gte.${encodeURIComponent(params.date_from)}`);
+      if (params.date_to)   filters.push(`invoice_date=lt.${encodeURIComponent(params.date_to)}`);
+      if (params.entity)    filters.push(`entity=eq.${encodeURIComponent(params.entity)}`);
+      if (params.doc_type)  filters.push(`doc_type=eq.${encodeURIComponent(params.doc_type)}`);
+      if (params.status)    filters.push(`status=eq.${encodeURIComponent(params.status)}`);
+      if (params.supplier) {
+        const term = String(params.supplier).replace(/[%,*]/g,' ').trim();
+        if (term) filters.push(`provider=ilike.*${encodeURIComponent(term)}*`);
+      }
+      filters.push(`order=${params.sort_by || 'date_received'}.desc.nullslast`);
+      filters.push(`limit=${limit}`);
+      const data = await supa(`documents?${filters.join('&')}`);
+      if (!data.length) { out.textContent = '— keine Dokumente.'; summary = '0 docs'; }
+      else if (params.group_by) {
+        out.innerHTML = _mcpRenderGroupedTable(data, params.group_by, ex.columns);
+        summary = `${data.length} docs in Gruppen`;
+      } else {
+        out.innerHTML = _mcpRenderTable(data, ex.columns) +
+          `<div style="font-size:10px;color:var(--tx2);margin-top:8px;">${data.length} Dokumente · Hint: "Gruppieren nach" wechselt zu Sum-Gruppierung.</div>`;
+        summary = `${data.length} docs`;
+      }
     } else if (ex.kind === 'tool_call') {
       // Delegiert an die bestehende executeTool()-Logik (TGV_TOOLS-Array), z.B. query_documents.
       // Vorteil: ein Ort für Validierung + Output-Formatierung — gleich wie der Chat ihn nutzt.
@@ -10308,6 +10530,32 @@ async function mcpRunExecute() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       summary = '✅ inserted\n\n' + JSON.stringify(data, null, 2);
+      out.textContent = summary;
+    } else if (ex.kind === 'upsert') {
+      // v11.57: PostgREST upsert via Prefer=resolution=merge-duplicates on a UNIQUE key
+      const url = `${SUPA_REST}/${ex.table}?on_conflict=${encodeURIComponent(ex.conflict)}`;
+      const headers = await _supaAuthHeaders({
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation,resolution=merge-duplicates',
+      });
+      const body = ex.body(params);
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
+      const data = await res.json();
+      // Auto-Learning: learning_events INSERT (best-effort, non-fatal)
+      try {
+        const leUrl = `${SUPA_REST}/learning_events`;
+        const leBody = {
+          event_type: `${ex.table}_upsert_via_mcp_hub`,
+          was_correction: true,
+          correction_diff: { table: ex.table, body },
+          created_at: new Date().toISOString(),
+        };
+        await fetch(leUrl, { method: 'POST', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify(leBody) });
+      } catch (e) { console.warn('[upsert] learning_events insert failed', e); }
+      // Invalidate skill_economics cache so KPI-Banner refreshes nächstes Side-Panel-Open
+      if (ex.table === 'skill_economics') _skillEconomicsCache = null;
+      summary = '✅ upserted (insert oder update)\n\n' + JSON.stringify(data, null, 2);
       out.textContent = summary;
     } else if (ex.kind === 'webhook') {
       const url = ex.url;
@@ -10429,6 +10677,65 @@ function _spExtractTokens(toolOutput, toolInput) {
   return { tokensIn: tIn, tokensOut: tOut, model, durationMs };
 }
 
+// v11.57 — skill_economics Defaults (synced mit Mig 062 seed).
+// Wenn die Tabelle existiert + erreichbar → Werte werden überschrieben aus DB (SSOT).
+// Wenn nicht → diese Defaults greifen, Banner zeigt trotzdem ROI.
+const _DEFAULT_SKILL_ECONOMICS = {
+  'tgv-skill-pdf-invoice-extract':          { manual_time_minutes: 8,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-extract-contract-pdf':         { manual_time_minutes: 15, cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-resolve-supplier':             { manual_time_minutes: 3,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-reconcile-payment':            { manual_time_minutes: 5,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-tax-extract':                  { manual_time_minutes: 6,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-upsert-contract-from-invoice': { manual_time_minutes: 4,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-store-file-to-drive':          { manual_time_minutes: 2,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-detect-duplicate':             { manual_time_minutes: 4,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-classify-csv':                 { manual_time_minutes: 1,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-import-banking-csv':           { manual_time_minutes: 4,  cascade_multiplier: 3, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-orchestrator':                 { manual_time_minutes: 0,  cascade_multiplier: 5, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-skill-router':                       { manual_time_minutes: 0,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-cascade':                            { manual_time_minutes: 0,  cascade_multiplier: 5, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-kb-learn':                           { manual_time_minutes: 2,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-pattern-engine':                     { manual_time_minutes: 0,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-pattern-promoter':                   { manual_time_minutes: 0,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+  'tgv-kb-upsert-supplier':                 { manual_time_minutes: 1,  cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 },
+};
+const _FALLBACK_ECONOMICS = { manual_time_minutes: 0, cascade_multiplier: 1, n8n_cost_per_exec_eur: 0.0074 };
+
+// Cache: pro Session 1× geladen (TTL = Session-Ende oder explicit reload)
+let _skillEconomicsCache = null;
+async function _spFetchSkillEconomics() {
+  if (_skillEconomicsCache) return _skillEconomicsCache;
+  const merged = { ..._DEFAULT_SKILL_ECONOMICS };
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/skill_economics?select=skill_name,manual_time_minutes,cascade_multiplier,n8n_cost_per_exec_eur,llm_cost_per_run_eur,notes`;
+    const headers = await _supaAuthHeaders();
+    const res = await fetch(url, { headers });
+    if (res.ok) {
+      const rows = await res.json();
+      rows.forEach(r => {
+        merged[r.skill_name] = {
+          manual_time_minutes: Number(r.manual_time_minutes) || 0,
+          cascade_multiplier:  Number(r.cascade_multiplier)  || 1,
+          n8n_cost_per_exec_eur: Number(r.n8n_cost_per_exec_eur) || 0.0074,
+          llm_cost_per_run_eur:  r.llm_cost_per_run_eur != null ? Number(r.llm_cost_per_run_eur) : null,
+          notes: r.notes || null,
+          _from_db: true,
+        };
+      });
+    } else if (res.status === 404 || res.status === 406) {
+      // Tabelle existiert noch nicht → Defaults nutzen
+      console.log('[skill_economics] table not yet deployed — using JS defaults');
+    }
+  } catch (e) {
+    console.warn('[skill_economics] fetch failed, using defaults', e);
+  }
+  _skillEconomicsCache = merged;
+  return merged;
+}
+function _spEconForSkill(econ, skillName) {
+  return econ[skillName] || _FALLBACK_ECONOMICS;
+}
+
 async function _spFetchLearningHints(docType) {
   // Lern-Hinweis: pattern_rules.scope=skill_routing für diesen doc_type → Auto-Routing-Vorschlag.
   // Fallback: aus learning_events frequency manueller Trigger.
@@ -10453,17 +10760,18 @@ async function _spFetchLearningHints(docType) {
   }
 }
 
-function _spRenderSkillHistoryFull(events, hints) {
+function _spRenderSkillHistoryFull(events, hints, econ) {
   if (!events || !events.length) {
     return '<div style="font-size:11px;color:var(--tx2);">— keine agent_events für dieses Doc (z.B. duplicate-stub ohne Pipeline-Run)</div>';
   }
   // Aggregate per tool_name
   const byTool = {};
-  let totalTokensIn = 0, totalTokensOut = 0, totalCostEur = 0, totalDurationMs = 0;
+  let totalTokensIn = 0, totalTokensOut = 0, totalLlmCostEur = 0, totalDurationMs = 0;
+  let totalN8nExecs = 0, totalN8nCostEur = 0, totalManualMinutes = 0;
   let cascadeRuns = 0;
   events.forEach(e => {
     const k = e.tool_name || (e.event_type || '(unknown)');
-    if (!byTool[k]) byTool[k] = { count: 0, last: '', first: '', confs: [], tokensIn: 0, tokensOut: 0, costEur: 0, durationMs: 0, models: new Set() };
+    if (!byTool[k]) byTool[k] = { count: 0, last: '', first: '', confs: [], tokensIn: 0, tokensOut: 0, llmCostEur: 0, durationMs: 0, models: new Set() };
     const m = byTool[k];
     m.count++;
     if (!m.first || e.created_at < m.first) m.first = e.created_at;
@@ -10474,24 +10782,78 @@ function _spRenderSkillHistoryFull(events, hints) {
     m.tokensOut += tk.tokensOut;
     m.durationMs += tk.durationMs;
     if (tk.model) m.models.add(tk.model);
-    if (tk.tokensIn || tk.tokensOut) m.costEur += _spEstimateCostEur(tk.model, tk.tokensIn, tk.tokensOut);
+    if (tk.tokensIn || tk.tokensOut) m.llmCostEur += _spEstimateCostEur(tk.model, tk.tokensIn, tk.tokensOut);
     totalTokensIn += tk.tokensIn;
     totalTokensOut += tk.tokensOut;
     totalDurationMs += tk.durationMs;
-    if (tk.tokensIn || tk.tokensOut) totalCostEur += _spEstimateCostEur(tk.model, tk.tokensIn, tk.tokensOut);
+    if (tk.tokensIn || tk.tokensOut) totalLlmCostEur += _spEstimateCostEur(tk.model, tk.tokensIn, tk.tokensOut);
     if ((e.event_type||'').includes('cascade') || (e.tool_name||'').includes('cascade') || (e.tool_name||'').includes('orchestrator')) cascadeRuns++;
   });
 
-  const fmtNum = (n) => n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n);
-  const fmtCost = (eur) => eur < 0.001 ? '< 0,01 ct' : eur < 0.01 ? (eur*100).toFixed(2) + ' ct' : (eur).toFixed(4) + ' €';
-  const fmtMs = (ms) => ms === 0 ? 'n/a' : ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(1) + 's';
+  // v11.57 — Pro Skill Annahmen aus skill_economics anwenden:
+  //   n8n_execs   = count × cascade_multiplier
+  //   n8n_cost    = n8n_execs × cost_per_exec
+  //   manual_min  = count × manual_time_minutes (= Zeit-Ersparnis, weil Automatisierung ~Sekunden ist)
+  Object.entries(byTool).forEach(([tool, m]) => {
+    const e = _spEconForSkill(econ || {}, tool);
+    m.n8nExecs = m.count * (e.cascade_multiplier || 1);
+    m.n8nCostEur = m.n8nExecs * (e.n8n_cost_per_exec_eur || 0.0074);
+    m.manualMinutes = m.count * (e.manual_time_minutes || 0);
+    m.economics = e;
+    totalN8nExecs    += m.n8nExecs;
+    totalN8nCostEur  += m.n8nCostEur;
+    totalManualMinutes += m.manualMinutes;
+  });
+  const totalCostEur = totalLlmCostEur + totalN8nCostEur;
 
-  // Tabellenkopf
-  let html = `<div style="font-size:10px;color:var(--tx2);margin-bottom:8px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
-    <span title="Anzahl Cascade-/Orchestrator-Runs auf diesem Doc">🔁 ${cascadeRuns} Loop${cascadeRuns===1?'':'s'}</span>
-    <span title="Summe Input + Output tokens aller Skills">🪙 ${fmtNum(totalTokensIn)}+${fmtNum(totalTokensOut)} tok</span>
-    <span title="Geschätzte LLM-Kosten in EUR (Haiku-Default; Sonnet/Opus pricing falls model_used gesetzt)">💰 ${fmtCost(totalCostEur)}</span>
-    <span title="Summe Skill-Latenzen (aus tool_output.duration_ms wenn vorhanden)">⏱ ${fmtMs(totalDurationMs)}</span>
+  // === KPI-Banner OBEN (User-Anforderung 2026-05-11) ===
+  // - 💰 Cost bisher (LLM + n8n)
+  // - 🤖 n8n-Execs bisher
+  // - ⏱ Zeit-Ersparnis (Σ manualMin) — Auto-Time ~10s/skill ist vernachlässigbar
+  // - 💡 Re-Run-Estimate: wenn Avg-Cost-pro-Skill × Skills (worst-case Cascade)
+  const skillsCount = Object.keys(byTool).length;
+  const avgCostPerSkill = skillsCount ? (totalCostEur / skillsCount) : 0.05;
+  const orchEcon = _spEconForSkill(econ || {}, 'tgv-skill-orchestrator');
+  const reRunCascadeExecs = Math.max(orchEcon.cascade_multiplier || 5, skillsCount);
+  const reRunEstimateEur  = reRunCascadeExecs * (orchEcon.n8n_cost_per_exec_eur || 0.0074) + avgCostPerSkill * skillsCount * 0.6;
+  // Manuelle Cost als Referenz: assume 60 EUR/h (Stundensatz Buchhaltung) — User-editierbar in Iter 21+
+  const HOURLY_RATE_EUR = 60;
+  const manualEurEquiv = (totalManualMinutes / 60) * HOURLY_RATE_EUR;
+
+  const fmtNum = (n) => n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n);
+  const fmtCost = (eur) => eur < 0.001 ? '< 0,01 ct' : eur < 0.01 ? (eur*100).toFixed(2) + ' ct' : (eur < 1 ? (eur).toFixed(3) : (eur).toFixed(2)) + ' €';
+  const fmtMs = (ms) => ms === 0 ? 'n/a' : ms < 1000 ? ms + 'ms' : (ms/1000).toFixed(1) + 's';
+  const fmtMin = (m) => m < 1 ? '< 1 min' : m < 60 ? m.toFixed(0) + ' min' : (Math.floor(m/60)) + 'h ' + Math.round(m%60) + 'min';
+
+  // Banner (4 KPI-Kacheln, prominent)
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:6px;margin-bottom:12px;">
+    <div style="background:linear-gradient(180deg,rgba(34,197,94,0.10),rgba(34,197,94,0.04));border:1px solid rgba(34,197,94,0.25);border-radius:5px;padding:8px 10px;" title="Summe Cost bisher: LLM-tokens (${fmtCost(totalLlmCostEur)}) + n8n-Execs (${fmtCost(totalN8nCostEur)}). Annahmen aus skill_economics (editierbar via Hub).">
+      <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.6px;">💰 Cost bisher</div>
+      <div style="font-size:15px;font-weight:700;color:var(--grn);margin-top:2px;">${fmtCost(totalCostEur)}</div>
+      <div style="font-size:9px;color:var(--tx2);margin-top:1px;">LLM ${fmtCost(totalLlmCostEur)} + n8n ${fmtCost(totalN8nCostEur)}</div>
+    </div>
+    <div style="background:linear-gradient(180deg,rgba(59,130,246,0.10),rgba(59,130,246,0.04));border:1px solid rgba(59,130,246,0.25);border-radius:5px;padding:8px 10px;" title="n8n-Executions verbraucht. Pro Skill = count × cascade_multiplier (aus skill_economics).">
+      <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.6px;">🤖 n8n-Execs</div>
+      <div style="font-size:15px;font-weight:700;color:var(--blu);margin-top:2px;">${totalN8nExecs}</div>
+      <div style="font-size:9px;color:var(--tx2);margin-top:1px;">${cascadeRuns} Cascade-Loop${cascadeRuns===1?'':'s'}</div>
+    </div>
+    <div style="background:linear-gradient(180deg,rgba(245,158,11,0.10),rgba(245,158,11,0.04));border:1px solid rgba(245,158,11,0.25);border-radius:5px;padding:8px 10px;" title="Zeit die ein Mensch für diese Skill-Schritte gebraucht hätte (skill_economics.manual_time_minutes). Bei 60€/h ≈ ${fmtCost(manualEurEquiv)} Personalkosten gespart.">
+      <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.6px;">⏱ Zeit gespart</div>
+      <div style="font-size:15px;font-weight:700;color:var(--orng);margin-top:2px;">${fmtMin(totalManualMinutes)}</div>
+      <div style="font-size:9px;color:var(--tx2);margin-top:1px;">≈ ${fmtCost(manualEurEquiv)} bei 60€/h</div>
+    </div>
+    <div style="background:linear-gradient(180deg,rgba(168,85,247,0.10),rgba(168,85,247,0.04));border:1px solid rgba(168,85,247,0.25);border-radius:5px;padding:8px 10px;" title="Schätzung was ein erneuter Skill-Abruf (↻ Skills neu starten) kosten würde: Cascade-Multiplier × n8n-Exec-Cost + LLM-Schätzung aus Avg-Cost. Cap: Worst-Case Iter 20 Cascade.">
+      <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.6px;">💡 Re-Run-Estimate</div>
+      <div style="font-size:15px;font-weight:700;color:#a855f7;margin-top:2px;">≈ ${fmtCost(reRunEstimateEur)}</div>
+      <div style="font-size:9px;color:var(--tx2);margin-top:1px;">${reRunCascadeExecs} Execs (Cascade)</div>
+    </div>
+  </div>
+  <div style="font-size:9px;color:var(--tx2);margin-bottom:10px;font-style:italic;">Annahmen aus Tabelle <code>skill_economics</code> (Mig 062) — editierbar via Hub → 🧠 Audit → <code>update_skill_economic</code>. Stundensatz 60 €/h ist Default.</div>`;
+
+  // Tabellen-Sub-Header
+  html += `<div style="font-size:10px;color:var(--tx2);margin-bottom:6px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+    <span title="Summe Input + Output tokens aller LLM-Skills">🪙 ${fmtNum(totalTokensIn)}+${fmtNum(totalTokensOut)} tok</span>
+    <span title="Summe Skill-Latenzen (aus tool_output.duration_ms wenn vorhanden)">⏱ ${fmtMs(totalDurationMs)} runtime</span>
   </div>`;
 
   const sorted = Object.entries(byTool).sort((a,b) => b[1].count - a[1].count);
@@ -10501,17 +10863,19 @@ function _spRenderSkillHistoryFull(events, hints) {
     const minConf = m.confs.length ? Math.min(...m.confs) : null;
     const maxConf = m.confs.length ? Math.max(...m.confs) : null;
     const confDelta = (minConf != null && maxConf != null) ? (maxConf - minConf) : 0;
-    const roi = avgConf != null ? Math.round(avgConf * Math.log2(m.count + 1)) : null; // confidence × log(runs)
+    const roi = avgConf != null ? Math.round(avgConf * Math.log2(m.count + 1)) : null;
     const modelStr = m.models.size ? [...m.models].join(', ') : 'n/a';
+    const econSrc = m.economics?._from_db ? 'DB' : 'Default';
     html += `<div style="background:var(--bg1);border-radius:5px;padding:8px 10px;margin-bottom:8px;border-left:3px solid var(--blu);">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;">
         <span style="font-family:monospace;font-size:12px;font-weight:600;color:var(--tx);">${_spEsc(tool)}</span>
-        <span style="font-size:10px;color:var(--tx2);">${m.count}× · letzter ${_spEsc(date)}</span>
+        <span style="font-size:10px;color:var(--tx2);">${m.count}× call · letzter ${_spEsc(date)}</span>
       </div>
       <div style="font-size:10px;color:var(--tx2);margin-top:4px;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:4px;">
+        <span title="n8n-Executions verbraucht = ${m.count} × cascade_multiplier ${m.economics?.cascade_multiplier ?? '?'} (Quelle: ${econSrc})">🤖 ${m.n8nExecs} execs</span>
+        <span title="LLM-Cost aus tokens: ${fmtCost(m.llmCostEur)} · n8n-Cost ${fmtCost(m.n8nCostEur)}">💰 ${fmtCost(m.llmCostEur + m.n8nCostEur)}</span>
+        <span title="Manual-Time-Estimate aus skill_economics: ${m.economics?.manual_time_minutes ?? '?'} min × ${m.count} call(s)">⏱ ${fmtMin(m.manualMinutes)} gespart</span>
         <span title="Tokens input + output">🪙 ${fmtNum(m.tokensIn)}+${fmtNum(m.tokensOut)}</span>
-        <span title="Geschätzte Kosten EUR (LLM-Pricing × tokens)">💰 ${fmtCost(m.costEur)}</span>
-        <span title="Skill-Latenz Summe">⏱ ${fmtMs(m.durationMs)}</span>
         <span title="Avg / Min / Max Confidence — Δ zeigt Streuung">🎯 ${avgConf!=null?avgConf+'%':'n/a'}${confDelta>0?` (Δ${confDelta})`:''}</span>
         ${roi!=null?`<span title="ROI = avg-Confidence × log₂(runs+1) — höher = effektiver">📈 ROI ${roi}</span>`:''}
         <span title="Model(s) aus tool_output.model_used">🤖 ${_spEsc(modelStr)}</span>
@@ -10785,15 +11149,16 @@ function openSidePanel(doc) {
   _sidePanelEscHandler = (e) => { if (e.key === 'Escape') closeSidePanel(); };
   document.addEventListener('keydown', _sidePanelEscHandler);
 
-  // Skill-History async — US11 Vollausbau (Iter 20.8): tokens/cost/duration/loops/ROI/Lern-Hinweis
+  // Skill-History async — US11 Vollausbau (Iter 20.8) + v11.57 KPI-Banner (Cost/Execs/Zeit/Re-Run-Estimate)
   Promise.all([
     _spFetchSkillHistory(doc.id),
     _spFetchLearningHints(doc.doc_type),
-  ]).then(([events, hints]) => {
+    _spFetchSkillEconomics(),
+  ]).then(([events, hints, econ]) => {
     const list = document.getElementById('sp-skills-list');
     const loading = document.getElementById('sp-skills-loading');
     if (!list || !loading) return;
-    list.innerHTML = _spRenderSkillHistoryFull(events, hints);
+    list.innerHTML = _spRenderSkillHistoryFull(events, hints, econ);
     list.style.display = 'block';
     loading.style.display = 'none';
   });
