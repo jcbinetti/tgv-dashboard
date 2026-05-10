@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.47 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
+<!-- TGV Dashboard v11.48 — 2026-05-10 — Iter 20 P0 Welle a: Side-Panel-C Stub (Master-Detail global, PDF-inline + Inline-Edit + Skill-History-Stub + Drive-Pfad). US9 + US11-Stub + US12-Stub. Triggered via 📋 Detail Button in Triage-Cards. ESC + Backdrop schließen. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.47">
-<title>TGV Dashboard v11.47 — Financial OS</title>
+<meta name="version" content="11.48">
+<title>TGV Dashboard v11.48 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1672,9 +1672,12 @@ body.chat-open #main-content {
     </button>
 
     <div class="sidebar-footer">
-      <!-- Iter 20.1c Live-Cost-Ticker (cost_telemetry_n8n MTD aus Mig 060) -->
-      <div id="quota-ticker" style="font-size:10px;line-height:1.4;margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid #6b7280" title="n8n-Execution-Quota verbraucht im aktuellen Monat (cost_telemetry_n8n + Dashboard-Komplement). Klick: kompletter Cost-Tab.">
-        <div style="opacity:0.5;font-size:9px;letter-spacing:0.5px">QUOTA · MTD</div>
+      <!-- Iter 20.1c Quota-Ticker + Refresh-Knopf (v11.48: User-Feedback "nicht aktuell") -->
+      <div id="quota-ticker" style="font-size:10px;line-height:1.4;margin-bottom:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid #6b7280" title="n8n-Quota MTD aus cost_telemetry_n8n (DB cache). n8n-API liefert nur last 250 Execs — echter MTD im n8n-Dashboard. Refresh-Knopf ↻ triggert cost-collector (kostet 1 n8n-Exec).">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="opacity:0.5;font-size:9px;letter-spacing:0.5px">QUOTA · MTD (DB)</span>
+          <button onclick="manualQuotaRefresh(this)" title="Cost-Collector jetzt triggern (kostet 1 n8n-Exec). Aktualisiert DB-Cache + Ticker." style="background:none;border:0;color:rgba(255,255,255,0.4);cursor:pointer;font-size:11px;padding:0 2px" aria-label="Quota refresh">↻</button>
+        </div>
         <div id="quota-ticker-value" style="font-weight:600;font-size:11px;color:rgba(255,255,255,0.8)">…lade</div>
         <div id="quota-ticker-bar" style="height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:4px;overflow:hidden">
           <div id="quota-ticker-fill" style="height:100%;width:0%;background:#6b7280;transition:width 0.4s,background-color 0.4s"></div>
@@ -8175,6 +8178,24 @@ function startQuotaTicker() {
   setTimeout(() => refreshQuotaTicker(), 1500);
   // Refresh every 60s
   setInterval(() => refreshQuotaTicker(), 60_000);
+}
+
+// v11.48 Manual-Refresh-Knopf — User-getriggert, kostet 1 n8n-Exec
+async function manualQuotaRefresh(btnEl) {
+  if (btnEl) btnEl.style.opacity = '0.4';
+  try {
+    const res = await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-cost-collector', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ triggered_by: 'webhook', sources: ['n8n'] }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    setTimeout(() => refreshQuotaTicker(), 2000);
+  } catch (e) {
+    console.warn('[quota-refresh] failed', e);
+  } finally {
+    if (btnEl) setTimeout(() => { btnEl.style.opacity = ''; }, 2500);
+  }
 }
 
 // ═══════════════════════════════════════════════════════
