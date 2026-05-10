@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.51 — 2026-05-10 — Iter 20 Block C: Architektur v8 Live-Hook (Mode C Mock↔Realtime) + agent_events Stream-Panel global + Pattern-Rules Lifecycle-View (System/Patterns) + Buchhalter-Versand-Vorschau (US10). Workshop-Acceptance #10/#14/#15/#11. -->
+<!-- TGV Dashboard v11.52 — 2026-05-10 — Iter 20 Block A Mental-Model auf Block-C-Basis: Confidence-3-Trennung (Doc-Felder vs Skill-Relevanz vs Trefferquote) + inbox→"neu"-Rename + ⓘ-Click-Popups + Duplicate-Stub-Banner + Skill-Aktivität-Rename. Behält Block-C: Architektur v8 Live-Hook + agent_events Stream + Pattern-Lifecycle + Buchhalter-Vorschau. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.51">
-<title>TGV Dashboard v11.51 — Financial OS</title>
+<meta name="version" content="11.52">
+<title>TGV Dashboard v11.52 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1112,6 +1112,94 @@ table th.num, table td.num { text-align: right !important; }
   background: var(--bg1);
 }
 
+/* ─── HELP-POPUP (v11.51 — Click-Tooltips, T3 Iter 20 Block A) ─── */
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg1);
+  color: var(--tx2);
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 5px;
+  cursor: pointer;
+  border: 1px solid var(--bdr);
+  user-select: none;
+  vertical-align: middle;
+  font-family: inherit;
+  line-height: 1;
+}
+.help-icon:hover { background: var(--blu-bg); color: var(--blu); border-color: var(--blu); }
+#help-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 9998;
+  display: none;
+}
+#help-popup-backdrop.open { display: block; }
+#help-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--bdr);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+  z-index: 9999;
+  display: none;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--tx);
+}
+#help-popup.open { display: block; }
+#help-popup .hp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bdr);
+  background: var(--bg1);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+#help-popup .hp-title { font-size: 14px; font-weight: 600; color: var(--tx); }
+#help-popup .hp-close {
+  background: transparent;
+  border: 0;
+  color: var(--tx2);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+}
+#help-popup .hp-close:hover { color: var(--tx); }
+#help-popup .hp-body { padding: 14px 16px; }
+#help-popup .hp-body p { margin: 0 0 10px; }
+#help-popup .hp-body strong { color: var(--tx); }
+#help-popup .hp-body code { background: var(--bg1); padding: 1px 6px; border-radius: 3px; font-size: 11px; color: var(--blu); }
+
+/* ─── DUPLICATE-STUB BANNER (v11.51, T9) ─── */
+.dup-stub-banner {
+  background: rgba(239,68,68,0.08);
+  border-left: 3px solid var(--red);
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--tx);
+}
+.dup-stub-banner strong { color: var(--red); }
+.dup-stub-banner a { color: var(--blu); text-decoration: none; margin-left: 6px; }
+.dup-stub-banner a:hover { text-decoration: underline; }
+
 .sp-field-row {
   display: flex;
   flex-direction: column;
@@ -1554,6 +1642,16 @@ body.chat-open #main-content {
 </div>
 
 <!-- SIDE PANEL — Iter 20.1 (Workshop Q1: C→A Pfad, Master-Detail global) -->
+<!-- v11.51 — Help-Popup (T3 Click-Tooltips, ⓘ-Buttons öffnen es) -->
+<div id="help-popup-backdrop" onclick="closeHelpPopup()"></div>
+<div id="help-popup" role="dialog" aria-modal="true" aria-labelledby="help-popup-title">
+  <div class="hp-head">
+    <div class="hp-title" id="help-popup-title">Hilfe</div>
+    <button class="hp-close" onclick="closeHelpPopup()" aria-label="Schließen">×</button>
+  </div>
+  <div class="hp-body" id="help-popup-body"></div>
+</div>
+
 <div id="side-panel-backdrop" onclick="closeSidePanel()"></div>
 <div id="side-panel" role="dialog" aria-labelledby="side-panel-title" aria-hidden="true">
   <div class="side-panel-header">
@@ -2407,8 +2505,8 @@ body.chat-open #main-content {
           <label style="color:var(--tx2);">Status:</label>
           <select id="triage-status-filter" onchange="loadTriage()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
             <option value="action_needed">action-needed (default)</option>
-            <option value="inbox">nur inbox</option>
-            <option value="needs_review">nur needs_review</option>
+            <option value="inbox">nur „neu" (DB-Status inbox)</option>
+            <option value="needs_review">nur „prüfen" (needs_review)</option>
             <option value="all_active">action-needed + approved</option>
           </select>
           <label style="color:var(--tx2);margin-left:10px;">Datum:</label>
@@ -2422,11 +2520,12 @@ body.chat-open #main-content {
         </div>
       </div>
 
-      <!-- BULK ACTION BAR -->
-      <div id="triage-bulk-bar" style="display:none;background:var(--blu-bg);border-left:3px solid var(--blu);padding:10px 14px;border-radius:6px;margin-bottom:14px;align-items:center;gap:12px;">
+      <!-- BULK ACTION BAR (v11.51 T7: Master-Hint inline) -->
+      <div id="triage-bulk-bar" style="display:none;background:var(--blu-bg);border-left:3px solid var(--blu);padding:10px 14px;border-radius:6px;margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap;">
         <span style="font-weight:600;color:var(--blu);"><span id="triage-bulk-count">0</span> Docs ausgewählt</span>
         <button class="btn-sm" onclick="triageBulkApply()" style="background:var(--blu);color:white;padding:5px 14px;">→ Skills für alle ausführen</button>
         <button class="btn-sm" onclick="triageBulkClear()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:5px 11px;">Auswahl löschen</button>
+        <span style="font-size:11px;color:var(--tx2);flex-basis:100%;">↑ Bulk wendet pro Doc <strong>dessen eigene</strong> Skill-Häkchen an (keine globale Master-Selection). <button class="help-icon" onclick="showHelp('bulk_action')" aria-label="Bulk-Hilfe">ⓘ</button></span>
       </div>
 
       <!-- DOC-CARDS GRID -->
@@ -3395,6 +3494,102 @@ const escHtml = s => {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 };
+
+// ═══════════════════════════════════════════════════════
+//  HELP-POPUP (v11.51, T3 Iter 20 Block A)
+//  Click-Tooltips mit echten Pop-ups statt unsichtbarer title=
+//  Aufruf: <button class="help-icon" onclick="showHelp('confidence_doc')">ⓘ</button>
+//  Topics werden in HELP_TOPICS-Registry gepflegt.
+// ═══════════════════════════════════════════════════════
+const HELP_TOPICS = {
+  confidence_doc: {
+    title: '📋 Doc-Felder-Sicherheit',
+    body: `<p><strong>Was es ist:</strong> Wie sicher das System ist, dass die DB-Felder dieses Dokuments (Entity, Doc-Type, Provider, Betrag, Datum) <strong>korrekt</strong> erfasst sind.</p>
+           <p><strong>Quelle:</strong> <code>documents.confidence_score</code> (0–100), gesetzt vom <code>tgv-skill-orchestrator</code> nach Plan-Iteration.</p>
+           <p><strong>Mental-Modell:</strong> „Ist mein Doc richtig erfasst?" → bei hohem Wert (≥80) kein Eingriff nötig, bei niedrigem (&lt;80) bitte prüfen.</p>
+           <p><strong>NICHT verwechseln mit:</strong> Skill-Relevanz (was als Nächstes laufen soll) oder Skill-Trefferquote global (Statistik über alle Docs).</p>`,
+  },
+  confidence_skill_relevance: {
+    title: '🔧 Skill-Relevanz',
+    body: `<p><strong>Was es ist:</strong> Wie sicher der Orchestrator ist, dass <strong>dieser konkrete Skill</strong> auf <strong>diesem Doc</strong> jetzt sinnvoll ist.</p>
+           <p><strong>Quelle:</strong> Heuristiken aus Doc-Type, Pattern-Match, vorherige Skills.</p>
+           <p><strong>Mental-Modell:</strong> „Soll ich diesen Skill anwenden?" → ≥80% = vorausgewählt, &lt;50% = optional.</p>
+           <p><strong>NICHT:</strong> Doc-Felder-Sicherheit (=korrekte Daten) oder Trefferquote global (=historische Statistik).</p>`,
+  },
+  confidence_skill_history: {
+    title: '📚 Skill-Trefferquote (global)',
+    body: `<p><strong>Was es ist:</strong> Wie oft dieser Skill in der Vergangenheit über <strong>alle Docs</strong> vom User bestätigt korrekt war.</p>
+           <p><strong>Quelle:</strong> <code>learning_events</code>-Aggregat — z.B. „1/3 (33%)" heißt: 3 mal angewendet, 1 mal vom User bestätigt.</p>
+           <p><strong>Mental-Modell:</strong> „Lohnt sich dieser Skill statistisch?" → niedrig = noch in Lernphase.</p>
+           <p><strong>NICHT spezifisch für dieses Doc</strong> — globale Statistik!</p>`,
+  },
+  doc_type: {
+    title: 'Doc-Type',
+    body: `<p><strong>Was es ist:</strong> Klassifikation des Dokuments — Rechnung, Vertrag, Lohnsteuer, Kontoauszug, Quittung, Sonstiges.</p>
+           <p><strong>Quelle:</strong> Gesetzt vom <code>tgv-skill-orchestrator</code> aus PDF-Inhalt + Mail-Subject.</p>
+           <p><strong>Beeinflusst:</strong> Welche Skills automatisch vorgeschlagen werden (Rechnung → Invoice-Extract, Vertrag → Contract-Stub).</p>`,
+  },
+  processing_state: {
+    title: 'processing_state (DB-Status)',
+    body: `<p><strong>Was es ist:</strong> Lebenszyklus-Status des Docs in der DB — <strong>NICHT</strong> der Drive-Ordner!</p>
+           <p><strong>Werte:</strong></p>
+           <p>• <code>inbox</code> = neu, noch nicht durchgelaufen<br>
+              • <code>needs_review</code> = User-Eingriff nötig<br>
+              • <code>triaged</code> = in Bearbeitung<br>
+              • <code>approved</code> = User confirmed<br>
+              • <code>rejected</code> = verworfen<br>
+              • <code>done</code> = vollständig durchgelaufen</p>
+           <p><strong>Achtung:</strong> Drive-Bewegung (z.B. INBOX → DOCUMENTS) passiert separat via <code>store-file-to-drive</code>-Skill.</p>`,
+  },
+  drive_path: {
+    title: '📂 Drive-Pfad',
+    body: `<p><strong>Was hier steht:</strong> Der <strong>konstruierte Soll-Pfad</strong> gemäss <code>store-file-to-drive</code>-Routing-Regel — <strong>nicht zwingend der echte Ist-Pfad!</strong></p>
+           <p><strong>Routing:</strong> <code>/TGV-CORE/{DOCUMENTS|CONTRACTS}/{ENTITY}/{YEAR}/{MONAT}/{filename}</code></p>
+           <p><strong>Achtung:</strong> Der echte Ordner via Drive-API folgt in Block C (Iter 20.7+). Heute: nur read-only Konstruktion.</p>`,
+  },
+  bulk_action: {
+    title: '↑ Bulk-Action',
+    body: `<p><strong>Wie es funktioniert:</strong> Bulk wendet pro Doc <strong>dessen eigene Skill-Häkchen</strong> an — <strong>nicht</strong> eine globale Master-Selection!</p>
+           <p><strong>Beispiel:</strong> Doc #100 hat ✓ <code>tgv-pdf-invoice-extract</code> markiert, Doc #101 hat ✓ <code>tgv-resolve-supplier</code> markiert. Bulk → beides läuft jeweils auf seinem Doc.</p>
+           <p><strong>Vor Bulk-Klick:</strong> Pro Doc Skill-Häkchen prüfen, dann Bulk-Box rechts oben oder „Doc auswählen" anklicken.</p>`,
+  },
+  routing_reason: {
+    title: 'Routing-Reason',
+    body: `<p><strong>Was es ist:</strong> Begründung, warum dieses Doc den jeweiligen Pipeline-Pfad genommen hat.</p>
+           <p><strong>Beispiele:</strong></p>
+           <p>• <code>duplicate_of_7323</code> = ist Stub eines bestehenden Docs<br>
+              • <code>force_reclass</code> = manuell von User re-klassifiziert<br>
+              • <code>auto_orchestrator_v0.6</code> = Standard-Pfad</p>
+           <p><strong>Wichtig:</strong> Wenn <code>duplicate_of_*</code> → roter Banner oben. Original öffnen!</p>`,
+  },
+};
+
+function showHelp(topicKey) {
+  const topic = HELP_TOPICS[topicKey];
+  if (!topic) { console.warn('[help] unknown topic:', topicKey); return; }
+  const title = document.getElementById('help-popup-title');
+  const body = document.getElementById('help-popup-body');
+  const popup = document.getElementById('help-popup');
+  const backdrop = document.getElementById('help-popup-backdrop');
+  if (!title || !body || !popup || !backdrop) return;
+  title.textContent = topic.title;
+  body.innerHTML = topic.body;
+  popup.classList.add('open');
+  backdrop.classList.add('open');
+  // ESC schliesst
+  document.addEventListener('keydown', _helpEscHandler);
+}
+function _helpEscHandler(e) { if (e.key === 'Escape') closeHelpPopup(); }
+function closeHelpPopup() {
+  const popup = document.getElementById('help-popup');
+  const backdrop = document.getElementById('help-popup-backdrop');
+  if (popup) popup.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
+  document.removeEventListener('keydown', _helpEscHandler);
+}
+function helpIcon(topicKey, extraStyle = '') {
+  return `<button type="button" class="help-icon" onclick="event.stopPropagation();showHelp('${topicKey}')" aria-label="Hilfe" style="${extraStyle}">ⓘ</button>`;
+}
 
 // ═══════════════════════════════════════════════════════
 //  SUPABASE FETCH
@@ -7605,7 +7800,8 @@ function triageDocCard(doc) {
           <div style="font-size:11px;color:var(--tx2);margin-top:2px;">${s.desc}</div>
           ${conf > 0 ? `<div style="font-size:11px;color:var(--tx2);margin-top:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
               <span style="display:inline-block;background:var(--bg1);height:4px;width:80px;border-radius:2px;overflow:hidden;"><span style="display:block;height:100%;width:${barW}%;background:${confColor};"></span></span>
-              <span style="color:${confColor};font-weight:500;">${conf}% sicher</span>
+              <span style="color:${confColor};font-weight:500;" title="🔧 Skill-Relevanz — wie sicher das System ist, dass dieser Skill jetzt für DIESES Doc passt. NICHT die Doc-Felder-Sicherheit oder die historische Trefferquote.">🔧 Skill-Relevanz: ${conf}%</span>
+              ${helpIcon('confidence_skill_relevance', 'margin-left:-2px;')}
               ${triageStatString(s.name)}
               ${showLearningPill?'<span style="background:var(--blu-bg);color:var(--blu);padding:1px 7px;border-radius:9px;font-size:10px;">📚 deine Korrektur lernt das System</span>':''}
             </div>` : `<div style="font-size:11px;color:var(--orng);margin-top:4px;">Skill in der Mache — Doc kann jetzt geflaggt werden</div>`}
@@ -7614,17 +7810,46 @@ function triageDocCard(doc) {
   }).join('');
 
   const amount = doc.amount != null ? Number(doc.amount).toLocaleString('de-DE',{style:'currency',currency:doc.currency||'EUR',maximumFractionDigits:2}) : '';
-  const stateColor = doc.processing_state === 'inbox' ? 'var(--blu)' : doc.processing_state === 'needs_review' ? 'var(--orng)' : 'var(--tx2)';
+  // v11.51 T2 — processing_state „inbox" → „neu" (DB-Status, NICHT Drive-Ordner)
+  const psRaw = doc.processing_state || 'pending';
+  const psDisplay = psRaw === 'inbox' ? 'neu' : psRaw;
+  const stateColor = psRaw === 'inbox' ? 'var(--blu)' : psRaw === 'needs_review' ? 'var(--orng)' : 'var(--tx2)';
+  const psTitle = psRaw === 'inbox'
+    ? 'DB-Status „inbox" = neu, noch nicht durchgelaufen. NICHT der Drive-Ordner!'
+    : `DB-Status processing_state = ${psRaw}`;
+
+  // v11.51 T1 — Doc-Felder-Sicherheit prominent (aus documents.confidence_score)
+  const docConf = doc.confidence_score != null ? Number(doc.confidence_score) : null;
+  let docConfHtml = '';
+  if (docConf != null) {
+    const dcColor = docConf >= 80 ? 'var(--grn)' : docConf >= 50 ? 'var(--orng)' : 'var(--red)';
+    const dcHint = docConf >= 90 ? ' ✅ wenig Bedarf an re-run' : (docConf < 80 ? ' ⚠️ Review empfohlen' : '');
+    docConfHtml = `<span style="background:var(--bg1);padding:1px 8px;border-radius:10px;margin-left:4px;color:${dcColor};font-weight:500;" title="Doc-Felder-Sicherheit aus documents.confidence_score: wie sicher das System ist, dass Entity/Doc-Type/Provider/Betrag korrekt sind.">📋 ${docConf}%${dcHint}</span>${helpIcon('confidence_doc')}`;
+  }
+
+  // v11.51 T9 — Duplicate-Stub Banner
+  let dupBannerHtml = '';
+  const rr = doc.routing_reason || '';
+  const dupMatch = rr.match(/duplicate_of[_:#\s-]*(\d+)/i);
+  if (dupMatch) {
+    const origId = dupMatch[1];
+    dupBannerHtml = `<div class="dup-stub-banner">
+      <strong>⚠️ Duplikat-Stub</strong> dieses Doc ist ein Duplikat von Doc #${origId} (kein eigenes PDF, nur DB-Eintrag).
+      <a href="javascript:void(0)" onclick="openSidePanelForDocId(${Number(origId)})">Original #${origId} öffnen →</a>
+    </div>`;
+  }
 
   return `
     <div class="card" style="padding:14px;">
+      ${dupBannerHtml}
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px;">
         <div style="flex:1;">
-          <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · ${doc.doc_type || '?'} · ${doc.invoice_date || doc.date_received?.slice(0,10) || ''}</div>
+          <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · <span title="Klassifikation des Dokuments">${doc.doc_type || '?'}</span>${helpIcon('doc_type')} · ${doc.invoice_date || doc.date_received?.slice(0,10) || ''}</div>
           <div style="font-size:14px;font-weight:600;margin-top:2px;">${(doc.provider || '— kein Provider —').replace(/&/g,'&amp;').replace(/</g,'&lt;')} <span style="font-weight:400;color:var(--tx2);">${amount}</span></div>
           <div style="font-size:12px;color:var(--tx2);margin-top:3px;">
             <span style="background:var(--bg1);padding:1px 8px;border-radius:10px;">${doc.entity || '?'}</span>
-            <span style="background:var(--bg1);padding:1px 8px;border-radius:10px;margin-left:4px;color:${stateColor};">${doc.processing_state || 'pending'}</span>
+            <span style="background:var(--bg1);padding:1px 8px;border-radius:10px;margin-left:4px;color:${stateColor};" title="${psTitle}">${psDisplay}</span>${helpIcon('processing_state')}
+            ${docConfHtml}
             ${doc.drive_file_id ? '<span style="margin-left:6px;color:var(--tx2);">📎 PDF</span>' : ''}
           </div>
         </div>
@@ -7668,7 +7893,8 @@ function triageStatString(skillName) {
   const color = correctPct >= 80 ? 'var(--grn)' : correctPct >= 50 ? 'var(--orng)' : 'var(--red)';
   // v11.50: Label klarer — User-Verwirrung dass es als doc-spezifisch interpretiert wurde.
   // Tatsächlich: Skill-historische Trefferquote über ALLE Docs (learning_events Aggregat).
-  return `<span style="color:${color};font-size:10px;" title="Historische Trefferquote dieses Skills über alle Docs (aus learning_events). NICHT spezifisch für DIESES Doc — sondern: in ${s.total} bisherigen Anwendungen war Skill in ${s.correct} Fällen vom User bestätigt korrekt.">· Skill-Trefferquote global: ${s.correct}/${s.total} (${correctPct}%)</span>`;
+  return `<span style="color:${color};font-size:10px;" title="Historische Trefferquote dieses Skills über alle Docs (aus learning_events). NICHT spezifisch für DIESES Doc — sondern: in ${s.total} bisherigen Anwendungen war Skill in ${s.correct} Fällen vom User bestätigt korrekt.">📚 Trefferquote global: ${s.correct}/${s.total} (${correctPct}%)</span>` +
+         helpIcon('confidence_skill_history', 'margin-left:-2px;');
 }
 
 // Iter 15.3 — Log User-Korrektur in learning_events via PostgREST INSERT
@@ -9049,10 +9275,10 @@ function openSidePanel(doc) {
                <input type="number" step="0.01" id="sp-edit-amount" value="${amount}" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">` },
     { key: 'invoice_date', label: 'Rechnungsdatum', value: doc.invoice_date,
       source: 'tgv-pdf-invoice-extract', editor: '' },
-    { key: 'confidence', label: `Confidence (${conf != null ? conf + '%' : 'n/a'})`, value: conf != null ? String(conf) : null,
-      source: 'orchestrator gesamt-Confidence', editor: '' },
+    { key: 'confidence', label: `📋 Doc-Felder-Sicherheit (${conf != null ? conf + '%' : 'n/a'})`, value: conf != null ? String(conf) + '%' : null,
+      source: 'documents.confidence_score — wie sicher die DB-Felder (Entity/Doc-Type/Provider/Betrag/Datum) korrekt sind. NICHT Skill-Relevanz!', editor: '' },
     { key: 'routing_reason', label: 'Routing-Reason', value: doc.routing_reason,
-      source: 'system (z.B. duplicate-detection, force-reclass)', editor: '' },
+      source: 'system (z.B. duplicate_of_<id>, force_reclass, auto_orchestrator)', editor: '' },
   ];
   const skillOutputHtml = fields.map(_spInfoCard).join('');
 
@@ -9092,11 +9318,12 @@ function openSidePanel(doc) {
       ${supplierHtml}
     </div>
     <div class="side-panel-section">
-      <h4>🔧 Skill-History + Re-Run</h4>
+      <h4>🔧 Skill-Aktivität (was wurde auf diesem Doc gemacht?) ${helpIcon('confidence_skill_relevance')}</h4>
+      <div style="font-size:10px;color:var(--tx2);margin-bottom:8px;font-style:italic;">Liste der bereits gelaufenen Skills auf diesem Doc (aus <code>agent_events</code>). „⌀ Skill-Relevanz beim Run" zeigt die durchschnittliche Skill-Relevanz dieses Skills bei seinen Runs auf diesem Doc.</div>
       ${skillsHtml}
     </div>
     <div class="side-panel-section" style="border-bottom:none;">
-      <h4>📂 Drive-Pfad <span style="font-weight:400;color:var(--tx2);font-size:10px;">(wo das Doc liegt)</span></h4>
+      <h4>📂 Drive-Pfad <span style="font-weight:400;color:var(--tx2);font-size:10px;">(wo das Doc liegt)</span> ${helpIcon('drive_path')}</h4>
       ${_spDrivePathHtml(doc)}
     </div>`;
 
@@ -9128,11 +9355,11 @@ function openSidePanel(doc) {
       const avgConf = m.confs.length ? Math.round(m.confs.reduce((a,b)=>a+b,0)/m.confs.length) : null;
       return `<div class="sp-skill-row applied">
         <span class="sp-skill-name">${_spEsc(tool)}</span>
-        <span class="sp-skill-meta">${m.count}× · ${_spEsc(date)}${avgConf!=null?' · ⌀ '+avgConf+'%':''}</span>
+        <span class="sp-skill-meta">${m.count}× · ${_spEsc(date)}${avgConf!=null?' · ⌀ Skill-Relevanz beim Run: '+avgConf+'%':''}</span>
       </div>`;
     }).join('');
     list.innerHTML = rows
-      + `<div style="margin-top:8px;font-size:10px;color:var(--tx2);">Cost/Tokens/Loops-Aggregat in Welle (c) 20.8 (US11).</div>`;
+      + `<div style="margin-top:8px;font-size:10px;color:var(--tx2);">💡 Cost/Tokens/Loops-Aggregat folgt in Block C (Iter 20.8).</div>`;
     list.style.display = 'block';
     loading.style.display = 'none';
   });
