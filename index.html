@@ -8378,38 +8378,29 @@ function triageStatString(skillName) {
          helpIcon('confidence_skill_history', 'margin-left:-2px;');
 }
 
-// Iter 15.3 — Log User-Korrektur in learning_events via PostgREST INSERT
+// Iter 21 Block B4 (v11.61) — Log User-Korrektur über tgv-skill-record-decision RPC
+// statt Direkt-INSERT. Garantiert agent_events-Audit-Trail (vorher unsichtbar im
+// Stream-Panel) + atomare INSERTs (1 Function statt 1 INSERT + Lifecycle-Lücke).
+// Mig 065: record_skill_selection_decision(p_doc_id, p_skill_name, p_field,
+// p_suggested, p_chosen, p_source, p_notes) — SECURITY DEFINER, anon-callable.
 async function triageLogLearning(docId, suggestion, choice, source = 'ui-c-15.2') {
   // suggestion + choice are arrays of skill names
   const sugSet = new Set(suggestion || []);
   const choSet = new Set(choice || []);
   const added = [...choSet].filter(s => !sugSet.has(s));      // user added
   const removed = [...sugSet].filter(s => !choSet.has(s));    // user un-checked
-  const wasCorrection = added.length > 0 || removed.length > 0;
-
-  // Don't log no-ops (user accepted suggestion as-is) — saves DB rows
-  // Actually DO log to track confirmations too (per Auto-Learning Pflicht-Constraint).
-  // Compromise: log with was_correction=false for confirmations.
-
-  const row = {
-    context_doc_id: docId,
-    skill_name: 'tgv-skill-orchestrator',  // the meta-decision was about skill SET selection
-    field: 'skill_selection',
-    system_suggestion: { suggested: [...sugSet] },
-    user_choice: { selected: [...choSet], added, removed },
-    was_correction: wasCorrection,
-    source: source,
-    notes: wasCorrection
-      ? `User changed skill selection: +${added.length} added, -${removed.length} removed`
-      : `User confirmed system suggestion as-is`,
-  };
 
   try {
-    // Iter 15.3: use authenticated supabase client (RLS requires auth.uid())
-    const { error } = await _supaClient.from('learning_events').insert(row);
-    if (error) console.warn('learning_events log failed:', error.message);
+    await supaRpc('record_skill_selection_decision', {
+      p_doc_id:     docId,
+      p_skill_name: 'tgv-skill-orchestrator',  // meta-decision was about skill SET selection
+      p_field:      'skill_selection',
+      p_suggested:  { suggested: [...sugSet] },
+      p_chosen:     { selected: [...choSet], added, removed },
+      p_source:     source,
+    });
   } catch (e) {
-    console.warn('learning_events log error:', e);
+    console.warn('record_skill_selection_decision RPC failed:', e.message);
   }
 }
 
