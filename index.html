@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.58 — 2026-05-11 — Iter 20 Block A Text-Polish auf Block-B-Economics-Basis (v11.57 PR #66): F4 Buchhalter-Karte Wording — WF bestimmt Versand-Zeitpunkt + Berichtsperiode (nicht UI). -->
+<!-- TGV Dashboard v11.59 — 2026-05-11 — Iter 21 Block A (escapeHtml-Härtung): renderStreamPanel (tool/evtType) + Stream-Modal-Body (workflow_name/node_name + JSON.stringify(tool_input/tool_output) in <pre>) + loadPatternRulesLifecycle (pattern_key/scope + empty/error-states) + MCP-Tool-Hub History args-Tooltip (PR #60-Surface). Audit-Findings aus iter-close 20 Security-Audit. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.58">
-<title>TGV Dashboard v11.58 — Financial OS</title>
+<meta name="version" content="11.59">
+<title>TGV Dashboard v11.59 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3447,12 +3447,14 @@ function renderStreamPanel() {
     const cls = classifyStreamEvent(e);
     const tool = e.tool_name || e.workflow_name || '?';
     const evtType = e.event_type || cls;
+    // v11.59: escapeHtml-Härtung — tool_name + event_type stammen aus DB-Strings.
+    // Trusted today, aber bei MCP-Calls mit Mail-Body in tool_input/tool_output ist PII-Leak + XSS möglich.
     return `<div class="stream-evt" onclick="openStreamModal(${idx})">
       <div class="stream-evt-head">
-        <span class="stream-evt-type t-${cls}">${evtType}</span>
+        <span class="stream-evt-type t-${cls}">${escapeHtml(evtType)}</span>
         <span class="stream-evt-time">${fmtStreamTime(e.created_at)}</span>
       </div>
-      <div class="stream-evt-tool">${tool}${e.document_id ? ` · doc#${e.document_id}` : ''}</div>
+      <div class="stream-evt-tool">${escapeHtml(tool)}${e.document_id ? ` · doc#${+e.document_id}` : ''}</div>
     </div>`;
   }).join('');
 }
@@ -3473,14 +3475,17 @@ function openStreamModal(idx) {
   const body = document.getElementById('stream-modal-body');
   const title = document.getElementById('stream-modal-title');
   title.textContent = `${evt.tool_name || evt.workflow_name || 'event'} · ${evt.event_type || '—'}`;
+  // v11.59: JSON.stringify rendert DB-Strings (inkl. Mail-Body, Provider-Namen, Tool-Outputs).
+  // Ohne escapeHtml könnte ein in tool_input geleakter Mail-Body mit </pre><script> aus <pre> ausbrechen.
+  const docIdStr = evt.document_id != null ? String(+evt.document_id || evt.document_id) : '—';
   body.innerHTML = `
     <div style="font-size:11px;color:var(--mute);margin-bottom:10px">
-      ${fmtStreamTime(evt.created_at)} · doc=${evt.document_id ?? '—'} · workflow=${evt.workflow_name ?? '—'} · node=${evt.node_name ?? '—'}
+      ${fmtStreamTime(evt.created_at)} · doc=${escapeHtml(docIdStr)} · workflow=${escapeHtml(evt.workflow_name ?? '—')} · node=${escapeHtml(evt.node_name ?? '—')}
     </div>
     <h4 style="margin:8px 0 4px;font-size:11px">tool_input / metadata</h4>
-    <pre>${JSON.stringify(evt.tool_input ?? evt.metadata ?? evt.content ?? null, null, 2)}</pre>
+    <pre>${escapeHtml(JSON.stringify(evt.tool_input ?? evt.metadata ?? evt.content ?? null, null, 2))}</pre>
     <h4 style="margin:8px 0 4px;font-size:11px">tool_output / output</h4>
-    <pre>${JSON.stringify(evt.tool_output ?? evt.output ?? null, null, 2)}</pre>
+    <pre>${escapeHtml(JSON.stringify(evt.tool_output ?? evt.output ?? null, null, 2))}</pre>
   `;
   document.getElementById('stream-modal-backdrop').classList.add('open');
 }
@@ -5936,7 +5941,7 @@ async function loadPatternRulesLifecycle() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const rows = await r.json();
     if (!rows.length) {
-      el.innerHTML = `<div style="padding:18px;text-align:center;color:var(--mute);font-size:12px">Keine pattern_rules für Scope „${scope}". Mig 057+061 deployed?</div>`;
+      el.innerHTML = `<div style="padding:18px;text-align:center;color:var(--mute);font-size:12px">Keine pattern_rules für Scope „${escapeHtml(scope)}". Mig 057+061 deployed?</div>`;
       return;
     }
     const stageBadge = (s) => {
@@ -5960,9 +5965,10 @@ async function loadPatternRulesLifecycle() {
       const promoteTitle = promoteBtnDisabled
         ? 'Stage am Endpunkt — keine weitere Promotion'
         : 'Manueller Promoter (Skill noch nicht deployed — Iter 21+)';
+      // v11.59: escapeHtml-Härtung — pattern_key + scope sind DB-Strings (Pattern-Engine schreibt direkt).
       return `<tr>
-        <td style="font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mute)">${rr.scope || '—'}</td>
-        <td style="font-family:ui-monospace,monospace;font-size:10.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(rr.pattern_key || '').replace(/"/g,'&quot;')}">${rr.pattern_key || '—'}</td>
+        <td style="font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mute)">${escapeHtml(rr.scope || '—')}</td>
+        <td style="font-family:ui-monospace,monospace;font-size:10.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(rr.pattern_key || '')}">${escapeHtml(rr.pattern_key || '—')}</td>
         <td>${stageBadge(rr.stage)}</td>
         <td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px">${rr.verification_count ?? 0}</td>
         <td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:${(rr.conflict_count||0) > 0 ? '#ef4444' : 'var(--mute)'}">${rr.conflict_count ?? 0}</td>
@@ -5990,7 +5996,7 @@ async function loadPatternRulesLifecycle() {
       </div>
     `;
   } catch (e) {
-    el.innerHTML = `<div style="padding:14px;color:#ef4444;font-size:12px">Fehler beim Laden pattern_rules: ${e.message}</div>`;
+    el.innerHTML = `<div style="padding:14px;color:#ef4444;font-size:12px">Fehler beim Laden pattern_rules: ${escapeHtml(e.message || String(e))}</div>`;
   }
 }
 
@@ -10277,7 +10283,12 @@ function loadActions() {
           <button class="tc-run-btn" onclick="mcpRunOpen('${t.name}')" title="Ausführen-Modal öffnen — du siehst alle Optionen + Default-Werte und bestätigst.">▶ Ausführen</button>
           <button class="tc-history-btn" onclick="toggleChat();setTimeout(()=>document.getElementById('chat-input')?.focus(),100)" title="Den Chat öffnen — KI entscheidet selbst Tool-Wahl.">💬 Chat</button>
         </div>
-        ${hist.length ? `<div class="tc-history" title="Letzte 3 Aufrufe (lokal in localStorage gespeichert).">${hist.map(h => `<div class="tc-history-row">${esc(h.when)} · ${esc(h.status)}</div>`).join('')}</div>` : ''}
+        ${hist.length ? `<div class="tc-history" title="Letzte 3 Aufrufe (lokal in localStorage gespeichert).">${hist.map(h => {
+          // v11.59: args-Tooltip (escaped) — User sieht beim Hover welche Params zuletzt gesendet wurden.
+          const argsStr = h.params ? JSON.stringify(h.params) : '';
+          const argsTip = argsStr ? ` title="${esc(argsStr)}"` : '';
+          return `<div class="tc-history-row"${argsTip}>${esc(h.when)} · ${esc(h.status)}</div>`;
+        }).join('')}</div>` : ''}
       </div>`;
     }
     html += `</div></div>`;
