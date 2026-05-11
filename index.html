@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.60">
-<title>TGV Dashboard v11.60 — Financial OS</title>
+<meta name="version" content="11.61">
+<title>TGV Dashboard v11.61 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4023,6 +4023,19 @@ async function supa(path) {
   return res.json();
 }
 
+// Iter 21 Block B3: PostgREST RPC-Helper für DB-Funktionen wie
+// refresh_monthly_closing_prep. POST /rest/v1/rpc/<name> mit JSON-Body.
+async function supaRpc(name, body) {
+  const url = `${SUPA_REST}/rpc/${name}`;
+  const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json' });
+  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body || {}) });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`RPC ${name} HTTP ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
 async function supaCount(table, filter) {
   const q = filter ? `${table}?${filter}&select=id` : `${table}?select=id`;
   const url = `${SUPA_REST}/${q}`;
@@ -7783,43 +7796,49 @@ async function _apLoadDocsAndMissing() {
 
     _apRenderDocsList();
 
-    // Fehlende Docs — Vergleich gegen Vorjahres-Monat doc_type-Counts
-    const lyStart = `${_apState.year - 1}-${String(_apState.month).padStart(2,'0')}-01`;
-    const lyEndY = _apState.month === 12 ? _apState.year : _apState.year - 1;
-    const lyEndM = _apState.month === 12 ? 1 : _apState.month + 1;
-    const lyEnd = `${lyEndY}-${String(lyEndM).padStart(2,'0')}-01`;
-    let lyQ = `documents?select=doc_type,provider,entity&invoice_date=gte.${lyStart}&invoice_date=lt.${lyEnd}&status=neq.rejected`;
-    let ly = [];
-    try { ly = await supa(lyQ); } catch (e) { /* tolerant */ }
-    if (_apState.entity) ly = ly.filter(d => mapEntity(d.entity) === _apState.entity);
-
-    const lyByType = {};
-    for (const d of ly) {
-      const k = d.doc_type || '—';
-      lyByType[k] = (lyByType[k] || 0) + 1;
-    }
-    const curByType = {};
-    for (const d of docs) {
-      const k = d.doc_type || '—';
-      curByType[k] = (curByType[k] || 0) + 1;
-    }
+    // Iter 21 Block B3 (v11.61): Lücken-Analyse via Skill statt FE-Aggregat.
+    // Refresh des Skill-Outputs (1 RPC, 0 n8n-Exec) + Read aus
+    // v_monthly_closing_prep_public. Ersetzt 2 documents-Calls + inline-Berechnung
+    // der Vorjahres-Vergleich-Logik (jetzt in Mig 064 refresh_monthly_closing_prep).
     const gaps = [];
-    for (const [dt, n] of Object.entries(lyByType)) {
-      const cur = curByType[dt] || 0;
-      if (cur < n) gaps.push({ doc_type: dt, expected: n, got: cur, delta: n - cur });
+    try {
+      await supaRpc('refresh_monthly_closing_prep', {
+        p_entity: _apState.entity || null,
+        p_year:   _apState.year,
+        p_month:  _apState.month,
+      });
+      let mcpFilter = `v_monthly_closing_prep_public?select=entity,doc_type,expected_count,got_count,delta,confidence,as_of&year=eq.${_apState.year}&month=eq.${_apState.month}&delta=gt.0&order=delta.desc`;
+      if (_apState.entity) mcpFilter += `&entity=eq.${encodeURIComponent(_apState.entity)}`;
+      const rows = await supa(mcpFilter);
+      for (const r of rows) {
+        gaps.push({
+          doc_type: r.doc_type,
+          expected: r.expected_count,
+          got:      r.got_count,
+          delta:    r.delta,
+          confidence: r.confidence,
+        });
+      }
+    } catch (e) {
+      console.warn('monthly_closing_prep RPC/read failed (tolerant):', e.message);
     }
-    gaps.sort((a,b) => b.delta - a.delta);
+
     if (!gaps.length) {
       missList.innerHTML = `<div style="padding:14px;text-align:center;color:#10b981;font-size:11px">✅ Keine Lücken gegen ${_apState.year - 1}-${String(_apState.month).padStart(2,'0')}</div>`;
       missCount.textContent = '0';
     } else {
       missCount.textContent = String(gaps.length);
-      missList.innerHTML = gaps.map(g => `
+      missList.innerHTML = gaps.map(g => {
+        const lowConf = g.confidence != null && g.confidence < 50;
+        const confBadge = lowConf
+          ? `<span title="Wenig Vorjahres-Daten → Vergleich unsicher" style="color:#f59e0b;font-size:9.5px;margin-left:4px">⚠ conf ${g.confidence}</span>`
+          : '';
+        return `
         <div style="padding:8px 12px;border-bottom:1px dashed var(--s3);font-size:11px">
-          <div style="display:flex;justify-content:space-between"><strong>${g.doc_type}</strong><span style="color:#f59e0b;font-family:ui-monospace,monospace">−${g.delta}</span></div>
+          <div style="display:flex;justify-content:space-between"><strong>${g.doc_type}</strong>${confBadge}<span style="color:#f59e0b;font-family:ui-monospace,monospace">−${g.delta}</span></div>
           <div style="color:var(--mute);font-size:10.5px;margin-top:2px">Vorjahr ${g.expected} · diesen Monat ${g.got}</div>
         </div>
-      `).join('');
+      `;}).join('');
     }
 
     docsCount.textContent = String(docs.length);
