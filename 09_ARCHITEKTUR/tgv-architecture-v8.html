@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TGV Architektur · v8 Live-Hook</title>
+<title>TGV Architektur · v8.1 Live-Hook (skill_definitions-driven)</title>
 
 <!-- Cytoscape v3 + dagre + node-html-label (CDN, kein npm) -->
 <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
@@ -2045,34 +2045,147 @@ function supaV8() {
   return _supaV8;
 }
 
-// Map ein agent_events.tool_name auf einen Cytoscape-node-id (best effort).
+/* =========================================================================
+   v8.1 (Iter 21 Block B1) — skill_definitions-driven Mapping
+   ----------------------------------------------------------------
+   ERSETZT die hardcoded `map = { ... }`-Tabelle aus v8 durch eine 3-Schichten-
+   Auflösung, die ohne Code-Touch neue Skills aus `skill_definitions` aufnimmt:
+
+     1) NODE_DETAILS-Reverse: für jeden `sk_*`-Knoten mit `skill.name` einen
+        Eintrag `name → node_id` (kanonisch — Single-Source der Architektur).
+     2) Konvention-Slug-Fallback gegen TGV_GRAPH-Knoten (title === slug).
+        Greift, wenn Skill-Name in NODE_DETAILS fehlt aber Graph-Karte existiert.
+     3) DB-Live (anon → v_skill_definitions_public, Mig 063): trifft Schicht 2
+        nicht, landen unbekannte Skills auf `sk_more` (Placeholder "+13 weitere").
+
+   Vorher (v8) war die Hardcoded-Map fehlerhaft — Knoten-IDs hießen 'skill-pdf'
+   etc., die echten Cytoscape-Knoten aber 'sk_pdf_invoice'. Mode C hat deshalb
+   nie ein Live-Event gerendert. v8.1 fixt das implizit durch (1).
+   ========================================================================= */
+
+let _SKILL_NODE_MAP = null;     // Map<lowercased_skill_name, node_id>
+let _SKILL_DEFS_LIVE = null;    // Array<{name,version,domain,active,...}> nach DB-Fetch
+
+function _slugifySkill(name) {
+  return String(name || '').toLowerCase().trim()
+    .replace(/^tgv-skill-/, '')
+    .replace(/^tgv-/, '');
+}
+
+function _buildStaticSkillNodeMap() {
+  const out = new Map();
+  // Statische Anchors (nicht in skill_definitions): Orchestrator + Dispatcher
+  out.set('tgv-skill-orchestrator', 'orchestrator');
+  out.set('tgv-orchestrator',       'orchestrator');
+  out.set('orchestrator',           'orchestrator');
+  out.set('tgv-dispatcher',         'dispatcher');
+  out.set('dispatcher',             'dispatcher');
+
+  // Schicht 1: NODE_DETAILS-Reverse (kanonisch)
+  for (const [nodeId, det] of Object.entries(NODE_DETAILS || {})) {
+    if (det && det.skill && det.skill.name) {
+      // Manche Einträge haben "name1 / name2"-Multi-Skill (rag-ingest / rag-search)
+      String(det.skill.name).split('/').map(s => s.trim().toLowerCase()).forEach(n => {
+        if (n) out.set(n, nodeId);
+      });
+    }
+  }
+
+  // Schicht 2: Title-Slug-Match aller Skill-Karten in TGV_GRAPH
+  // (greift z.B. wenn ein neues Skill in skill_definitions registriert ist
+  //  und schon eine passende Karte mit identischem Titel hat).
+  for (const node of (TGV_GRAPH && TGV_GRAPH.nodes) || []) {
+    const d = node.data || {};
+    if (!['skill','skill_placeholder'].includes(d.kind)) continue;
+    if (!d.title) continue;
+    const titleSlug = String(d.title).toLowerCase().trim();
+    // Splits wie "rag-ingest / rag-search" auflösen
+    titleSlug.split('/').map(s => s.trim()).forEach(slug => {
+      if (slug && !out.has(slug)) out.set(slug, d.id);
+      // Auch full-form mit tgv- Prefix als Schlüssel hinterlegen
+      if (slug && !out.has('tgv-' + slug)) out.set('tgv-' + slug, d.id);
+      if (slug && !out.has('tgv-skill-' + slug)) out.set('tgv-skill-' + slug, d.id);
+    });
+  }
+
+  return out;
+}
+
+async function _loadSkillDefinitionsLive() {
+  // Versucht v_skill_definitions_public (Mig 063) per anon-Key zu lesen.
+  // Schlägt vor Mig 063 fehl → leeres Array, Mode A counter zeigt '—'.
+  try {
+    const sb = supaV8();
+    if (!sb) return [];
+    const { data, error } = await sb
+      .from('v_skill_definitions_public')
+      .select('name,version,domain,active,webhook_url,default_model')
+      .order('name');
+    if (error) {
+      // Fallback auf Tabelle direkt (falls Mig 063 noch nicht angewandt)
+      const fallback = await sb
+        .from('skill_definitions')
+        .select('name,version,domain,active,webhook_url')
+        .eq('active', true)
+        .order('name');
+      return fallback.data || [];
+    }
+    return data || [];
+  } catch (e) {
+    console.warn('[arch v8.1] skill_definitions live-fetch failed:', e);
+    return [];
+  }
+}
+
+function _mergeLiveDefsIntoMap(map, defs) {
+  // Für jedes DB-Skill, das noch keinen Eintrag hat → auf sk_more legen.
+  // So bleibt die Visualisierung stabil bei wachsender skill_definitions-Tabelle.
+  for (const s of (defs || [])) {
+    const nameKey = String(s.name || '').toLowerCase().trim();
+    if (!nameKey) continue;
+    if (map.has(nameKey)) continue;
+    // Konvention: Slug ohne tgv- Prefix
+    const slug = _slugifySkill(s.name);
+    if (slug && map.has(slug)) {
+      map.set(nameKey, map.get(slug));
+      continue;
+    }
+    map.set(nameKey, 'sk_more');
+  }
+  return map;
+}
+
+async function initSkillNodeMap() {
+  // Synchron: statische Map aus NODE_DETAILS + TGV_GRAPH bauen.
+  _SKILL_NODE_MAP = _buildStaticSkillNodeMap();
+  // Asynchron: optional mit Live-DB-Skills anreichern (anon-Read via View).
+  try {
+    _SKILL_DEFS_LIVE = await _loadSkillDefinitionsLive();
+    _SKILL_NODE_MAP = _mergeLiveDefsIntoMap(_SKILL_NODE_MAP, _SKILL_DEFS_LIVE);
+  } catch (e) {
+    console.warn('[arch v8.1] skill node map enrichment skipped:', e);
+  }
+  if (typeof window !== 'undefined') window.SKILL_NODE_MAP = _SKILL_NODE_MAP;
+}
+
+// Map ein agent_events.tool_name auf einen Cytoscape-node-id.
+// 3 Schichten: (1) gebaute Map · (2) Slug-Fuzzy gegen Map-Schlüssel · (3) sk_more
 function nodeIdForToolName(tool) {
   if (!tool) return null;
-  const t = String(tool).toLowerCase();
-  // Heuristik: bekannte Skill-Slugs → Knoten-IDs aus dem Graph (skill-* / orch / disp).
-  // Falls kein 1:1-Match: Fallback auf Orchestrator.
-  const map = {
-    'tgv-orchestrator': 'orch',
-    'orchestrator': 'orch',
-    'tgv-dispatcher': 'disp',
-    'dispatcher': 'disp',
-    'tgv-skill-pdf-invoice': 'skill-pdf',
-    'tgv-pdf-invoice-extract': 'skill-pdf',
-    'tgv-extract-contract-pdf': 'skill-contract',
-    'tgv-resolve-supplier': 'skill-resolve',
-    'tgv-reconcile-payment': 'skill-reconcile',
-    'tgv-skill-tax-extract': 'skill-tax',
-    'tgv-skill-detect-duplicate': 'skill-dup',
-    'tgv-store-file-to-drive': 'skill-store',
-    'tgv-kb-learn': 'skill-kb',
-    'tgv-pattern-engine': 'skill-pattern',
-  };
-  if (map[t]) return map[t];
-  // Fuzzy: skill-<keyword>
-  for (const [k, v] of Object.entries(map)) {
-    if (t.includes(k.replace('tgv-skill-', '').replace('tgv-', ''))) return v;
+  const t = String(tool).toLowerCase().trim();
+  if (!_SKILL_NODE_MAP) _SKILL_NODE_MAP = _buildStaticSkillNodeMap();
+  // 1) Direct
+  if (_SKILL_NODE_MAP.has(t)) return _SKILL_NODE_MAP.get(t);
+  // 2) Slug-Variante (tool_name könnte mit/ohne Prefix kommen)
+  const slug = _slugifySkill(t);
+  if (slug && _SKILL_NODE_MAP.has(slug)) return _SKILL_NODE_MAP.get(slug);
+  // 3) Fuzzy substring (für Tool-Namen wie "tgv-skill-pdf-invoice" vs Slug "pdf-invoice-extract")
+  for (const [k, v] of _SKILL_NODE_MAP.entries()) {
+    if (k.length < 4) continue; // Mini-Slugs wie "rag" können false-positive matchen
+    if (k.includes(slug) || slug.includes(k)) return v;
   }
-  return 'orch';
+  // 4) Unbekannt → Placeholder-Karte (sichtbares Signal "neuer Skill")
+  return 'sk_more';
 }
 
 function applyLiveEvent(evt) {
@@ -2196,7 +2309,10 @@ async function loadModeACounters() {
     };
 
     const [skills, learnT, eventsT] = await Promise.all([
-      fetchCount('skill_definitions?select=id&is_active=eq.true'),
+      // v8.1 (Iter 21 Block B1): View statt Tabelle (Mig 063, anon-readable),
+      // korrigiert auch den Spalten-Namen-Tippfehler `is_active` → in der View
+      // sind nur `active=true`-Rows enthalten, deshalb kein Filter nötig.
+      fetchCount('v_skill_definitions_public?select=name'),
       fetchCount(`learning_events?select=id&created_at=gte.${encodeURIComponent(iso)}`),
       fetchCount(`agent_events?select=id&created_at=gte.${encodeURIComponent(iso)}`),
     ]);
@@ -2245,6 +2361,11 @@ document.addEventListener('click', (ev) => {
 // Initialer Modus = B (Default)
 applyMode('b');
 updateResetButtonState();
+
+// v8.1 (Iter 21 Block B1): Skill→Node-Map einmalig bauen.
+// Synchroner Teil (NODE_DETAILS-Reverse + TGV_GRAPH-Slugs) ist sofort fertig;
+// async DB-Enrichment via v_skill_definitions_public läuft im Hintergrund.
+initSkillNodeMap();
 
 /* =========================================================================
    DRAG + RESET — v6: Drag läuft über DOM (siehe DOM-DRAG-Block oben).
