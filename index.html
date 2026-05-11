@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.56 — 2026-05-11 — Iter 20 Block A Hotfix aus Live-Test (F1-F4): Card-Success-Banner mit Diff + Reopen + Skill-Aktivität-Reveal (F1); Side-Panel Chat-Button mit Doc-Kontext-Prompt (F2); Skill-Gap echtes Modal mit Roadmap-Link statt prompt+alert (F3); Buchhalter-Versand-Karte im Steckbrief mit Manuell-Add für JEDEN Doc-Typ (F4). -->
+<!-- TGV Dashboard v11.58 — 2026-05-11 — Iter 20 Block A Text-Polish auf Block-B-Economics-Basis (v11.57 PR #66): F4 Buchhalter-Karte Wording — WF bestimmt Versand-Zeitpunkt + Berichtsperiode (nicht UI). -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.57">
-<title>TGV Dashboard v11.57 — Financial OS</title>
+<meta name="version" content="11.58">
+<title>TGV Dashboard v11.58 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11337,7 +11337,7 @@ function _spAccountingCardHtml(doc) {
   } else if (st === 'pending') {
     state = 'pending';
     badge = '<span style="background:rgba(59,130,246,0.15);color:var(--blu);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">⏳ IN QUEUE</span>';
-    text = `In der Versand-Queue. Geht beim nächsten Buchhalter-Batch raus (manueller Trigger via „Aktionen"-Tab).`;
+    text = `In Versand-Queue für Buchhalter. Geht raus beim nächsten Batch — Zeitpunkt + Berichtsperiode bestimmt der Buchhalter-WF („Aktionen"-Tab → Vorschau).`;
     actions = `<button onclick="spAccountingExclude()" style="background:transparent;color:var(--orng);border:1px solid var(--orng);padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;" title="Doc aus Versand entfernen (accounting_status=excluded)">🚫 Aus Versand entfernen</button>`;
   } else if (st === 'excluded') {
     state = 'excluded';
@@ -11349,7 +11349,7 @@ function _spAccountingCardHtml(doc) {
     if (isAccountingType) {
       state = 'auto-pending';
       badge = '<span style="background:rgba(59,130,246,0.10);color:var(--blu);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">📤 GEPLANT</span>';
-      text = `Geht automatisch zum Buchhalter (target_stream=<code style="background:var(--bg1);padding:1px 5px;border-radius:3px;font-size:10px;">${_spEsc(doc.target_stream)}</code>). Beim nächsten Batch-Trigger im „Aktionen"-Tab.`;
+      text = `Wird an Buchhalter gesendet (oder ist bereits versendet) — target_stream=<code style="background:var(--bg1);padding:1px 5px;border-radius:3px;font-size:10px;">${_spEsc(doc.target_stream)}</code>. Versand-Zeitpunkt + Batch-Periode steuert der Buchhalter-WF („Aktionen"-Tab → Vorschau).`;
       actions = `<button onclick="spAccountingExclude()" style="background:transparent;color:var(--orng);border:1px solid var(--orng);padding:5px 10px;border-radius:4px;font-size:11px;cursor:pointer;" title="Doc als 'excluded' markieren">🚫 Doch nicht versenden</button>`;
     } else {
       state = 'not-planned';
