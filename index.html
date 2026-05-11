@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.59 — 2026-05-11 — Iter 21 Block A (escapeHtml-Härtung): renderStreamPanel (tool/evtType) + Stream-Modal-Body (workflow_name/node_name + JSON.stringify(tool_input/tool_output) in <pre>) + loadPatternRulesLifecycle (pattern_key/scope + empty/error-states) + MCP-Tool-Hub History args-Tooltip (PR #60-Surface). Audit-Findings aus iter-close 20 Security-Audit. -->
+<!-- TGV Dashboard v11.60 — 2026-05-11 — Iter 21 Block A+ CO1: kb_suppliers-Editor im Side-Panel mit Match-Indicator. Side-Panel-Section „📚 Supplier-Wissen" jetzt CRUD: Match-Highlight (grüner Border + „✓ MATCHED FÜR DIESES DOC" wenn s.entity == doc.entity), andere Entity dimmed („↪ andere Entity"), inactive Pattern dashed/grayed. Pro Karte: ✏️ Edit-Button (Modal mit Pattern/Name/Entity/L1/L2/L3/recurring/active-Form) + 🔒 Deactivate-Button (Soft-Delete via active=false) / 🔓 Activate-Button. Section-Header: „+ Neues Pattern"-Button (Defaults aus Doc). Save/Toggle emittieren agent_events tool_name='ui.kb_supplier_edit' für Audit-Trail + Pattern-Lifecycle-Promoter (Iter 21+). -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.59">
-<title>TGV Dashboard v11.59 — Financial OS</title>
+<meta name="version" content="11.60">
+<title>TGV Dashboard v11.60 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2010,6 +2010,33 @@ body.chat-open #main-content {
   }
   #stream-modal h3 { margin: 0 0 8px; font-size: 14px; }
   #stream-modal pre { font-size: 11px; background: var(--bg2); padding: 10px; border-radius: 6px; overflow: auto; }
+
+  /* v11.60 CO1 — kb_suppliers Editor-Modal (Side-Panel Pattern-CRUD) */
+  #kb-supplier-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 220; display: none;
+  }
+  #kb-supplier-modal-backdrop.open { display: flex; align-items: center; justify-content: center; }
+  #kb-supplier-modal {
+    background: var(--bg1, #0f141c); border: 1px solid var(--s3); border-radius: 10px;
+    width: min(540px, 92vw); max-height: 88vh; overflow: auto; padding: 18px 22px;
+  }
+  #kb-supplier-modal h3 { margin: 0 0 4px; font-size: 14px; }
+  #kb-supplier-modal .kb-modal-form { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  #kb-supplier-modal .kb-modal-form > label {
+    font-size: 11px; color: var(--tx2); display: flex; flex-direction: column; gap: 4px;
+  }
+  #kb-supplier-modal .kb-modal-form > label.kb-checkbox {
+    flex-direction: row; align-items: center; gap: 8px; color: var(--tx); font-size: 12px;
+  }
+  #kb-supplier-modal .kb-modal-form input[type="text"],
+  #kb-supplier-modal .kb-modal-form select {
+    background: var(--bg2); border: 1px solid var(--s3); border-radius: 4px;
+    color: var(--tx); padding: 6px 8px; font-size: 12px; width: 100%; box-sizing: border-box;
+  }
+  /* Side-Panel kb_suppliers Karten: Match/Other/Inactive States */
+  .sp-kb-card { transition: background 0.2s, border 0.2s; }
+  .sp-kb-btn { transition: background 0.15s; }
+  .sp-kb-btn:hover { background: var(--s3) !important; }
 </style>
 
 <button id="stream-panel-toggle" onclick="toggleStreamPanel()" title="agent_events Live-Stream (Realtime-Channel auf Supabase). Klick auf Event = Detail-Modal mit Tool-Input/Output.">
@@ -2043,6 +2070,52 @@ body.chat-open #main-content {
     <div id="stream-modal-body"></div>
     <div style="margin-top:12px;text-align:right">
       <button onclick="closeStreamModal()" style="background:var(--blu);color:white;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- v11.60 CO1 — kb_suppliers Editor-Modal (Side-Panel Pattern-CRUD).
+     Form-Felder werden via _spKbFormFill befüllt; L2-Options reagieren auf L1.
+     Save schreibt nach kb_suppliers + emittiert agent_events (tool_name='ui.kb_supplier_edit'). -->
+<div id="kb-supplier-modal-backdrop" onclick="_spKbModalClose(event)">
+  <div id="kb-supplier-modal" onclick="event.stopPropagation()">
+    <h3 id="kb-modal-title">Pattern bearbeiten</h3>
+    <div id="kb-modal-subtitle" style="font-size:11px;color:var(--tx2);margin-bottom:6px;"></div>
+    <div class="kb-modal-form">
+      <label>Pattern <span style="color:#ef4444">*</span> <span style="font-weight:400;color:var(--tx2);font-size:10px;">— Substring der via ILIKE im Resolver gematcht wird</span>
+        <input type="text" id="kb-f-pattern" placeholder="z.B. IONOS SE">
+      </label>
+      <label>Name (display)
+        <input type="text" id="kb-f-name" placeholder="leer = Pattern übernommen">
+      </label>
+      <label>Entity <span style="color:#ef4444">*</span> <span style="font-weight:400;color:var(--tx2);font-size:10px;">— Patterns existieren je Entity (gleicher Lieferant kann an C3 + C4 fakturieren)</span>
+        <select id="kb-f-entity">
+          <option value="">— wählen —</option>
+          <option value="privat">privat</option>
+          <option value="c3-convis-gmbh">c3-convis-gmbh</option>
+          <option value="c4-convis-sarl">c4-convis-sarl</option>
+        </select>
+      </label>
+      <label>Kategorie L1
+        <select id="kb-f-l1" onchange="_spKbUpdateL2Options()"></select>
+      </label>
+      <label>Kategorie L2
+        <select id="kb-f-l2"><option value="">—</option></select>
+      </label>
+      <label>Kategorie L3 (frei) <span style="font-weight:400;color:var(--tx2);font-size:10px;">— z.B. „IT-Hosting", „Domain", „SSL"</span>
+        <input type="text" id="kb-f-l3" placeholder="freier Text">
+      </label>
+      <label class="kb-checkbox">
+        <input type="checkbox" id="kb-f-recurring"> 🔁 recurring (monatlicher/jährlicher Abo-Charakter)
+      </label>
+      <label class="kb-checkbox">
+        <input type="checkbox" id="kb-f-active" checked> ✓ aktiv (im Resolver-Match-Pool)
+      </label>
+    </div>
+    <div id="kb-modal-status" style="font-size:11px;color:var(--tx2);min-height:14px;margin-top:10px;"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="_spKbModalClose()" style="background:transparent;border:1px solid var(--s3);color:var(--tx);padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;">Abbrechen</button>
+      <button id="kb-modal-save-btn" onclick="_spKbSave()" style="background:var(--blu);color:white;border:none;border-radius:6px;padding:6px 16px;font-size:12px;cursor:pointer;font-weight:600;">💾 Speichern + Audit-Log</button>
     </div>
   </div>
 </div>
@@ -11015,6 +11088,241 @@ async function _spFetchSupplier(provider) {
   } catch (e) { console.warn('[side-panel] kb_suppliers fetch failed', e); return []; }
 }
 
+// ═══════════════════════════════════════════════════════
+//  v11.60 CO1 — kb_suppliers Pattern-CRUD im Side-Panel
+//  Match-Indicator: hebt Zeile hervor deren entity == doc.entity (= vom Resolver gewählt).
+//  Add/Edit/Deactivate: ändert kb_suppliers + INSERT in agent_events (tool_name='ui.kb_supplier_edit').
+//  Audit-Trail erlaubt Pattern-Lifecycle-Promoter-Skill (Iter 21+) den UI-Lerneffekt zu sehen.
+// ═══════════════════════════════════════════════════════
+let _spKbModalState = { mode: null, kbId: null, before: null };
+
+function _spKbRenderListHtml(rows, doc) {
+  const headerHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:10.5px;color:var(--tx2);font-style:italic;">${rows.length ? `${rows.length} Pattern${rows.length===1?'':'s'} matchen „${_spEsc(doc.provider||'?')}"` : `keine Patterns matchen „${_spEsc(doc.provider||'?')}"`}</span>
+      <button onclick="_spKbAddOpen()" title="Neues kb_suppliers-Pattern für dieses Doc anlegen. Entity-Default = aktuelle Doc-Entity (${_spEsc(doc.entity||'—')}). Pattern wird mit dem aktuellen Provider-String vorbelegt." style="background:transparent;border:1px solid var(--blu);color:var(--blu);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;">+ Neues Pattern</button>
+    </div>`;
+  const cardsHtml = rows.length
+    ? rows.map(s => _spKbRenderCard(s, doc)).join('')
+    : `<div style="font-size:11px;color:var(--tx2);font-style:italic;padding:8px 0;">— Noch kein Pattern für „${_spEsc(doc.provider || '?')}". Wird automatisch nach 1. Approve angelegt (B10 Auto-Learning) oder direkt manuell via „+ Neues Pattern".</div>`;
+  return headerHtml + cardsHtml;
+}
+
+function _spKbRenderCard(s, doc) {
+  const isMatched = doc.entity && s.entity === doc.entity && s.active !== false;
+  const isInactive = s.active === false;
+  const cat = [s.category_l1, s.category_l2, s.category_l3].filter(Boolean).join(' / ') || '—';
+  const lastSeen = s.last_seen ? String(s.last_seen).slice(0,10) : '—';
+  const recurr = s.recurring ? '🔁 recurring' : '';
+  const verifBadge = s.verification_count > 0
+    ? `<span style="background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:8px;font-size:10px;">✓ ${+s.verification_count}× verified</span>` : '';
+  const conflictBadge = s.conflict_count > 0
+    ? `<span style="background:rgba(239,68,68,0.15);color:#ef4444;padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;">⚠ ${+s.conflict_count} conflict</span>` : '';
+
+  const cardStyle = isInactive
+    ? 'border:1px dashed var(--s3);opacity:0.6;'
+    : isMatched
+      ? 'border:2px solid #10b981;background:linear-gradient(180deg, rgba(16,185,129,0.07), var(--bg1));'
+      : 'border:1px solid var(--s3);opacity:0.78;';
+
+  const matchHeader = isInactive
+    ? `<div style="font-size:10px;color:#f59e0b;margin-bottom:6px;font-weight:600;">🔒 INAKTIV — nicht im Resolver-Match-Pool</div>`
+    : isMatched
+      ? `<div style="font-size:10px;color:#10b981;margin-bottom:6px;font-weight:700;letter-spacing:0.3px;">✓ MATCHED FÜR DIESES DOC</div>`
+      : `<div style="font-size:10px;color:var(--tx2);margin-bottom:6px;font-style:italic;">↪ andere Entity — dieses Doc ist „${_spEsc(doc.entity||'—')}", dieses Pattern ist „${_spEsc(s.entity||'—')}"</div>`;
+
+  return `<div class="sp-kb-card" data-kb-id="${+s.id}" style="background:var(--bg1);border-radius:5px;padding:10px 12px;margin-bottom:8px;${cardStyle}">
+    ${matchHeader}
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:var(--tx);">${_spEsc(s.name_normalized || s.pattern)}</div>
+        <div style="font-size:11px;color:var(--tx2);margin-top:3px;line-height:1.5;">
+          <strong>Pattern:</strong> ${_spEsc(s.pattern)}<br>
+          <strong>Entity:</strong> ${_spEsc(s.entity || '—')}<br>
+          <strong>Kategorie:</strong> ${_spEsc(cat)}<br>
+          <strong>Avg-Betrag:</strong> ${s.avg_amount != null ? Number(s.avg_amount).toFixed(2) + ' ' + _spEsc(s.currency||'EUR') : '—'} ${recurr}<br>
+          <strong>Last seen:</strong> ${_spEsc(lastSeen)}
+        </div>
+        <div style="margin-top:6px;">${verifBadge}${conflictBadge}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+        <button class="sp-kb-btn" onclick="_spKbEditOpen(${+s.id})" title="Pattern bearbeiten — Entity, Kategorie, recurring, active. Änderungen werden in agent_events protokolliert." style="font-size:10.5px;padding:3px 8px;background:var(--bg2);color:var(--tx);border:1px solid var(--s3);border-radius:3px;cursor:pointer;white-space:nowrap;">✏️ Edit</button>
+        <button class="sp-kb-btn" onclick="_spKbToggleActive(${+s.id}, ${isInactive})" title="${isInactive ? 'Wieder aktivieren — Pattern kommt zurück in den Resolver-Match-Pool.' : 'Soft-Delete — Pattern bleibt in DB (verification_count erhalten), wird aber nicht mehr für Resolver-Matches herangezogen.'}" style="font-size:10.5px;padding:3px 8px;background:var(--bg2);color:${isInactive ? '#10b981' : '#f59e0b'};border:1px solid var(--s3);border-radius:3px;cursor:pointer;white-space:nowrap;">${isInactive ? '🔓 Activate' : '🔒 Deactivate'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function _spFetchKbById(kbId) {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?id=eq.${+kbId}&select=*`;
+    const headers = await _supaAuthHeaders();
+    const res = await fetch(url, { headers });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows[0] || null;
+  } catch (e) { return null; }
+}
+
+function _spKbEditOpen(kbId) {
+  _spFetchKbById(kbId).then(row => {
+    if (!row) { (typeof showToast === 'function') ? showToast('error', 'Pattern nicht gefunden') : alert('Pattern nicht gefunden'); return; }
+    _spKbModalState = { mode: 'edit', kbId, before: { ...row } };
+    document.getElementById('kb-modal-title').textContent = `Pattern bearbeiten — kb_suppliers #${kbId}`;
+    document.getElementById('kb-modal-subtitle').textContent = `verification_count=${row.verification_count ?? 0} · conflict_count=${row.conflict_count ?? 0} · last_seen=${row.last_seen ? String(row.last_seen).slice(0,10) : '—'}`;
+    _spKbFormFill(row);
+    _spKbModalShow();
+  });
+}
+
+function _spKbAddOpen() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  _spKbModalState = { mode: 'add', kbId: null, before: null };
+  document.getElementById('kb-modal-title').textContent = `Neues Pattern für „${doc.provider || '?'}"`;
+  document.getElementById('kb-modal-subtitle').textContent = `Aus Doc #${doc.id} · Entity-Default = „${doc.entity || '—'}" · nach Save: 1× verified (User-confirmed-Path).`;
+  _spKbFormFill({
+    pattern: doc.provider || '',
+    name_normalized: doc.provider || '',
+    entity: doc.entity || '',
+    category_l1: doc.category_l1 || '',
+    category_l2: doc.category_l2 || '',
+    category_l3: doc.category_l3 || '',
+    recurring: false,
+    active: true,
+  });
+  _spKbModalShow();
+}
+
+function _spKbFormFill(row) {
+  // L1 Optionen einmalig befüllen (idempotent)
+  const l1Sel = document.getElementById('kb-f-l1');
+  if (l1Sel.options.length <= 1) {
+    l1Sel.innerHTML = '<option value="">—</option>' + L1_CATS.map(c => `<option value="${_spEsc(c)}">${_spEsc(c)}</option>`).join('');
+  }
+  document.getElementById('kb-f-pattern').value = row.pattern || '';
+  document.getElementById('kb-f-name').value = row.name_normalized || '';
+  document.getElementById('kb-f-entity').value = row.entity || '';
+  document.getElementById('kb-f-l1').value = row.category_l1 || '';
+  _spKbUpdateL2Options();
+  document.getElementById('kb-f-l2').value = row.category_l2 || '';
+  document.getElementById('kb-f-l3').value = row.category_l3 || '';
+  document.getElementById('kb-f-recurring').checked = !!row.recurring;
+  document.getElementById('kb-f-active').checked = row.active !== false;
+  document.getElementById('kb-modal-status').textContent = '';
+  const btn = document.getElementById('kb-modal-save-btn');
+  if (btn) btn.disabled = false;
+}
+
+function _spKbUpdateL2Options() {
+  const l1 = document.getElementById('kb-f-l1').value;
+  const l2sel = document.getElementById('kb-f-l2');
+  const cur = l2sel.value;
+  const opts = (typeof L2_OPTS === 'object' && L2_OPTS[l1]) ? L2_OPTS[l1] : [];
+  l2sel.innerHTML = '<option value="">—</option>' + opts.map(o => `<option value="${_spEsc(o)}">${_spEsc(o)}</option>`).join('');
+  if (opts.includes(cur)) l2sel.value = cur;
+}
+
+function _spKbModalShow() { document.getElementById('kb-supplier-modal-backdrop').classList.add('open'); }
+function _spKbModalClose(ev) {
+  if (ev && ev.target && ev.target.id !== 'kb-supplier-modal-backdrop') return;
+  document.getElementById('kb-supplier-modal-backdrop').classList.remove('open');
+  _spKbModalState = { mode: null, kbId: null, before: null };
+}
+
+async function _spKbSave() {
+  const state = _spKbModalState;
+  const doc = _sidePanelCurrentDoc;
+  const status = document.getElementById('kb-modal-status');
+  const btn = document.getElementById('kb-modal-save-btn');
+  const pattern = document.getElementById('kb-f-pattern').value.trim();
+  const name = document.getElementById('kb-f-name').value.trim();
+  const entity = document.getElementById('kb-f-entity').value;
+  if (!pattern) { status.textContent = '❌ Pattern darf nicht leer sein.'; return; }
+  if (!entity) { status.textContent = '❌ Entity ist Pflicht (Patterns sind per-Entity).'; return; }
+  const body = {
+    pattern,
+    name_normalized: name || pattern,
+    entity,
+    category_l1: document.getElementById('kb-f-l1').value || null,
+    category_l2: document.getElementById('kb-f-l2').value || null,
+    category_l3: document.getElementById('kb-f-l3').value.trim() || null,
+    recurring: document.getElementById('kb-f-recurring').checked,
+    active: document.getElementById('kb-f-active').checked,
+  };
+  btn.disabled = true;
+  status.textContent = '💾 speichere…';
+  try {
+    let resultId = state.kbId;
+    if (state.mode === 'edit') {
+      const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?id=eq.${+state.kbId}`;
+      const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+      const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(`PATCH ${res.status}: ${(await res.text().catch(()=>''))||''}`);
+    } else {
+      // Add: gleich verification_count=1 (User-confirmed) damit es im Resolver-Match-Pool auftaucht
+      const url = `${SUPABASE_URL}/rest/v1/kb_suppliers`;
+      const addBody = { ...body, verification_count: 1, last_seen: new Date().toISOString().slice(0,10) };
+      const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' });
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(addBody) });
+      if (!res.ok) throw new Error(`POST ${res.status}: ${(await res.text().catch(()=>''))||''}`);
+      const rows = await res.json();
+      resultId = rows[0]?.id || null;
+    }
+    await _spKbAuditLog(state.mode, resultId, state.before, body, doc?.id ?? null);
+    status.innerHTML = `✅ ${state.mode === 'edit' ? 'aktualisiert' : 'angelegt'} (kb_suppliers #${resultId ?? '?'}) + Audit-Log.`;
+    setTimeout(() => { _spKbModalClose(); _spKbRefreshList(); }, 700);
+  } catch (e) {
+    status.textContent = `❌ ${e.message}`;
+    btn.disabled = false;
+  }
+}
+
+async function _spKbToggleActive(kbId, isInactive) {
+  const target = !!isInactive; // wenn inactive → true (aktivieren); wenn active → false (deaktivieren)
+  const verb = target ? 'aktivieren' : 'deaktivieren';
+  const explainer = target
+    ? 'Pattern kommt zurück in den Resolver-Match-Pool. Künftige Docs mit diesem Provider werden wieder gematcht.'
+    : 'Pattern bleibt in DB (verification_count erhalten), wird aber NICHT mehr vom Resolver herangezogen. Reaktivieren jederzeit möglich.';
+  if (!confirm(`Pattern #${kbId} ${verb}?\n\n${explainer}`)) return;
+  try {
+    const before = await _spFetchKbById(kbId);
+    const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?id=eq.${+kbId}`;
+    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+    const res = await fetch(url, { method: 'PATCH', headers, body: JSON.stringify({ active: target }) });
+    if (!res.ok) throw new Error(`PATCH ${res.status}`);
+    await _spKbAuditLog(target ? 'activate' : 'deactivate', kbId, before, { active: target }, _sidePanelCurrentDoc?.id ?? null);
+    if (typeof showToast === 'function') showToast('success', `Pattern #${kbId} ${target ? 'aktiviert' : 'deaktiviert'}.`);
+    _spKbRefreshList();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('error', `Fehler: ${e.message}`); else alert(`Fehler: ${e.message}`);
+  }
+}
+
+async function _spKbAuditLog(action, kbId, before, after, docId) {
+  // Audit-Trail in agent_events. tool_name='ui.kb_supplier_edit' macht es im Stream-Panel + Filter-fähig.
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/agent_events`;
+    const body = {
+      tool_name: 'ui.kb_supplier_edit',
+      event_type: 'user_action',
+      document_id: docId,
+      metadata: { action, kb_supplier_id: kbId, before: before || null, after: after || null },
+      created_at: new Date().toISOString(),
+    };
+    const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+    await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+  } catch (e) { console.warn('[kb-edit] audit insert failed (non-fatal)', e); }
+}
+
+async function _spKbRefreshList() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  const rows = await _spFetchSupplier(doc.provider);
+  const cont = document.getElementById('sp-supplier-content');
+  if (cont) cont.innerHTML = _spKbRenderListHtml(rows, doc);
+}
+
 async function sidePanelRerunCascade() {
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
@@ -11180,33 +11488,12 @@ function openSidePanel(doc) {
     providerComboboxRender(document.getElementById('sp-edit-provider')?.value || '');
   });
 
-  // kb_suppliers async (für aktuelles Provider-Feld)
+  // kb_suppliers async (v11.60 CO1: Match-Indicator + Edit/Add/Deactivate)
   _spFetchSupplier(doc.provider).then(rows => {
     const cont = document.getElementById('sp-supplier-content');
     const loading = document.getElementById('sp-supplier-loading');
     if (!cont || !loading) return;
-    if (!rows.length) {
-      loading.textContent = `— kein kb_suppliers-Eintrag für Provider "${doc.provider || '?'}". Wird angelegt nach 1. Approve (B10 Auto-Learning).`;
-      return;
-    }
-    cont.innerHTML = rows.map(s => {
-      const cat = [s.category_l1, s.category_l2, s.category_l3].filter(Boolean).join(' / ') || '—';
-      const lastSeen = s.last_seen ? (s.last_seen||'').slice(0,10) : '—';
-      const recurr = s.recurring ? '🔁 recurring' : '';
-      const verifBadge = s.verification_count > 0 ? `<span style="background:var(--grn-bg);color:var(--grn);padding:1px 6px;border-radius:8px;font-size:10px;">✓ ${s.verification_count}× verified</span>` : '';
-      const conflictBadge = s.conflict_count > 0 ? `<span style="background:var(--red-bg);color:var(--red);padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;">⚠ ${s.conflict_count} conflict</span>` : '';
-      return `<div class="sp-info-card" style="background:var(--bg1);border-radius:5px;padding:10px 12px;margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:600;color:var(--tx);">${_spEsc(s.name_normalized || s.pattern)}</div>
-        <div style="font-size:11px;color:var(--tx2);margin-top:3px;">
-          <strong>Pattern:</strong> ${_spEsc(s.pattern)}<br>
-          <strong>Entity:</strong> ${_spEsc(s.entity || '—')}<br>
-          <strong>Kategorie:</strong> ${_spEsc(cat)}<br>
-          <strong>Avg-Betrag:</strong> ${s.avg_amount != null ? Number(s.avg_amount).toFixed(2) + ' ' + (s.currency||'EUR') : '—'} ${recurr}<br>
-          <strong>Last seen:</strong> ${_spEsc(lastSeen)}
-        </div>
-        <div style="margin-top:6px;">${verifBadge}${conflictBadge}</div>
-      </div>`;
-    }).join('');
+    cont.innerHTML = _spKbRenderListHtml(rows, doc);
     cont.style.display = 'block';
     loading.style.display = 'none';
   });
