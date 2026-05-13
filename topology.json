@@ -1,6 +1,6 @@
 {
-  "iter": "26.B1.0",
-  "generated_at": "2026-05-13T11:04:42.013099+00:00",
+  "iter": "27.A2",
+  "generated_at": "2026-05-13T15:00:50.962116+00:00",
   "stats": {
     "nodes_total": 140,
     "edges_total": 99,
@@ -14,7 +14,13 @@
       "skill_binding": 18,
       "fk": 55
     },
-    "total_audit_hits": 62
+    "total_audit_hits": 62,
+    "live": {
+      "polled_workflows": 45,
+      "execs_24h_total": 176,
+      "errors_24h_total": 37,
+      "polled_at": "2026-05-13T14:59:08.305973+00:00"
+    }
   },
   "elements": {
     "nodes": [
@@ -26,7 +32,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "1OEdRKTJul9grsHT",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -37,7 +48,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "5jYCxB9NzqyRMqjI",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-09T08:32:57.225Z",
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -48,7 +64,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "7JigJ4QiWwhVOPCs",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -59,7 +80,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "CbNkDkMss3YiHAmN",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -70,7 +96,12 @@
           "active": true,
           "hits_count": 1,
           "wf_id": "DV1qyZgjSk7cTbim",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-13T11:56:09.819Z",
+          "execs_24h": 4,
+          "errors_24h": 0,
+          "duration_24h_ms": 38172
         }
       },
       {
@@ -81,7 +112,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "EberPYI286ws5K5M",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -92,7 +128,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "EhYORO07kDF5u5Xn",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-13T13:46:38.492Z",
+          "execs_24h": 10,
+          "errors_24h": 10,
+          "duration_24h_ms": 3331
         }
       },
       {
@@ -103,7 +144,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "I7BJ9Bgb21J1b5Ap",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -114,7 +160,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "IV0MUfrbcjNZJNv0",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -125,7 +176,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "KRNRcSLSUiVC8nTW",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -136,7 +192,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "LXB4KSgDbqFi1jc0",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-12T22:54:27.481Z",
+          "execs_24h": 1,
+          "errors_24h": 1,
+          "duration_24h_ms": 919
         }
       },
       {
@@ -147,7 +208,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "MkG0m64HF9Z7jmxK",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-13T13:46:39.180Z",
+          "execs_24h": 6,
+          "errors_24h": 6,
+          "duration_24h_ms": 267
         }
       },
       {
@@ -158,7 +224,12 @@
           "active": false,
           "hits_count": 3,
           "wf_id": "Pofm867HQoLoWBXA",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -169,7 +240,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "RDA4Hv8058hqxTOf",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -180,7 +256,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "RKh1lq9ruckrpR24",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-13T10:17:30.186Z",
+          "execs_24h": 12,
+          "errors_24h": 6,
+          "duration_24h_ms": 388772
         }
       },
       {
@@ -191,7 +272,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "RtTqaFYxiFtc9Pdm",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -202,7 +288,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "TfR4CfEpElX8Nahy",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-09T11:21:36.709Z",
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -213,7 +304,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "UYKD3BC6qbUzJl0d",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -224,7 +320,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "UvNspgnrKvQKz9Ln",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -235,7 +336,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "X4LH5CnG2GH1InkX",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-12T01:23:08.290Z",
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -246,7 +352,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "XiV614kH0syjxU1T",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-13T09:37:10.808Z",
+          "execs_24h": 2,
+          "errors_24h": 2,
+          "duration_24h_ms": 4046
         }
       },
       {
@@ -257,7 +368,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "Xrhc3ajB3onuI8lv",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-13T10:37:00.453Z",
+          "execs_24h": 1,
+          "errors_24h": 1,
+          "duration_24h_ms": 1318
         }
       },
       {
@@ -268,7 +384,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "YvTqsmvC4lpgylDH",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -279,7 +400,12 @@
           "active": false,
           "hits_count": 5,
           "wf_id": "ZtZ6wQQ0DAEQr7Ub",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -290,7 +416,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "ZwkBC1AXAnobIUuN",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -301,7 +432,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "bdejCuX2AN6ptdz5",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -312,7 +448,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "bzbnkMvWF0FcWYI8",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -323,7 +464,12 @@
           "active": false,
           "hits_count": 30,
           "wf_id": "c7B4trQwfyRFVm8m",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -334,7 +480,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "ceurPCxGciw1CN0v",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-12T00:04:04.621Z",
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -345,7 +496,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "d3xO540JEcAu9Rol",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-12T22:54:28.442Z",
+          "execs_24h": 4,
+          "errors_24h": 0,
+          "duration_24h_ms": 53004
         }
       },
       {
@@ -356,7 +512,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "dT1VRLPnDdYxVIKH",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-13T13:46:39.878Z",
+          "execs_24h": 3,
+          "errors_24h": 0,
+          "duration_24h_ms": 3938
         }
       },
       {
@@ -367,7 +528,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "eATEzPsbFjHUWcpD",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-13T01:30:31.932Z",
+          "execs_24h": 1,
+          "errors_24h": 1,
+          "duration_24h_ms": 44
         }
       },
       {
@@ -378,7 +544,12 @@
           "active": false,
           "hits_count": 7,
           "wf_id": "fJR8O8MZ2U7YkaGG",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -389,7 +560,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "fx9POuhD3ybynhat",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-12T22:53:16.100Z",
+          "execs_24h": 16,
+          "errors_24h": 0,
+          "duration_24h_ms": 387688
         }
       },
       {
@@ -400,7 +576,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "gJMEk6RokQr828XB",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -411,7 +592,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "gxMTA6s3Pl4Gsuzc",
-          "tags": []
+          "tags": [],
+          "last_status": "error",
+          "last_at": "2026-05-13T13:46:39.531Z",
+          "execs_24h": 4,
+          "errors_24h": 4,
+          "duration_24h_ms": 255
         }
       },
       {
@@ -422,7 +608,12 @@
           "active": false,
           "hits_count": 0,
           "wf_id": "iAocgXD6t8Ik4anM",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -433,7 +624,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "mZyMkagJPmMCNQqX",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -444,7 +640,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "mvOybw4cBU7y8X5Y",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-13T13:46:34.636Z",
+          "execs_24h": 102,
+          "errors_24h": 3,
+          "duration_24h_ms": 364468
         }
       },
       {
@@ -455,7 +656,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "nf0LbVTOdtlqe6kI",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-12T22:53:01.136Z",
+          "execs_24h": 9,
+          "errors_24h": 3,
+          "duration_24h_ms": 17224
         }
       },
       {
@@ -466,7 +672,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "orpWV2VGRPRQ3RsD",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -477,7 +688,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "rMBSFnMsw6NiasZ3",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-12T01:23:10.420Z",
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -488,7 +704,12 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "tnuT3QN4AwnbYdSz",
-          "tags": []
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-13T01:30:00.096Z",
+          "execs_24h": 1,
+          "errors_24h": 0,
+          "duration_24h_ms": 32061
         }
       },
       {
@@ -499,7 +720,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "xFhnFWWazCDdepXX",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -510,7 +736,12 @@
           "active": false,
           "hits_count": 2,
           "wf_id": "ybDORjJEGzOlP0Pt",
-          "tags": []
+          "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -1394,15 +1625,6 @@
       },
       {
         "data": {
-          "id": "call:wf:KRNRcSLSUiVC8nTW->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
-          "source": "wf:KRNRcSLSUiVC8nTW",
-          "target": "wf:CbNkDkMss3YiHAmN",
-          "type": "webhook_call",
-          "label": "tgv-skill-orchestrator"
-        }
-      },
-      {
-        "data": {
           "id": "call:wf:KRNRcSLSUiVC8nTW->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
           "source": "wf:KRNRcSLSUiVC8nTW",
           "target": "wf:mvOybw4cBU7y8X5Y",
@@ -1412,11 +1634,11 @@
       },
       {
         "data": {
-          "id": "call:wf:RDA4Hv8058hqxTOf->wf:d3xO540JEcAu9Rol:tgv-skill-pdf-invoice-extract",
-          "source": "wf:RDA4Hv8058hqxTOf",
-          "target": "wf:d3xO540JEcAu9Rol",
+          "id": "call:wf:KRNRcSLSUiVC8nTW->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
+          "source": "wf:KRNRcSLSUiVC8nTW",
+          "target": "wf:CbNkDkMss3YiHAmN",
           "type": "webhook_call",
-          "label": "tgv-skill-pdf-invoice-extract"
+          "label": "tgv-skill-orchestrator"
         }
       },
       {
@@ -1426,6 +1648,15 @@
           "target": "wf:X4LH5CnG2GH1InkX",
           "type": "webhook_call",
           "label": "tgv-kb-learn"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:RDA4Hv8058hqxTOf->wf:d3xO540JEcAu9Rol:tgv-skill-pdf-invoice-extract",
+          "source": "wf:RDA4Hv8058hqxTOf",
+          "target": "wf:d3xO540JEcAu9Rol",
+          "type": "webhook_call",
+          "label": "tgv-skill-pdf-invoice-extract"
         }
       },
       {
@@ -1493,24 +1724,6 @@
       },
       {
         "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:dT1VRLPnDdYxVIKH:tgv-skill-store-file-to-drive",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:dT1VRLPnDdYxVIKH",
-          "type": "webhook_call",
-          "label": "tgv-skill-store-file-to-drive"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:gxMTA6s3Pl4Gsuzc",
-          "type": "webhook_call",
-          "label": "tgv-skill-upsert-contract-from-invoice"
-        }
-      },
-      {
-        "data": {
           "id": "call:wf:mvOybw4cBU7y8X5Y->wf:MkG0m64HF9Z7jmxK:tgv-skill-reconcile-payment",
           "source": "wf:mvOybw4cBU7y8X5Y",
           "target": "wf:MkG0m64HF9Z7jmxK",
@@ -1520,20 +1733,11 @@
       },
       {
         "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:5jYCxB9NzqyRMqjI:tgv-skill-extract-contract-pdf",
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:IV0MUfrbcjNZJNv0:tgv-pdf-text-snippet",
           "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:5jYCxB9NzqyRMqjI",
+          "target": "wf:IV0MUfrbcjNZJNv0",
           "type": "webhook_call",
-          "label": "tgv-skill-extract-contract-pdf"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UvNspgnrKvQKz9Ln:tgv-skill-import-banking-csv",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:UvNspgnrKvQKz9Ln",
-          "type": "webhook_call",
-          "label": "tgv-skill-import-banking-csv"
+          "label": "tgv-pdf-text-snippet"
         }
       },
       {
@@ -1556,20 +1760,29 @@
       },
       {
         "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:IV0MUfrbcjNZJNv0:tgv-pdf-text-snippet",
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:dT1VRLPnDdYxVIKH:tgv-skill-store-file-to-drive",
           "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:IV0MUfrbcjNZJNv0",
+          "target": "wf:dT1VRLPnDdYxVIKH",
           "type": "webhook_call",
-          "label": "tgv-pdf-text-snippet"
+          "label": "tgv-skill-store-file-to-drive"
         }
       },
       {
         "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UYKD3BC6qbUzJl0d:tgv-skill-import-timetrack-csv",
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UvNspgnrKvQKz9Ln:tgv-skill-import-banking-csv",
           "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:UYKD3BC6qbUzJl0d",
+          "target": "wf:UvNspgnrKvQKz9Ln",
           "type": "webhook_call",
-          "label": "tgv-skill-import-timetrack-csv"
+          "label": "tgv-skill-import-banking-csv"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:gxMTA6s3Pl4Gsuzc",
+          "type": "webhook_call",
+          "label": "tgv-skill-upsert-contract-from-invoice"
         }
       },
       {
@@ -1583,11 +1796,20 @@
       },
       {
         "data": {
-          "id": "call:wf:orpWV2VGRPRQ3RsD->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
-          "source": "wf:orpWV2VGRPRQ3RsD",
-          "target": "wf:CbNkDkMss3YiHAmN",
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UYKD3BC6qbUzJl0d:tgv-skill-import-timetrack-csv",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:UYKD3BC6qbUzJl0d",
           "type": "webhook_call",
-          "label": "tgv-skill-orchestrator"
+          "label": "tgv-skill-import-timetrack-csv"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:5jYCxB9NzqyRMqjI:tgv-skill-extract-contract-pdf",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:5jYCxB9NzqyRMqjI",
+          "type": "webhook_call",
+          "label": "tgv-skill-extract-contract-pdf"
         }
       },
       {
@@ -1597,6 +1819,15 @@
           "target": "wf:mvOybw4cBU7y8X5Y",
           "type": "webhook_call",
           "label": "tgv-skill-router"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:orpWV2VGRPRQ3RsD->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
+          "source": "wf:orpWV2VGRPRQ3RsD",
+          "target": "wf:CbNkDkMss3YiHAmN",
+          "type": "webhook_call",
+          "label": "tgv-skill-orchestrator"
         }
       },
       {
