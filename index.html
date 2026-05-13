@@ -1,11 +1,11 @@
-<!-- TGV Dashboard v11.62 — 2026-05-13 — Iter 26 Block A1: Lernen-Tab Top-Level mit 2 Sub-Tabs (Pipeline-Dokus + System-Karte). Pipeline-Dokus rendert USER_DOCS/PIPELINE_*.md client-side via marked.js (~30 KB CDN). Sidebar mit 6 Doc-Einträgen (README + 5 Pipelines), Markdown-Renderer mit clientseitiger H2/H3-Suche, Section-Anchor-Scroll. System-Karte Sub-Tab als Stub (Cytoscape kommt in Block B). USER_DOCS-Disziplin: Mensch klickt Pipeline → Markdown rendert in <1s. -->
+<!-- TGV Dashboard v11.63 — 2026-05-13 — Iter 26 Block A komplett (A1+A2+A3+A4): (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs (Pipeline-Dokus + System-Karte), marked.js-Render. (A2) RAG-Index 66 Chunks in rag_chunks (source_type='user_doc') via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc im tgv_mcp_server.py. (A4) Chatbot-Integration: TGV_TOOLS+TGV_SYSTEM_PROMPT mit Pipeline-Frage-Protokoll, executeTool-Handler ruft lookup_user_docs RPC, Citation-Links #lernen:X:anchor click-handler navigiert + highlightet. Drei Konsumenten, eine Quelle. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.62">
-<title>TGV Dashboard v11.62 — Financial OS</title>
+<meta name="version" content="11.63">
+<title>TGV Dashboard v11.63 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6253,6 +6253,57 @@ function escapeHtml(s) {
 }
 
 // ═══════════════════════════════════════════════════════
+// Iter 26.A4 — Citation Click Handler
+// Fängt Klicks auf #lernen:<PipelineKey>:<anchor> Links ab (z.B. aus Chatbot-
+// Antworten) und navigiert zum Lernen-Tab > Pipeline-Dokus > entsprechende Doc +
+// scrollt zum Section-Anchor + Highlight 2s.
+// ═══════════════════════════════════════════════════════
+document.addEventListener('click', function (ev) {
+  const a = ev.target.closest('a[href^="#lernen:"]');
+  if (!a) return;
+  ev.preventDefault();
+  const href = a.getAttribute('href');                       // "#lernen:A2:faq-5"
+  const m = /^#lernen:([A-Za-z]+):(.+)$/.exec(href);
+  if (!m) return;
+  const pipelineKey = m[1];
+  const anchor = m[2];
+  openLernenAtCitation(pipelineKey, anchor);
+});
+
+function openLernenAtCitation(pipelineKey, anchor) {
+  // 1. Lernen-Tab in Sidebar aktivieren
+  const sidebarBtn = [...document.querySelectorAll('.nav-item')].find(b =>
+    /showPage\('lernen'/.test(b.getAttribute('onclick') || '')
+  );
+  if (sidebarBtn) showPage('lernen', sidebarBtn);
+  // 2. Sub-Tab "Pipeline-Dokus" aktivieren (falls noch "System-Karte")
+  const docsTabBtn = document.getElementById('lernen-tab-docs');
+  if (docsTabBtn) showLernenTab('docs', docsTabBtn);
+  // 3. Doc laden, dann scroll + highlight
+  loadPipelineDoc(pipelineKey).then(() => {
+    // loadPipelineDoc rendert ggf. erst nach kurzer Verzögerung
+    setTimeout(() => {
+      const bodyEl = document.getElementById('lernen-doc-body');
+      if (!bodyEl) return;
+      let target = bodyEl.querySelector(`#${CSS.escape(anchor)}`);
+      if (!target) {
+        // Fallback: H2/H3 mit slugified-Text suchen
+        target = [...bodyEl.querySelectorAll('h2,h3')]
+          .find(h => slugify(h.textContent) === anchor);
+      }
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.style.background = 'rgba(0,127,127,0.22)';
+        target.style.transition = 'background 0.6s';
+        setTimeout(() => { target.style.background = ''; }, 2200);
+      } else {
+        console.warn(`Citation-Anchor nicht gefunden: ${anchor} in ${pipelineKey}`);
+      }
+    }, 250);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
 //  PATTERN-RULES LIFECYCLE (Iter 20.4 — Workshop-Acceptance #14)
 //  Liste pattern_rules pro scope mit stage-Badge + verification + conflict + trust_score.
 // ═══════════════════════════════════════════════════════
@@ -9438,11 +9489,33 @@ rejected = abgelehnt (bleibt in DB, kein Skill)
 1. get_pending_documents — Alle offenen Docs (inbox + needs_review)
 2. confirm_document — Bestätigt ein Doc und triggert Skill Router falls nötig
 3. get_tgv_next_actions — Prioritätenliste offener Aufgaben
-4. search_knowledge — Sucht technische Prozessdetails in der TGV-Wissensbasis
+4. search_knowledge — Sucht in agent_knowledge (Iter-7-Knowledge-Base, kurze Topic-Artikel)
+5. lookup_pipeline_doc — Sucht in USER_DOCS Pipeline-Markdowns (Iter 24/26, autoritative Erklärung pro Pipeline A2/B/Cascade/D/E)
+6. query_documents — Strukturierter Filter über documents (für Reports)
+
+=== PIPELINE-FRAGE-PROTOKOLL (Iter 26 Pflicht) ===
+Bei JEDER Frage über eine Pipeline ("Wie funktioniert WF B?", "Was passiert mit
+Mails in convis.fr?", "Wann läuft der Reclass-WF?", "Welche Schritte hat die
+Cascade?", "Was macht der Buchhalter-Versand?") IMMER zuerst lookup_pipeline_doc
+aufrufen. NIEMALS aus Trainingswissen antworten.
+
+Format der Antwort BEI Pipeline-Fragen:
+1. Inhaltliche Antwort auf Basis der zurückgegebenen Sections
+2. Quellenliste am Ende, ZWINGEND in diesem Format (Markdown):
+
+   📚 Quelle: [PIPELINE_A2 §FAQ-5](#lernen:A2:faq-5)
+   📚 Quelle: [PIPELINE_CASCADE §Schritte](#lernen:Cascade:schritte)
+
+Die Hash-Links (#lernen:X:anchor) öffnen automatisch den Lernen-Tab + scrollen zum
+Anchor + highlighten 2s. NICHT abwandeln, NICHT weglassen.
+
+Pipeline-Key-Mapping für die URLs (case-sensitive):
+  A2 | B | Cascade | D | E | README
 
 === DEIN VERHALTEN ===
 - Antworte auf Deutsch, CFO-like, präzise
-- Bei technischen Prozessfragen (wie funktioniert X, warum passiert Y): nutze search_knowledge
+- Bei TECHNISCHEN Prozessfragen über Pipelines: lookup_pipeline_doc (PFLICHT)
+- Bei sonstigen Prozessdetails: search_knowledge (kurze Topic-Artikel)
 - Bei unklarer Entität: frage nach oder schlag basierend auf Lieferant-Regeln vor
 - Du kannst Dokumente per confirm_document bestätigen — das löst die komplette Pipeline aus
 - Du KANNST keine Dateien in Google Drive direkt verschieben (nur via n8n Skill Router)
@@ -9491,6 +9564,21 @@ const TGV_TOOLS = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Suchbegriff(e), z.B. "invoice extract trigger" oder "vertrag approval flow"' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    // Iter 26.A4 — Pipeline-Doc Lookup via FTS auf USER_DOCS (Mig 072-074, lookup_user_docs RPC).
+    // PFLICHT bei JEDER Pipeline-Frage (A2/B/Cascade/D/E). Liefert zitierfähige Sections.
+    name: 'lookup_pipeline_doc',
+    description: 'Sucht in den USER_DOCS Pipeline-Markdowns (00_LEITDOKUMENT/USER_DOCS/PIPELINE_*.md, indexiert in rag_chunks) per FTS. PFLICHT bei JEDER Pipeline-Frage (A2/B/Cascade/D/E/README). Liefert Sections mit anchor für Citation-Links.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query:    { type: 'string', description: 'Frage oder Stichworte ("Mail Cascade", "Reclass FAQ", "WF E Versand")' },
+        pipeline: { type: 'string', description: 'Optionaler Filter auf eine Pipeline (A2/B/Cascade/D/E/README). None = alle durchsuchen.', enum: ['A2','B','Cascade','D','E','README'] },
+        top_k:    { type: 'integer', description: 'Max. Anzahl Sections (1-6, Default 3)' }
       },
       required: ['query']
     }
@@ -9663,6 +9751,63 @@ async function executeTool(toolName, toolInput) {
       }).filter(a => a.score > 0).sort((a,b) => b.score - a.score).slice(0, 2);
       if (!scored.length) return `Kein Artikel gefunden für: "${q}". Verfügbare Themen: ${data.map(a=>a.topic).join(', ')}`;
       return scored.map(a => `## ${a.title}\n${a.content}`).join('\n\n---\n\n');
+    }
+
+    if (toolName === 'lookup_pipeline_doc') {
+      // Iter 26.A4 — FTS-Lookup via lookup_user_docs RPC (Mig 072-074).
+      const query = (toolInput.query || '').trim();
+      if (!query) return 'Bitte Frage oder Stichworte angeben.';
+      const pipeline = (toolInput.pipeline || '').trim() || null;
+      const top_k = Math.min(Math.max(parseInt(toolInput.top_k || 3, 10), 1), 6);
+
+      const pipelineMap = {
+        'A2':      'PIPELINE_A2_MAIL_INTAKE.md',
+        'B':       'PIPELINE_B_DRIVE_DROP.md',
+        'Cascade': 'PIPELINE_CASCADE.md',
+        'D':       'PIPELINE_D_RECLASS.md',
+        'E':       'PIPELINE_E_BUCHHALTER.md',
+        'README':  'README.md',
+      };
+      const fileFilter = pipeline ? pipelineMap[pipeline] : null;
+      if (pipeline && !fileFilter) {
+        return `Unbekannte Pipeline "${pipeline}". Erlaubt: ${Object.keys(pipelineMap).join(', ')}`;
+      }
+
+      const rpcLimit = fileFilter ? top_k * 4 : top_k;
+      const url = `${SUPABASE_URL}/rest/v1/rpc/lookup_user_docs`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_query: query, p_limit: rpcLimit }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        return `Fehler bei lookup_user_docs: HTTP ${resp.status} ${txt.slice(0, 200)}`;
+      }
+      let rows = await resp.json();
+      if (fileFilter) rows = rows.filter(r => r.source_key === fileFilter);
+      rows = rows.slice(0, top_k);
+
+      if (!rows.length) {
+        return `Keine Pipeline-Doku zu "${query}" gefunden${pipeline ? ` (Pipeline-Filter: ${pipeline})` : ''}.\nTipp: query breiter formulieren oder Filter weglassen.`;
+      }
+
+      // Reverse-Map source_key -> Pipeline-Key für Citation-URLs
+      const fileToPipeline = Object.fromEntries(Object.entries(pipelineMap).map(([k, v]) => [v, k]));
+
+      const parts = rows.map(r => {
+        const pk = fileToPipeline[r.source_key] || '?';
+        const anchor = r.section_anchor || 'section';
+        const rank = (r.rank || 0).toFixed(3);
+        // Inhalts-Auszug: erste ~600 Zeichen (content beginnt mit "## heading\n\n...")
+        const excerpt = (r.content || '').slice(0, 600);
+        return `### ${pk} §${anchor} (rank=${rank})\n\n${excerpt}\n\n*Citation-Link: \`[${r.source_key.replace('.md','')} §${anchor}](#lernen:${pk}:${anchor})\`*`;
+      });
+      return `📚 ${rows.length} Section(s) für "${query}"${pipeline ? ` · Pipeline: ${pipeline}` : ''}\n\n${parts.join('\n\n---\n\n')}`;
     }
 
     return `Unbekanntes Tool: ${toolName}`;
