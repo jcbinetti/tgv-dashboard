@@ -1,17 +1,22 @@
-<!-- TGV Dashboard v11.63 — 2026-05-13 — Iter 26 Block A komplett (A1+A2+A3+A4): (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs (Pipeline-Dokus + System-Karte), marked.js-Render. (A2) RAG-Index 66 Chunks in rag_chunks (source_type='user_doc') via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc im tgv_mcp_server.py. (A4) Chatbot-Integration: TGV_TOOLS+TGV_SYSTEM_PROMPT mit Pipeline-Frage-Protokoll, executeTool-Handler ruft lookup_user_docs RPC, Citation-Links #lernen:X:anchor click-handler navigiert + highlightet. Drei Konsumenten, eine Quelle. -->
+<!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.63">
-<title>TGV Dashboard v11.63 — Financial OS</title>
+<meta name="version" content="11.64">
+<title>TGV Dashboard v11.64 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <!-- Iter 26.A1: marked.js für Lernen-Tab Markdown-Render (USER_DOCS) -->
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<!-- Iter 26.B1: cytoscape + cose-bilkent für Lernen > System-Karte Sub-Tab -->
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/layout-base@2.0.1/layout-base.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cose-base@2.2.0/cose-base.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-cose-bilkent@4.1.0/cytoscape-cose-bilkent.js"></script>
 <style>
 :root {
   --navy: #001F3F;
@@ -3496,18 +3501,25 @@ body.chat-open #main-content {
         </div>
       </div>
 
-      <!-- SUB-PANEL: SYSTEM-KARTE (Stub für Block B) -->
+      <!-- SUB-PANEL: SYSTEM-KARTE (Iter 26.B1 Cytoscape) -->
       <div class="inbox-panel" id="lernen-panel-topology">
         <div class="card">
-          <div class="card-head"><h2 style="font-size:15px;margin:0;">🗺 System-Karte</h2></div>
-          <div class="card-body">
-            <div id="topology-graph" style="width:100%;height:600px;border:1px dashed var(--bdr);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:13px;">
-              <div style="text-align:center;">
-                <div style="font-size:32px;margin-bottom:8px;">🚧</div>
-                <div><strong>Block B kommt:</strong> Cytoscape-Graph aus <code>06_DASHBOARD/topology.json</code></div>
-                <div style="margin-top:8px;font-size:11px;">Iter 26.B1.0 produziert die Topology-JSON (WFs + Skills + DB + Drive).<br>26.B1 rendert sie hier als interaktiven Knoten-Kanten-Graph.</div>
-              </div>
+          <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <h2 style="font-size:15px;margin:0;">🗺 System-Karte</h2>
+            <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--tx2);">
+              <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-filter-wf" checked onchange="renderTopologyGraph()"> WFs (<span id="topo-cnt-wf">0</span>)</label>
+              <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-filter-skill" checked onchange="renderTopologyGraph()"> Skills (<span id="topo-cnt-skill">0</span>)</label>
+              <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-filter-table" onchange="renderTopologyGraph()"> Tables (<span id="topo-cnt-table">0</span>)</label>
+              <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-only-active" onchange="renderTopologyGraph()"> nur aktive WFs</label>
+              <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:3px 8px;" onclick="loadTopologyGraph(true)" title="topology.json neu laden">↻ Reload</button>
             </div>
+          </div>
+          <div class="card-body">
+            <div id="topo-meta" style="font-size:11px;color:var(--tx2);margin-bottom:8px;">Lade Topology…</div>
+            <div id="topology-graph" style="width:100%;height:620px;border:1px solid var(--bdr);border-radius:6px;background:var(--s0);position:relative;">
+              <div id="topology-graph-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:13px;">Klick links auf <strong>System-Karte</strong> um den Graph zu laden.</div>
+            </div>
+            <div id="topo-node-detail" style="margin-top:10px;font-size:12px;color:var(--tx);padding:10px;background:var(--s1);border-radius:4px;border-left:3px solid var(--teal);display:none;"></div>
           </div>
         </div>
       </div>
@@ -6112,7 +6124,172 @@ function showLernenTab(tabId, btn) {
   if (btn) btn.classList.add('active');
   const panel = document.getElementById('lernen-panel-' + tabId);
   if (panel) panel.classList.add('active');
-  if (tabId === 'docs') initLernenDocs();
+  if (tabId === 'docs')     initLernenDocs();
+  if (tabId === 'topology') loadTopologyGraph();
+}
+
+// ═══════════════════════════════════════════════════════
+// Iter 26.B1 — System-Karte (Cytoscape Renderer)
+// ═══════════════════════════════════════════════════════
+const TOPOLOGY_STATE = {
+  data: null,         // { elements: {nodes, edges}, stats }
+  cy: null,           // Cytoscape instance
+  loaded: false,
+};
+
+// Map: source_key (PIPELINE_*.md) -> Lernen-Pipeline-Key
+const TOPO_WF_TO_PIPELINE = [
+  { regex: /wf.*a2|mail.*intake|triage/i, pipeline: 'A2' },
+  { regex: /wf.*b\b|gdrive|drive.*intake/i, pipeline: 'B' },
+  { regex: /cascade|skill.*router|orchestrator|post.*intake/i, pipeline: 'Cascade' },
+  { regex: /reclass|workflow.*d\b/i, pipeline: 'D' },
+  { regex: /buchhalter|wf.*e\b|workflow.*e\b/i, pipeline: 'E' },
+];
+
+function guessPipelineForNode(node) {
+  const label = node.data?.label || '';
+  for (const { regex, pipeline } of TOPO_WF_TO_PIPELINE) {
+    if (regex.test(label)) return pipeline;
+  }
+  return null;
+}
+
+async function loadTopologyGraph(forceReload = false) {
+  if (TOPOLOGY_STATE.loaded && !forceReload) {
+    renderTopologyGraph();
+    return;
+  }
+  const meta = document.getElementById('topo-meta');
+  const empty = document.getElementById('topology-graph-empty');
+  if (meta) meta.textContent = 'Lade topology.json …';
+  if (empty) empty.style.display = 'flex';
+  try {
+    const url = 'topology.json?t=' + Date.now();  // cache-bust on reload
+    const r = await fetch(url, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    TOPOLOGY_STATE.data = data;
+    TOPOLOGY_STATE.loaded = true;
+    // Counts pro Type
+    const stats = data.stats || {};
+    const byType = stats.by_node_type || {};
+    const cntWf = document.getElementById('topo-cnt-wf');     if (cntWf) cntWf.textContent = byType.wf || 0;
+    const cntSk = document.getElementById('topo-cnt-skill');  if (cntSk) cntSk.textContent = byType.skill || 0;
+    const cntTb = document.getElementById('topo-cnt-table');  if (cntTb) cntTb.textContent = byType.table || 0;
+    if (meta) {
+      const gen = (data.generated_at || '').slice(0, 19).replace('T', ' ');
+      meta.innerHTML = `Generiert: <code>${escapeHtml(gen)} UTC</code> · ${stats.nodes_total} Nodes · ${stats.edges_total} Edges · ${stats.total_audit_hits || 0} Audit-Hits · Quelle: <code>08_OPS/extract_system_topology.py</code>`;
+    }
+    renderTopologyGraph();
+  } catch (e) {
+    if (meta) meta.innerHTML = `<span style="color:#991b1b;">⚠️ Fehler beim Laden: ${escapeHtml(e.message)}</span>. Topology wird beim Deploy via <code>deploy_user_docs_mirror.py</code> mit-deployed.`;
+  }
+}
+
+function renderTopologyGraph() {
+  if (!TOPOLOGY_STATE.data) return;
+  if (typeof cytoscape === 'undefined') {
+    const meta = document.getElementById('topo-meta');
+    if (meta) meta.innerHTML += ' <span style="color:#991b1b;">⚠️ cytoscape.js fehlt</span>';
+    return;
+  }
+  const root = document.getElementById('topology-graph');
+  const empty = document.getElementById('topology-graph-empty');
+  if (empty) empty.style.display = 'none';
+
+  // Filter
+  const wantWf   = document.getElementById('topo-filter-wf')?.checked ?? true;
+  const wantSk   = document.getElementById('topo-filter-skill')?.checked ?? true;
+  const wantTb   = document.getElementById('topo-filter-table')?.checked ?? false;
+  const onlyAct  = document.getElementById('topo-only-active')?.checked ?? false;
+  const types = new Set([wantWf && 'wf', wantSk && 'skill', wantTb && 'table'].filter(Boolean));
+
+  const allNodes = TOPOLOGY_STATE.data.elements.nodes;
+  const allEdges = TOPOLOGY_STATE.data.elements.edges;
+
+  const keepIds = new Set();
+  const nodes = allNodes.filter(n => {
+    if (!types.has(n.data.type)) return false;
+    if (onlyAct && n.data.type === 'wf' && !n.data.active) return false;
+    keepIds.add(n.data.id);
+    return true;
+  });
+  const edges = allEdges.filter(e => keepIds.has(e.data.source) && keepIds.has(e.data.target));
+
+  // Destroy + rebuild — small dataset, simple
+  if (TOPOLOGY_STATE.cy) { try { TOPOLOGY_STATE.cy.destroy(); } catch(_) {} }
+
+  const cy = cytoscape({
+    container: root,
+    elements: [...nodes, ...edges],
+    minZoom: 0.2,
+    maxZoom: 3,
+    wheelSensitivity: 0.25,
+    style: [
+      { selector: 'node',
+        style: { 'label': 'data(label)', 'font-size': 10, 'text-valign': 'bottom', 'text-margin-y': 4, 'text-wrap': 'wrap', 'text-max-width': 140, 'background-color': '#9ca3af', 'border-width': 1, 'border-color': '#374151', 'width': 26, 'height': 26 } },
+      { selector: 'node[type = "wf"]',
+        style: { 'background-color': '#3b82f6', 'shape': 'round-rectangle', 'width': 36, 'height': 24 } },
+      { selector: 'node[type = "wf"][active = "true"]',
+        style: { 'border-color': '#10b981', 'border-width': 2 } },
+      { selector: 'node[type = "wf"][?active]',
+        style: { 'border-color': '#10b981', 'border-width': 2 } },
+      { selector: 'node[type = "skill"]',
+        style: { 'background-color': '#10b981', 'shape': 'ellipse' } },
+      { selector: 'node[type = "table"]',
+        style: { 'background-color': '#f59e0b', 'shape': 'rectangle', 'width': 28, 'height': 18 } },
+      { selector: 'node[hits_count > 0]',
+        style: { 'border-color': '#dc2626', 'border-width': 3 } },
+      { selector: 'edge',
+        style: { 'width': 1, 'line-color': '#9ca3af', 'target-arrow-color': '#9ca3af', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'opacity': 0.7 } },
+      { selector: 'edge[type = "webhook_call"]',
+        style: { 'line-color': '#3b82f6', 'target-arrow-color': '#3b82f6', 'width': 1.5 } },
+      { selector: 'edge[type = "skill_binding"]',
+        style: { 'line-color': '#10b981', 'target-arrow-color': '#10b981', 'line-style': 'dashed' } },
+      { selector: 'edge[type = "fk"]',
+        style: { 'line-color': '#f59e0b', 'target-arrow-color': '#f59e0b' } },
+      { selector: 'node:selected',
+        style: { 'border-color': '#001F3F', 'border-width': 4 } },
+    ],
+    layout: { name: 'cose-bilkent', animate: false, randomize: true, nodeRepulsion: 5000, idealEdgeLength: 80, padding: 24, fit: true },
+  });
+
+  TOPOLOGY_STATE.cy = cy;
+
+  cy.on('tap', 'node', function (evt) {
+    const n = evt.target.data();
+    showTopoNodeDetail(n);
+  });
+  cy.on('dbltap', 'node[type = "wf"]', function (evt) {
+    const n = evt.target.data();
+    const pk = guessPipelineForNode(n);
+    if (pk) openLernenAtCitation(pk, 'preamble');
+  });
+  cy.on('tap', function (evt) {
+    if (evt.target === cy) {
+      const det = document.getElementById('topo-node-detail');
+      if (det) det.style.display = 'none';
+    }
+  });
+}
+
+function showTopoNodeDetail(n) {
+  const det = document.getElementById('topo-node-detail');
+  if (!det) return;
+  const lines = [];
+  lines.push(`<strong>${escapeHtml(n.label || n.id)}</strong> <span style="color:var(--tx2);">(${n.type})</span>`);
+  if (n.type === 'wf') {
+    lines.push(`active: ${n.active ? '✅' : '⏸'}  ·  hits: ${n.hits_count || 0}  ·  WF-ID: <code>${escapeHtml(n.wf_id || '?')}</code>`);
+    const pk = guessPipelineForNode({ data: n });
+    if (pk) lines.push(`<a href="#lernen:${pk}:preamble" style="color:var(--blu);">📚 ${pk} Pipeline-Doku öffnen</a>`);
+  } else if (n.type === 'skill') {
+    lines.push(`version: <code>${escapeHtml(String(n.version || '?'))}</code>  ·  domain: ${escapeHtml(n.domain || '?')}`);
+    if (n.webhook_url) lines.push(`webhook: <code>${escapeHtml(n.webhook_url)}</code>`);
+  } else if (n.type === 'table') {
+    lines.push(`Postgres-Table public.${escapeHtml(n.label)}`);
+  }
+  det.innerHTML = lines.join('<br>');
+  det.style.display = 'block';
 }
 
 let _lernenDocsInited = false;
