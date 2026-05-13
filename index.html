@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="version" content="11.65.3">
-<title>TGV Dashboard v11.65.3 — Financial OS</title>
+<title>TGV Dashboard v11.66 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2181,6 +2181,11 @@ body.chat-open #main-content {
       <span class="nav-label">Linkrate</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('alle-docs', this)" title="Universale Doc-Sicht: ID-Suche + Volltext + Filter über ALLE Documents (Iter 29.C2). Wenn die anderen Tabs nicht den passenden Filter haben, ist das hier dein Anker.">
+      <span class="nav-icon">📑</span>
+      <span class="nav-label">Alle Docs</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('actions', this)" title="MCP-Tool-Hub: alle 22 TGV-Tools als klickbare Karten (Lesen, Aktionen, Suche, Skill-Steuerung, Workflow, Audit). Ergänzung zum 💬 Chat — gezielt klicken statt fragen. Iter 20.2 Block B.">
       <span class="nav-icon">🤖</span>
       <span class="nav-label">Aktionen</span>
@@ -3468,6 +3473,64 @@ body.chat-open #main-content {
     </div>
 
     <!-- ════════════════════════════════════════════════
+         PAGE: ALLE DOCS (Iter 29.C2)
+         Universale Doc-Sicht — ID-Search + Filter-Chips + Volltext + Tabelle.
+         Anker wenn Triage/Inbox/Finanzen-Filter nicht passen.
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-alle-docs">
+      <div class="page-header">
+        <h1>📑 Alle Docs <span style="font-size:11px;color:var(--tx2);font-weight:400;margin-left:8px;">universale Sicht — Iter 29.C2</span></h1>
+        <p>Wenn die anderen Tabs den passenden Filter nicht haben: such hier. ID-Direktzugriff oder Volltext über Provider/Filename/Subject.</p>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:220px;">
+            <label style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Doc-ID direkt</label>
+            <input id="alle-docs-id" type="number" placeholder="z.B. 7401" style="width:100%;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:4px;font-size:13px;" onkeydown="if(event.key==='Enter')jumpToDocId()" title="Doc-ID eingeben + Enter → springt direkt zum Steckbrief (Drive-PDF + Felder)."/>
+          </div>
+          <div style="flex:2;min-width:280px;">
+            <label style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Volltext (Provider / Filename / Subject)</label>
+            <input id="alle-docs-q" type="search" placeholder="z.B. IONOS, anthropic, Q1-2026…" style="width:100%;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:4px;font-size:13px;" onkeydown="if(event.key==='Enter')loadAlleDocs()" oninput="alleDocsQDebounce()"/>
+          </div>
+          <div>
+            <button class="btn-sm" onclick="loadAlleDocs()" style="background:var(--blu);color:#fff;border:0;padding:7px 14px;">Suchen</button>
+          </div>
+          <div>
+            <button class="btn-sm" onclick="resetAlleDocs()" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:7px 14px;" title="Filter + Suchfeld zurücksetzen.">Reset</button>
+          </div>
+        </div>
+        <div class="card-body" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--bdr);padding-top:10px;">
+          <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;">Status</span>
+          <button class="inbox-chip active" data-alle-filter="status" data-alle-value="all"          onclick="setAlleDocsChip('status','all',this)">Alle</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="inbox"        onclick="setAlleDocsChip('status','inbox',this)">📥 Eingang</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="pending_review" onclick="setAlleDocsChip('status','pending_review',this)">⚠️ Prüfen</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="needs_review" onclick="setAlleDocsChip('status','needs_review',this)">🔍 Review</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="approved"     onclick="setAlleDocsChip('status','approved',this)">✅ Approved</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="done"         onclick="setAlleDocsChip('status','done',this)">✓ Done</button>
+          <span style="margin:0 6px;color:var(--tx2);">|</span>
+          <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;">Typ</span>
+          <button class="inbox-chip active" data-alle-filter="doctype" data-alle-value="all"        onclick="setAlleDocsChip('doctype','all',this)">Alle</button>
+          <button class="inbox-chip"        data-alle-filter="doctype" data-alle-value="Rechnung"   onclick="setAlleDocsChip('doctype','Rechnung',this)">Rechnung</button>
+          <button class="inbox-chip"        data-alle-filter="doctype" data-alle-value="Vertrag"    onclick="setAlleDocsChip('doctype','Vertrag',this)">Vertrag</button>
+          <button class="inbox-chip"        data-alle-filter="doctype" data-alle-value="Banking-CSV" onclick="setAlleDocsChip('doctype','Banking-CSV',this)">Banking-CSV</button>
+          <button class="inbox-chip"        data-alle-filter="doctype" data-alle-value="Sonstiges"  onclick="setAlleDocsChip('doctype','Sonstiges',this)">Sonstiges</button>
+          <span style="margin:0 6px;color:var(--tx2);">|</span>
+          <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;">Party-Role</span>
+          <button class="inbox-chip active" data-alle-filter="party"   data-alle-value="all"        onclick="setAlleDocsChip('party','all',this)">Alle</button>
+          <button class="inbox-chip"        data-alle-filter="party"   data-alle-value="kreditor"   onclick="setAlleDocsChip('party','kreditor',this)">Kreditor</button>
+          <button class="inbox-chip"        data-alle-filter="party"   data-alle-value="debitor"    onclick="setAlleDocsChip('party','debitor',this)">Debitor</button>
+          <button class="inbox-chip"        data-alle-filter="party"   data-alle-value="intern"     onclick="setAlleDocsChip('party','intern',this)">Intern</button>
+          <button class="inbox-chip"        data-alle-filter="party"   data-alle-value="null"       onclick="setAlleDocsChip('party','null',this)">— (null)</button>
+        </div>
+      </div>
+
+      <div id="alle-docs-content">
+        <div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
          PAGE: LERNEN (Iter 26 Block A1)
          Top-Level-Tab mit 2 Sub-Tabs:
            1. Pipeline-Dokus — USER_DOCS/PIPELINE_*.md Renderer
@@ -4227,6 +4290,7 @@ function showPage(pageId, btn) {
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
   if (pageId === 'actions') loadActions();
+  if (pageId === 'alle-docs') loadAlleDocs();
   /* Iter 27 Hotfix v11.65.3 — initLernenDocs IMMER beim Tab-Eintritt rufen,
      egal welcher Sub-Tab aktiv ist (PR #90 Fix war zu strikt: docsPanelActive war false
      wenn topology zuletzt sichtbar war, dann blieb Spinner stuck).
@@ -4244,7 +4308,7 @@ function loadArchitektur() {
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','lernen'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
@@ -4281,6 +4345,7 @@ function refreshCurrentPage() {
   if (id === 'projekte') loadProjekte();
   if (id === 'monatsabschluss') loadMonatsabschluss();
   if (id === 'mailrules') loadMailRules();
+  if (id === 'alle-docs') renderAlleDocs();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -11085,6 +11150,160 @@ const ACTION_GROUPS = [
     ]
   },
 ];
+
+// ═══════════════════════════════════════════════════════
+//  ALLE DOCS (Iter 29.C2) — universale Doc-Sicht
+// ═══════════════════════════════════════════════════════
+let gAlleDocsRows = [];
+let gAlleDocsFilters = { status: 'all', doctype: 'all', party: 'all' };
+let gAlleDocsQDebounce = null;
+
+function alleDocsQDebounce() {
+  if (gAlleDocsQDebounce) clearTimeout(gAlleDocsQDebounce);
+  gAlleDocsQDebounce = setTimeout(loadAlleDocs, 400);
+}
+
+function setAlleDocsChip(group, value, btn) {
+  gAlleDocsFilters[group] = value;
+  document.querySelectorAll(`[data-alle-filter="${group}"]`).forEach(c => c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAlleDocs();
+}
+
+function resetAlleDocs() {
+  gAlleDocsFilters = { status: 'all', doctype: 'all', party: 'all' };
+  const q = document.getElementById('alle-docs-q'); if (q) q.value = '';
+  const id = document.getElementById('alle-docs-id'); if (id) id.value = '';
+  document.querySelectorAll('[data-alle-filter]').forEach(c => {
+    c.classList.toggle('active', c.dataset.alleValue === 'all');
+  });
+  loadAlleDocs();
+}
+
+function jumpToDocId() {
+  const el = document.getElementById('alle-docs-id');
+  const id = parseInt(el?.value || '', 10);
+  if (!id || id <= 0) { alert('Bitte numerische Doc-ID eingeben.'); return; }
+  // Direct DB-lookup, then render single-row table
+  const wrap = document.getElementById('alle-docs-content');
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Suche Doc #${id}…</div>`;
+  supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,contract_id,supplier_id&id=eq.${id}&limit=1`)
+    .then(rows => {
+      if (!rows.length) {
+        wrap.innerHTML = `<div class="alert alert-warn">Doc #${id} nicht gefunden.</div>`;
+        return;
+      }
+      gAlleDocsRows = rows;
+      // Force show even if filters wouldn't normally include
+      renderAlleDocs(true);
+    })
+    .catch(e => {
+      wrap.innerHTML = `<div class="alert alert-err">⚠️ Fehler: ${escHtml(e.message)}</div>`;
+    });
+}
+
+async function loadAlleDocs() {
+  const wrap = document.getElementById('alle-docs-content');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>`;
+  try {
+    const q = (document.getElementById('alle-docs-q')?.value || '').trim();
+    const fields = 'id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,contract_id,supplier_id';
+    let path = `documents?select=${fields}&order=id.desc&limit=200`;
+    if (q) {
+      // PostgREST OR over provider/drive_file_name/subject — ilike
+      const esc = encodeURIComponent(`*${q}*`);
+      path += `&or=(provider.ilike.${esc},drive_file_name.ilike.${esc},subject.ilike.${esc})`;
+    }
+    const data = await supa(path);
+    gAlleDocsRows = data.filter(r => !isTestData(r));
+    renderAlleDocs();
+  } catch (e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen<br><small>${escHtml(e.message)}</small></div>`;
+  }
+}
+
+function renderAlleDocs(forceShowAll) {
+  const wrap = document.getElementById('alle-docs-content');
+  if (!wrap) return;
+
+  let rows = gAlleDocsRows;
+  if (!forceShowAll) {
+    // Entity-Filter (global)
+    if (typeof gEntity !== 'undefined' && gEntity !== 'all') {
+      rows = rows.filter(r => mapEntity(r.entity) === gEntity);
+    }
+    if (gAlleDocsFilters.status !== 'all') {
+      rows = rows.filter(r => r.status === gAlleDocsFilters.status);
+    }
+    if (gAlleDocsFilters.doctype !== 'all') {
+      rows = rows.filter(r => (r.doc_type || '') === gAlleDocsFilters.doctype);
+    }
+    if (gAlleDocsFilters.party !== 'all') {
+      rows = rows.filter(r => {
+        if (gAlleDocsFilters.party === 'null') return r.party_role == null;
+        return r.party_role === gAlleDocsFilters.party;
+      });
+    }
+  }
+
+  const total = gAlleDocsRows.length;
+  const shown = rows.length;
+
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="alert alert-warn">Keine Treffer für aktuelle Filter (von ${total} geladen).<br><small>→ Filter resetten oder ID/Volltext anpassen.</small></div>`;
+    return;
+  }
+
+  const fmtDate = d => d ? String(d).slice(0,10) : '—';
+  const fmtAmt = (a, c) => (a==null) ? '—' : `${Number(a).toFixed(2).replace('.',',')} ${c||''}`.trim();
+
+  let html = `
+    <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;display:flex;justify-content:space-between;">
+      <span>${shown} von ${total} geladene Docs · max 200 pro Query</span>
+      <span>Klick auf Zeile = Drive-PDF (neuer Tab) · 🎯 = Triage öffnen</span>
+    </div>
+    <div class="card"><div class="inbox-table-wrap">
+    <table class="inbox-table">
+      <thead><tr>
+        <th style="width:50px;">ID</th>
+        <th style="width:90px;">Datum</th>
+        <th>Provider / Filename</th>
+        <th>Typ</th>
+        <th>Status</th>
+        <th>Entity</th>
+        <th>Party-Role</th>
+        <th style="text-align:right;">Betrag</th>
+        <th>Aktion</th>
+      </tr></thead>
+      <tbody>`;
+
+  for (const r of rows) {
+    const displayDate = r.date_scanned || r.date_received || r.invoice_date;
+    const fileName = escHtml(r.drive_file_name || r.subject || r.provider || '—');
+    const driveOpen = r.drive_file_id
+      ? `onclick="window.open('https://drive.google.com/file/d/${r.drive_file_id}/view','_blank')" style="cursor:pointer;"`
+      : `style="cursor:default;"`;
+    const triageBtn = `<button class="btn-sm" onclick="event.stopPropagation();showPage('triage',document.querySelector('[onclick*=triage]'));setTimeout(()=>{const f=document.getElementById('triage-search');if(f){f.value='${r.id}';f.dispatchEvent(new Event('input'));}},300);" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:2px 8px;">🎯</button>`;
+    const partyBadge = r.party_role
+      ? `<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:${r.party_role==='kreditor'?'#FEE2E2':r.party_role==='debitor'?'#DCFCE7':'#E0E7FF'};color:${r.party_role==='kreditor'?'#991B1B':r.party_role==='debitor'?'#166534':'#3730A3'};">${r.party_role}</span>`
+      : `<span style="font-size:10px;color:var(--tx2);">—</span>`;
+    html += `<tr ${driveOpen} title="${r.drive_file_id ? 'Drive-PDF öffnen' : 'Kein drive_file_id verknüpft'}">
+      <td style="font-weight:600;color:var(--blu);">${r.id}</td>
+      <td style="font-size:11px;">${fmtDate(displayDate)}</td>
+      <td>${fileName}${r.provider && r.provider !== r.drive_file_name ? `<br><span style="font-size:10px;color:var(--tx2);">${escHtml(r.provider)}</span>` : ''}</td>
+      <td><span style="font-size:11px;">${escHtml(r.doc_type || '—')}</span></td>
+      <td><span style="font-size:10px;color:var(--tx2);">${escHtml(r.status || '—')}</span></td>
+      <td><span style="font-size:11px;">${escHtml(r.entity || '—')}</span></td>
+      <td>${partyBadge}</td>
+      <td style="text-align:right;font-size:11px;">${fmtAmt(r.amount, r.currency)}</td>
+      <td>${triageBtn}</td>
+    </tr>`;
+  }
+
+  html += `</tbody></table></div></div>`;
+  wrap.innerHTML = html;
+}
 
 function loadActions() {
   const wrap = document.getElementById('actions-content');
