@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.65">
-<title>TGV Dashboard v11.65 — Financial OS</title>
+<meta name="version" content="11.65.1">
+<title>TGV Dashboard v11.65.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2275,7 +2275,7 @@ body.chat-open #main-content {
           </div>
           <div style="margin-top:10px;font-size:11px;color:var(--tx2);">
             Quelle: <code>06_DASHBOARD/topology.json</code> (Live-Enrichment via <code>poll_wf_status.py</code> + <code>extract_system_topology.py --with-live</code>).
-            Pipeline-Mapping siehe <a href="#lernen" style="color:var(--blu);">📚 Lernen-Tab</a>.
+            Pipeline-Mapping siehe <a href="#lernen" onclick="event.preventDefault(); showPage('lernen', document.querySelector('button.nav-item[onclick*=\'lernen\']'));" style="color:var(--blu);cursor:pointer;">📚 Lernen-Tab</a>.
           </div>
         </div>
       </div>
@@ -4231,7 +4231,7 @@ function loadArchitektur() {
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','lernen'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
