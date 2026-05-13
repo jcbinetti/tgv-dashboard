@@ -1,15 +1,17 @@
-<!-- TGV Dashboard v11.60 — 2026-05-11 — Iter 21 Block A+ CO1: kb_suppliers-Editor im Side-Panel mit Match-Indicator. Side-Panel-Section „📚 Supplier-Wissen" jetzt CRUD: Match-Highlight (grüner Border + „✓ MATCHED FÜR DIESES DOC" wenn s.entity == doc.entity), andere Entity dimmed („↪ andere Entity"), inactive Pattern dashed/grayed. Pro Karte: ✏️ Edit-Button (Modal mit Pattern/Name/Entity/L1/L2/L3/recurring/active-Form) + 🔒 Deactivate-Button (Soft-Delete via active=false) / 🔓 Activate-Button. Section-Header: „+ Neues Pattern"-Button (Defaults aus Doc). Save/Toggle emittieren agent_events tool_name='ui.kb_supplier_edit' für Audit-Trail + Pattern-Lifecycle-Promoter (Iter 21+). -->
+<!-- TGV Dashboard v11.62 — 2026-05-13 — Iter 26 Block A1: Lernen-Tab Top-Level mit 2 Sub-Tabs (Pipeline-Dokus + System-Karte). Pipeline-Dokus rendert USER_DOCS/PIPELINE_*.md client-side via marked.js (~30 KB CDN). Sidebar mit 6 Doc-Einträgen (README + 5 Pipelines), Markdown-Renderer mit clientseitiger H2/H3-Suche, Section-Anchor-Scroll. System-Karte Sub-Tab als Stub (Cytoscape kommt in Block B). USER_DOCS-Disziplin: Mensch klickt Pipeline → Markdown rendert in <1s. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.61">
-<title>TGV Dashboard v11.61 — Financial OS</title>
+<meta name="version" content="11.62">
+<title>TGV Dashboard v11.62 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- Iter 26.A1: marked.js für Lernen-Tab Markdown-Render (USER_DOCS) -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <style>
 :root {
   --navy: #001F3F;
@@ -2179,6 +2181,11 @@ body.chat-open #main-content {
       <span class="nav-label">Aktionen</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('lernen', this)" title="Lernen-Tab (Iter 26): Pipeline-Dokus (5 Pipelines + README aus 00_LEITDOKUMENT/USER_DOCS) und Live-System-Karte (Cytoscape, Block B). Single Source of Truth für No-Coder-Erklärungen.">
+      <span class="nav-icon">📚</span>
+      <span class="nav-label">Lernen</span>
+    </button>
+
     <div class="sidebar-section-label" title="TGV PROJEKT — projektgetriebene Arbeit pro Entity (consulting, IT, Marketing, ai-healthy-ship, ...). Eigene Skills + Rechte + Theme. Phase 2 ab Iter 22+.">PROJEKT · Workspace</div>
 
     <button class="nav-item" disabled style="opacity:0.45;cursor:not-allowed" title="TGV-PROJEKT-Domain: Phase 2 Roadmap. Skills wie Steuerberater, Copywriter, Projektsteuer, Controller, Graphikdesigner, Reisekosten-Master in projekt-spezifischer Konfiguration. Aktiviert ab Iter 22+ (siehe Memory project_tgv_core_vs_projekt_vision).">
@@ -3436,6 +3443,75 @@ body.chat-open #main-content {
       <div id="actions-content">
         <div class="spinner-wrap"><div class="spinner"></div> Initialisiere Tool-Hub…</div>
       </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         PAGE: LERNEN (Iter 26 Block A1)
+         Top-Level-Tab mit 2 Sub-Tabs:
+           1. Pipeline-Dokus — USER_DOCS/PIPELINE_*.md Renderer
+           2. System-Karte — Cytoscape (Block B, Stub hier)
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-lernen">
+      <div class="page-header">
+        <h1>📚 Lernen</h1>
+        <p>Pipeline-Dokus + Live-System-Karte. Single Source of Truth aus <code>00_LEITDOKUMENT/USER_DOCS/</code>.</p>
+      </div>
+
+      <!-- LERNEN SUB-TABS -->
+      <div class="inbox-tabs">
+        <button class="inbox-tab active" id="lernen-tab-docs"     onclick="showLernenTab('docs', this)">📖 Pipeline-Dokus</button>
+        <button class="inbox-tab"        id="lernen-tab-topology" onclick="showLernenTab('topology', this)">🗺 System-Karte</button>
+      </div>
+
+      <!-- SUB-PANEL: PIPELINE-DOKUS -->
+      <div class="inbox-panel active" id="lernen-panel-docs">
+        <div style="display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start;">
+
+          <!-- Sidebar: Pipeline-Liste -->
+          <div class="card" style="position:sticky;top:8px;max-height:calc(100vh - 120px);overflow:auto;">
+            <div class="card-head"><h2 style="font-size:14px;margin:0;">Pipelines</h2></div>
+            <div class="card-body" style="padding:10px 12px;">
+              <input type="text" id="lernen-search" placeholder="🔍 Section suchen (H2/H3)…" oninput="filterLernenDocs()" style="width:100%;padding:6px 8px;font-size:12px;margin-bottom:10px;border:1px solid var(--bdr);border-radius:4px;background:var(--s0);color:var(--tx);">
+              <div id="lernen-doc-list" style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+                <div class="spinner-wrap"><div class="spinner"></div> Lade Liste…</div>
+              </div>
+              <div id="lernen-search-hits" style="margin-top:10px;font-size:11px;color:var(--tx2);"></div>
+            </div>
+          </div>
+
+          <!-- Content: Markdown-Renderer -->
+          <div class="card" id="lernen-doc-card">
+            <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;">
+              <h2 id="lernen-doc-title" style="font-size:15px;margin:0;">📖 USER_DOCS</h2>
+              <div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--tx2);">
+                <span id="lernen-doc-meta">—</span>
+                <a id="lernen-doc-source-link" href="#" target="_blank" rel="noopener" style="color:var(--blu);text-decoration:none;display:none;" title="Markdown-Quelle auf GitHub anzeigen">🔗 Quelle</a>
+              </div>
+            </div>
+            <div class="card-body" id="lernen-doc-body" style="font-size:13px;line-height:1.6;max-width:900px;">
+              <p style="color:var(--tx2);">Wähle links eine Pipeline aus, um die User-Doku zu lesen.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SUB-PANEL: SYSTEM-KARTE (Stub für Block B) -->
+      <div class="inbox-panel" id="lernen-panel-topology">
+        <div class="card">
+          <div class="card-head"><h2 style="font-size:15px;margin:0;">🗺 System-Karte</h2></div>
+          <div class="card-body">
+            <div id="topology-graph" style="width:100%;height:600px;border:1px dashed var(--bdr);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:13px;">
+              <div style="text-align:center;">
+                <div style="font-size:32px;margin-bottom:8px;">🚧</div>
+                <div><strong>Block B kommt:</strong> Cytoscape-Graph aus <code>06_DASHBOARD/topology.json</code></div>
+                <div style="margin-top:8px;font-size:11px;">Iter 26.B1.0 produziert die Topology-JSON (WFs + Skills + DB + Drive).<br>26.B1 rendert sie hier als interaktiven Knoten-Kanten-Graph.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- MCP-Run-Modal (Iter 20.2) -->
@@ -6008,6 +6084,172 @@ function showSysTab(tabId, btn) {
   if (panel) panel.classList.add('active');
   if (tabId === 'costs')    loadCostsView();
   if (tabId === 'patterns') { loadPatternHealthView(); loadPatternRulesLifecycle(); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LERNEN TAB (Iter 26.A1) — USER_DOCS Markdown-Renderer + Sub-Tabs
+// ═══════════════════════════════════════════════════════
+const LERNEN_DOCS = [
+  { key: 'README',   file: 'README.md',                   title: 'README — USER_DOCS Schema', icon: '📋' },
+  { key: 'A2',       file: 'PIPELINE_A2_MAIL_INTAKE.md',  title: 'A2 — Mail Intake',          icon: '📧' },
+  { key: 'B',        file: 'PIPELINE_B_DRIVE_DROP.md',    title: 'B — Drive Drop',            icon: '📁' },
+  { key: 'Cascade',  file: 'PIPELINE_CASCADE.md',         title: 'Cascade — Skill Pipeline',  icon: '⛓' },
+  { key: 'D',        file: 'PIPELINE_D_RECLASS.md',       title: 'D — Reclass',               icon: '🔄' },
+  { key: 'E',        file: 'PIPELINE_E_BUCHHALTER.md',    title: 'E — Buchhalter-Versand',    icon: '📤' },
+];
+
+const LERNEN_STATE = {
+  docs: {},          // key -> {raw, html, headings}
+  currentKey: null,
+};
+
+const LERNEN_BASE_PATH = 'USER_DOCS/';  // relativ neben index.html (mirror Pflicht beim Deploy)
+const LERNEN_SOURCE_REPO = 'https://github.com/jcbinetti/TGV/blob/master/00_LEITDOKUMENT/USER_DOCS/';
+
+function showLernenTab(tabId, btn) {
+  document.querySelectorAll('#page-lernen > .inbox-tabs > .inbox-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#page-lernen > .inbox-panel').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('lernen-panel-' + tabId);
+  if (panel) panel.classList.add('active');
+  if (tabId === 'docs') initLernenDocs();
+}
+
+let _lernenDocsInited = false;
+function initLernenDocs() {
+  if (_lernenDocsInited) return;
+  _lernenDocsInited = true;
+  renderLernenDocList();
+  // Default: erste Doc öffnen
+  if (LERNEN_DOCS.length > 0) loadPipelineDoc(LERNEN_DOCS[1].key);  // A2 als Default
+}
+
+function renderLernenDocList() {
+  const el = document.getElementById('lernen-doc-list');
+  if (!el) return;
+  el.innerHTML = LERNEN_DOCS.map(d => `
+    <button class="lernen-doc-btn" data-key="${d.key}" onclick="loadPipelineDoc('${d.key}')" style="text-align:left;padding:8px 10px;background:var(--s1);border:1px solid var(--bdr);border-radius:4px;cursor:pointer;font-size:12px;color:var(--tx);display:flex;gap:8px;align-items:center;">
+      <span style="font-size:14px;">${d.icon}</span>
+      <span>${d.title}</span>
+    </button>
+  `).join('');
+}
+
+async function loadPipelineDoc(key) {
+  const doc = LERNEN_DOCS.find(d => d.key === key);
+  if (!doc) return;
+  LERNEN_STATE.currentKey = key;
+
+  // Active-Highlight in Sidebar
+  document.querySelectorAll('.lernen-doc-btn').forEach(b => {
+    if (b.dataset.key === key) {
+      b.style.background = 'var(--teal)';
+      b.style.color = '#fff';
+      b.style.borderColor = 'var(--teal)';
+    } else {
+      b.style.background = 'var(--s1)';
+      b.style.color = 'var(--tx)';
+      b.style.borderColor = 'var(--bdr)';
+    }
+  });
+
+  const titleEl = document.getElementById('lernen-doc-title');
+  const metaEl = document.getElementById('lernen-doc-meta');
+  const bodyEl = document.getElementById('lernen-doc-body');
+  const linkEl = document.getElementById('lernen-doc-source-link');
+  if (titleEl) titleEl.textContent = `${doc.icon} ${doc.title}`;
+  if (linkEl) {
+    linkEl.href = LERNEN_SOURCE_REPO + doc.file;
+    linkEl.style.display = 'inline-block';
+  }
+  if (metaEl) metaEl.textContent = 'lade…';
+  if (bodyEl) bodyEl.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Markdown…</div>';
+
+  // Cache-Hit?
+  if (LERNEN_STATE.docs[key]?.html) {
+    renderLernenDocBody(key);
+    return;
+  }
+
+  try {
+    const url = LERNEN_BASE_PATH + doc.file;
+    const r = await fetch(url, { cache: 'default' });
+    if (!r.ok) throw new Error(`HTTP ${r.status} bei ${url}`);
+    const raw = await r.text();
+    if (typeof marked === 'undefined') throw new Error('marked.js nicht geladen');
+    marked.setOptions({ gfm: true, breaks: false, headerIds: true });
+    const html = marked.parse(raw);
+    // Headings extrahieren für Suche
+    const headings = [];
+    const parser = new DOMParser();
+    const dom = parser.parseFromString(html, 'text/html');
+    dom.querySelectorAll('h2, h3').forEach(h => {
+      headings.push({ level: h.tagName.toLowerCase(), text: h.textContent.trim(), id: h.id || slugify(h.textContent) });
+    });
+    LERNEN_STATE.docs[key] = { raw, html, headings, bytes: raw.length };
+    renderLernenDocBody(key);
+  } catch (e) {
+    if (bodyEl) bodyEl.innerHTML = `<div style="padding:14px;background:#fff5f5;border:1px solid #fca5a5;border-radius:4px;color:#991b1b;">
+      <strong>Fehler beim Laden:</strong> ${escapeHtml(e.message)}<br>
+      <div style="margin-top:6px;font-size:11px;">Pfad: <code>${LERNEN_BASE_PATH + doc.file}</code></div>
+      <div style="margin-top:6px;font-size:11px;">Tipp: USER_DOCS muss neben <code>index.html</code> ins Pages-Deploy gespiegelt werden. Siehe <code>08_OPS/deploy_user_docs.py</code> (Iter 26).</div>
+    </div>`;
+    if (metaEl) metaEl.textContent = 'Fehler';
+  }
+}
+
+function renderLernenDocBody(key) {
+  const cached = LERNEN_STATE.docs[key];
+  if (!cached) return;
+  const bodyEl = document.getElementById('lernen-doc-body');
+  const metaEl = document.getElementById('lernen-doc-meta');
+  if (bodyEl) {
+    bodyEl.innerHTML = cached.html;
+    // Section-Anchor-Scroll falls Hash gesetzt
+    const hash = window.location.hash.replace(/^#/, '');
+    if (hash) {
+      const target = bodyEl.querySelector(`#${CSS.escape(hash)}`) || [...bodyEl.querySelectorAll('h2,h3')].find(h => slugify(h.textContent) === hash);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.style.background = 'rgba(0,127,127,0.18)';
+        setTimeout(() => { target.style.background = ''; }, 2000);
+      }
+    }
+  }
+  if (metaEl) metaEl.textContent = `${cached.headings.length} Sections · ${(cached.bytes / 1024).toFixed(1)} KB`;
+}
+
+function filterLernenDocs() {
+  const q = (document.getElementById('lernen-search')?.value || '').trim().toLowerCase();
+  const hitsEl = document.getElementById('lernen-search-hits');
+  if (!q) {
+    if (hitsEl) hitsEl.textContent = '';
+    return;
+  }
+  // Suche in allen geladenen Docs nach Headings; lazy-load fehlende
+  const matches = [];
+  LERNEN_DOCS.forEach(d => {
+    const cached = LERNEN_STATE.docs[d.key];
+    if (!cached) return;
+    cached.headings.forEach(h => {
+      if (h.text.toLowerCase().includes(q)) matches.push({ docKey: d.key, docTitle: d.title, heading: h });
+    });
+  });
+  if (!hitsEl) return;
+  if (matches.length === 0) {
+    hitsEl.innerHTML = `<span style="color:var(--tx2);">Keine Treffer in geladenen Docs. Öffne mehr Pipelines für umfassendere Suche.</span>`;
+    return;
+  }
+  hitsEl.innerHTML = `<strong>${matches.length} Treffer:</strong><br>` + matches.slice(0, 20).map(m =>
+    `<a href="#${m.heading.id}" onclick="event.preventDefault(); loadPipelineDoc('${m.docKey}'); setTimeout(() => { document.getElementById('${m.heading.id}')?.scrollIntoView({behavior:'smooth'}); document.getElementById('${m.heading.id}')?.style.setProperty('background', 'rgba(0,127,127,0.18)'); setTimeout(() => document.getElementById('${m.heading.id}')?.style.removeProperty('background'), 2000); }, 100);" style="color:var(--blu);text-decoration:none;display:block;padding:2px 0;">→ ${m.docKey}: ${escapeHtml(m.heading.text)}</a>`
+  ).join('');
+}
+
+function slugify(s) {
+  return String(s).toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ═══════════════════════════════════════════════════════
