@@ -1,0 +1,2261 @@
+{
+  "iter": "26.B1.0",
+  "generated_at": "2026-05-13T11:04:42.013099+00:00",
+  "stats": {
+    "nodes_total": 140,
+    "edges_total": 99,
+    "by_node_type": {
+      "wf": 45,
+      "skill": 30,
+      "table": 65
+    },
+    "by_edge_type": {
+      "webhook_call": 26,
+      "skill_binding": 18,
+      "fk": 55
+    },
+    "total_audit_hits": 62
+  },
+  "elements": {
+    "nodes": [
+      {
+        "data": {
+          "id": "wf:1OEdRKTJul9grsHT",
+          "type": "wf",
+          "label": "TGV Post Intake v1.04 Verified Writebacks",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "1OEdRKTJul9grsHT",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:5jYCxB9NzqyRMqjI",
+          "type": "wf",
+          "label": "TGV Skill Extract Contract PDF v0.5",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "5jYCxB9NzqyRMqjI",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:7JigJ4QiWwhVOPCs",
+          "type": "wf",
+          "label": "WF E - Buchhalter Versand v1.7.2",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "7JigJ4QiWwhVOPCs",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:CbNkDkMss3YiHAmN",
+          "type": "wf",
+          "label": "TGV Skill Orchestrator v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "CbNkDkMss3YiHAmN",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:DV1qyZgjSk7cTbim",
+          "type": "wf",
+          "label": "TGV Skill Cost Collector v0.1",
+          "active": true,
+          "hits_count": 1,
+          "wf_id": "DV1qyZgjSk7cTbim",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:EberPYI286ws5K5M",
+          "type": "wf",
+          "label": "TGV Workflow E - Buchhalter Versand v1.11 FINAL FIXED",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "EberPYI286ws5K5M",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:EhYORO07kDF5u5Xn",
+          "type": "wf",
+          "label": "TGV Skill Resolve Supplier v0.3",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "EhYORO07kDF5u5Xn",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:I7BJ9Bgb21J1b5Ap",
+          "type": "wf",
+          "label": "TGV Workflow E - Buchhalter Versand v1.9 Address Fix",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "I7BJ9Bgb21J1b5Ap",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:IV0MUfrbcjNZJNv0",
+          "type": "wf",
+          "label": "TGV PDF Text Snippet v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "IV0MUfrbcjNZJNv0",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:KRNRcSLSUiVC8nTW",
+          "type": "wf",
+          "label": "TGV WF B v2 Drive Adapter (thin)",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "KRNRcSLSUiVC8nTW",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:LXB4KSgDbqFi1jc0",
+          "type": "wf",
+          "label": "TGV Skill Classify CSV v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "LXB4KSgDbqFi1jc0",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:MkG0m64HF9Z7jmxK",
+          "type": "wf",
+          "label": "TGV Skill Reconcile Payment v0.3",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "MkG0m64HF9Z7jmxK",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:Pofm867HQoLoWBXA",
+          "type": "wf",
+          "label": "TGV - One-shot TXN AI Reclass v1",
+          "active": false,
+          "hits_count": 3,
+          "wf_id": "Pofm867HQoLoWBXA",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:RDA4Hv8058hqxTOf",
+          "type": "wf",
+          "label": "TGV Workflow D - Reclass Doc Dispatcher v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "RDA4Hv8058hqxTOf",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:RKh1lq9ruckrpR24",
+          "type": "wf",
+          "label": "TGV Cascade Trigger v01.00 (Iter 15.1.c)",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "RKh1lq9ruckrpR24",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:RtTqaFYxiFtc9Pdm",
+          "type": "wf",
+          "label": "TGV Skill Pattern Engine v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "RtTqaFYxiFtc9Pdm",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:TfR4CfEpElX8Nahy",
+          "type": "wf",
+          "label": "TGV Skill Tax Extract v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "TfR4CfEpElX8Nahy",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:UYKD3BC6qbUzJl0d",
+          "type": "wf",
+          "label": "TGV Skill Import Timetrack CSV v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "UYKD3BC6qbUzJl0d",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:UvNspgnrKvQKz9Ln",
+          "type": "wf",
+          "label": "TGV Skill Import Banking CSV v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "UvNspgnrKvQKz9Ln",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:X4LH5CnG2GH1InkX",
+          "type": "wf",
+          "label": "TGV - KB Learn Webhook v0.3.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "X4LH5CnG2GH1InkX",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:XiV614kH0syjxU1T",
+          "type": "wf",
+          "label": "WF E - Buchhalter Versand v1.7.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "XiV614kH0syjxU1T",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:Xrhc3ajB3onuI8lv",
+          "type": "wf",
+          "label": "TGV Skill RAG Search v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "Xrhc3ajB3onuI8lv",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:YvTqsmvC4lpgylDH",
+          "type": "wf",
+          "label": "TGV Workflow E - Buchhalter Versand v1.4 FRLabels",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "YvTqsmvC4lpgylDH",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:ZtZ6wQQ0DAEQr7Ub",
+          "type": "wf",
+          "label": "TGV — C. Claude Review (pending_review → ai_suggestion)",
+          "active": false,
+          "hits_count": 5,
+          "wf_id": "ZtZ6wQQ0DAEQr7Ub",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:ZwkBC1AXAnobIUuN",
+          "type": "wf",
+          "label": "WF E - Buchhalter Versand v1.7.2",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "ZwkBC1AXAnobIUuN",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:bdejCuX2AN6ptdz5",
+          "type": "wf",
+          "label": "TGV Skill RAG Ingest v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "bdejCuX2AN6ptdz5",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:bzbnkMvWF0FcWYI8",
+          "type": "wf",
+          "label": "TGV Triage Agent v1.0",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "bzbnkMvWF0FcWYI8",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:c7B4trQwfyRFVm8m",
+          "type": "wf",
+          "label": "TGV B GDrive Intake V3 cc-svcacct",
+          "active": false,
+          "hits_count": 30,
+          "wf_id": "c7B4trQwfyRFVm8m",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:ceurPCxGciw1CN0v",
+          "type": "wf",
+          "label": "TGV Claude Proxy v1.4",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "ceurPCxGciw1CN0v",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:d3xO540JEcAu9Rol",
+          "type": "wf",
+          "label": "TGV Skill PDF Invoice Extract v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "d3xO540JEcAu9Rol",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:dT1VRLPnDdYxVIKH",
+          "type": "wf",
+          "label": "TGV Skill Store File To Drive v0.3",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "dT1VRLPnDdYxVIKH",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:eATEzPsbFjHUWcpD",
+          "type": "wf",
+          "label": "TGV Skill Contract Stub Safety Net v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "eATEzPsbFjHUWcpD",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:fJR8O8MZ2U7YkaGG",
+          "type": "wf",
+          "label": "TGV WF A2 Mail Intake INSERT-only v02.00 (Iter 15.1.b)",
+          "active": false,
+          "hits_count": 7,
+          "wf_id": "fJR8O8MZ2U7YkaGG",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:fx9POuhD3ybynhat",
+          "type": "wf",
+          "label": "TGV WF A2 Mail Intake + Universal Triage v01.27",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "fx9POuhD3ybynhat",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:gJMEk6RokQr828XB",
+          "type": "wf",
+          "label": "TGV Skill Mock Error v0.1 (test)",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "gJMEk6RokQr828XB",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:gxMTA6s3Pl4Gsuzc",
+          "type": "wf",
+          "label": "TGV Skill Upsert Contract From Invoice v0.3",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "gxMTA6s3Pl4Gsuzc",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:iAocgXD6t8Ik4anM",
+          "type": "wf",
+          "label": "WF E - Buchhalter Versand v2.0 PROD",
+          "active": false,
+          "hits_count": 0,
+          "wf_id": "iAocgXD6t8Ik4anM",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:mZyMkagJPmMCNQqX",
+          "type": "wf",
+          "label": "TGV Skill Tax Send Package v0.2",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "mZyMkagJPmMCNQqX",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:mvOybw4cBU7y8X5Y",
+          "type": "wf",
+          "label": "TGV Skill Router v0.6",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "mvOybw4cBU7y8X5Y",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:nf0LbVTOdtlqe6kI",
+          "type": "wf",
+          "label": "TGV Iter23 Test Mail Sender",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "nf0LbVTOdtlqe6kI",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:orpWV2VGRPRQ3RsD",
+          "type": "wf",
+          "label": "TGV WF A2 v2 Mail Adapter (thin)",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "orpWV2VGRPRQ3RsD",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:rMBSFnMsw6NiasZ3",
+          "type": "wf",
+          "label": "TGV Skill Detect Duplicate v0.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "rMBSFnMsw6NiasZ3",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:tnuT3QN4AwnbYdSz",
+          "type": "wf",
+          "label": "TGV Skill Periodic Engine v0.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "tnuT3QN4AwnbYdSz",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:xFhnFWWazCDdepXX",
+          "type": "wf",
+          "label": "TGV Workflow E - Buchhalter Versand v1.11 FINAL FIXED",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "xFhnFWWazCDdepXX",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "wf:ybDORjJEGzOlP0Pt",
+          "type": "wf",
+          "label": "WF E - Buchhalter Versand v1.7.2",
+          "active": false,
+          "hits_count": 2,
+          "wf_id": "ybDORjJEGzOlP0Pt",
+          "tags": []
+        }
+      },
+      {
+        "data": {
+          "id": "skill:3",
+          "type": "skill",
+          "label": "create_drive_document",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:8",
+          "type": "skill",
+          "label": "create_excel_report",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:6",
+          "type": "skill",
+          "label": "flag_for_review",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:7",
+          "type": "skill",
+          "label": "generate_cv_from_master",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:2",
+          "type": "skill",
+          "label": "read_drive_file",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:5",
+          "type": "skill",
+          "label": "reconcile_payment",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:4",
+          "type": "skill",
+          "label": "search_contracts",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:1",
+          "type": "skill",
+          "label": "search_project_documents",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:11",
+          "type": "skill",
+          "label": "tgv-classify-csv",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-classify-csv",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:14",
+          "type": "skill",
+          "label": "tgv-extract-contract-pdf",
+          "version": "0.4.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-extract-contract-pdf",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:12",
+          "type": "skill",
+          "label": "tgv-import-banking-csv",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-import-banking-csv",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:13",
+          "type": "skill",
+          "label": "tgv-import-timetrack-csv",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-import-timetrack-csv",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:30",
+          "type": "skill",
+          "label": "tgv-pattern-engine",
+          "version": "0.2.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-pattern-engine",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:10",
+          "type": "skill",
+          "label": "tgv-pdf-invoice-extract",
+          "version": "0.2.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-pdf-invoice-extract",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:27",
+          "type": "skill",
+          "label": "tgv-pdf-text-snippet",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-pdf-text-snippet",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:16",
+          "type": "skill",
+          "label": "tgv-reconcile-payment",
+          "version": "0.2.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-reconcile-payment",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:17",
+          "type": "skill",
+          "label": "tgv-resolve-supplier",
+          "version": "0.2.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-resolve-supplier",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:15",
+          "type": "skill",
+          "label": "tgv-route-project-document",
+          "version": null,
+          "domain": "core",
+          "webhook_url": null,
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:40",
+          "type": "skill",
+          "label": "tgv-skill-contract-stub-safety-net",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-contract-stub-safety-net",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:41",
+          "type": "skill",
+          "label": "tgv-skill-detect-duplicate",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-detect-duplicate",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:43",
+          "type": "skill",
+          "label": "tgv-skill-monthly-closing-prep",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/rpc/refresh_monthly_closing_prep",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:26",
+          "type": "skill",
+          "label": "tgv-skill-orchestrator",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-orchestrator",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:42",
+          "type": "skill",
+          "label": "tgv-skill-pattern-promoter",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-pattern-promoter",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:31",
+          "type": "skill",
+          "label": "tgv-skill-rag-ingest",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-rag-ingest",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:32",
+          "type": "skill",
+          "label": "tgv-skill-rag-search",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-rag-search",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:47",
+          "type": "skill",
+          "label": "tgv-skill-record-decision",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/rpc/record_skill_selection_decision",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:33",
+          "type": "skill",
+          "label": "tgv-skill-tax-extract",
+          "version": "0.2.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-tax-extract",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:34",
+          "type": "skill",
+          "label": "tgv-skill-tax-send-package",
+          "version": "0.1.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-tax-send-package",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:28",
+          "type": "skill",
+          "label": "tgv-skill-upsert-contract-from-invoice",
+          "version": "0.2.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-upsert-contract-from-invoice",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "skill:9",
+          "type": "skill",
+          "label": "tgv-store-file-to-drive",
+          "version": "0.3.0",
+          "domain": "core",
+          "webhook_url": "/webhook/tgv-skill-store-file-to-drive",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:account_iban_mapping",
+          "type": "table",
+          "label": "account_iban_mapping",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:accounting_runs",
+          "type": "table",
+          "label": "accounting_runs",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:action_requests",
+          "type": "table",
+          "label": "action_requests",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:agent_config",
+          "type": "table",
+          "label": "agent_config",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:agent_conversations",
+          "type": "table",
+          "label": "agent_conversations",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:agent_decisions",
+          "type": "table",
+          "label": "agent_decisions",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:agent_events",
+          "type": "table",
+          "label": "agent_events",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:agent_knowledge",
+          "type": "table",
+          "label": "agent_knowledge",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:agent_prompts",
+          "type": "table",
+          "label": "agent_prompts",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:alerts",
+          "type": "table",
+          "label": "alerts",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:audit_events",
+          "type": "table",
+          "label": "audit_events",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:auth_allowed_users",
+          "type": "table",
+          "label": "auth_allowed_users",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:core_match_candidates",
+          "type": "table",
+          "label": "core_match_candidates",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:cost_metrics",
+          "type": "table",
+          "label": "cost_metrics",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:cost_telemetry_n8n",
+          "type": "table",
+          "label": "cost_telemetry_n8n",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:cost_thresholds",
+          "type": "table",
+          "label": "cost_thresholds",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:depot_positions",
+          "type": "table",
+          "label": "depot_positions",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:depot_snapshots",
+          "type": "table",
+          "label": "depot_snapshots",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:documents",
+          "type": "table",
+          "label": "documents",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:file_versions",
+          "type": "table",
+          "label": "file_versions",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:hours_log",
+          "type": "table",
+          "label": "hours_log",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:import_log",
+          "type": "table",
+          "label": "import_log",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:input_items",
+          "type": "table",
+          "label": "input_items",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:input_packages",
+          "type": "table",
+          "label": "input_packages",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:kb_contracts_patterns",
+          "type": "table",
+          "label": "kb_contracts_patterns",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:kb_suppliers",
+          "type": "table",
+          "label": "kb_suppliers",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:learning_events",
+          "type": "table",
+          "label": "learning_events",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:mail_processing_patterns",
+          "type": "table",
+          "label": "mail_processing_patterns",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:mail_routing_rules",
+          "type": "table",
+          "label": "mail_routing_rules",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_account_aliases",
+          "type": "table",
+          "label": "md_account_aliases",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_accounts",
+          "type": "table",
+          "label": "md_accounts",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_categories",
+          "type": "table",
+          "label": "md_categories",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_companies",
+          "type": "table",
+          "label": "md_companies",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_merchants",
+          "type": "table",
+          "label": "md_merchants",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_persons",
+          "type": "table",
+          "label": "md_persons",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_properties",
+          "type": "table",
+          "label": "md_properties",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_suppliers",
+          "type": "table",
+          "label": "md_suppliers",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_tax_tags",
+          "type": "table",
+          "label": "md_tax_tags",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:md_vehicles",
+          "type": "table",
+          "label": "md_vehicles",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:merchant_rules",
+          "type": "table",
+          "label": "merchant_rules",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:monthly_closing_prep",
+          "type": "table",
+          "label": "monthly_closing_prep",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:n8n_workflows",
+          "type": "table",
+          "label": "n8n_workflows",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:pattern_rules",
+          "type": "table",
+          "label": "pattern_rules",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:pattern_rules_seed",
+          "type": "table",
+          "label": "pattern_rules_seed",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:periodic_jobs",
+          "type": "table",
+          "label": "periodic_jobs",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:prf_contracts",
+          "type": "table",
+          "label": "prf_contracts",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:prf_projects",
+          "type": "table",
+          "label": "prf_projects",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:prf_timetrack",
+          "type": "table",
+          "label": "prf_timetrack",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:projects",
+          "type": "table",
+          "label": "projects",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:provider_credentials",
+          "type": "table",
+          "label": "provider_credentials",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:rag_chunks",
+          "type": "table",
+          "label": "rag_chunks",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:routing_decisions",
+          "type": "table",
+          "label": "routing_decisions",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:skill_definitions",
+          "type": "table",
+          "label": "skill_definitions",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:skill_economics",
+          "type": "table",
+          "label": "skill_economics",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:skill_gap_signals",
+          "type": "table",
+          "label": "skill_gap_signals",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:source_connections",
+          "type": "table",
+          "label": "source_connections",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:source_policies",
+          "type": "table",
+          "label": "source_policies",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:system_config",
+          "type": "table",
+          "label": "system_config",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:tax_filings",
+          "type": "table",
+          "label": "tax_filings",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:tgv_migrations",
+          "type": "table",
+          "label": "tgv_migrations",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:txn_master",
+          "type": "table",
+          "label": "txn_master",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:txn_master_reclass_backup_20260419",
+          "type": "table",
+          "label": "txn_master_reclass_backup_20260419",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:wealth_asset_owners",
+          "type": "table",
+          "label": "wealth_asset_owners",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:wealth_assets",
+          "type": "table",
+          "label": "wealth_assets",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:wealth_valuations",
+          "type": "table",
+          "label": "wealth_valuations",
+          "hits_count": 0
+        }
+      }
+    ],
+    "edges": [
+      {
+        "data": {
+          "id": "call:wf:1OEdRKTJul9grsHT->wf:RDA4Hv8058hqxTOf:tgv-reclass-doc",
+          "source": "wf:1OEdRKTJul9grsHT",
+          "target": "wf:RDA4Hv8058hqxTOf",
+          "type": "webhook_call",
+          "label": "tgv-reclass-doc"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:1OEdRKTJul9grsHT->wf:d3xO540JEcAu9Rol:tgv-skill-pdf-invoice-extract",
+          "source": "wf:1OEdRKTJul9grsHT",
+          "target": "wf:d3xO540JEcAu9Rol",
+          "type": "webhook_call",
+          "label": "tgv-skill-pdf-invoice-extract"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:CbNkDkMss3YiHAmN->wf:RtTqaFYxiFtc9Pdm:tgv-pattern-engine",
+          "source": "wf:CbNkDkMss3YiHAmN",
+          "target": "wf:RtTqaFYxiFtc9Pdm",
+          "type": "webhook_call",
+          "label": "tgv-pattern-engine"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:KRNRcSLSUiVC8nTW->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
+          "source": "wf:KRNRcSLSUiVC8nTW",
+          "target": "wf:CbNkDkMss3YiHAmN",
+          "type": "webhook_call",
+          "label": "tgv-skill-orchestrator"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:KRNRcSLSUiVC8nTW->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
+          "source": "wf:KRNRcSLSUiVC8nTW",
+          "target": "wf:mvOybw4cBU7y8X5Y",
+          "type": "webhook_call",
+          "label": "tgv-skill-router"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:RDA4Hv8058hqxTOf->wf:d3xO540JEcAu9Rol:tgv-skill-pdf-invoice-extract",
+          "source": "wf:RDA4Hv8058hqxTOf",
+          "target": "wf:d3xO540JEcAu9Rol",
+          "type": "webhook_call",
+          "label": "tgv-skill-pdf-invoice-extract"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:RDA4Hv8058hqxTOf->wf:X4LH5CnG2GH1InkX:tgv-kb-learn",
+          "source": "wf:RDA4Hv8058hqxTOf",
+          "target": "wf:X4LH5CnG2GH1InkX",
+          "type": "webhook_call",
+          "label": "tgv-kb-learn"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:RDA4Hv8058hqxTOf->wf:5jYCxB9NzqyRMqjI:tgv-skill-extract-contract-pdf",
+          "source": "wf:RDA4Hv8058hqxTOf",
+          "target": "wf:5jYCxB9NzqyRMqjI",
+          "type": "webhook_call",
+          "label": "tgv-skill-extract-contract-pdf"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:RKh1lq9ruckrpR24->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
+          "source": "wf:RKh1lq9ruckrpR24",
+          "target": "wf:mvOybw4cBU7y8X5Y",
+          "type": "webhook_call",
+          "label": "tgv-skill-router"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:bzbnkMvWF0FcWYI8->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
+          "source": "wf:bzbnkMvWF0FcWYI8",
+          "target": "wf:mvOybw4cBU7y8X5Y",
+          "type": "webhook_call",
+          "label": "tgv-skill-router"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:c7B4trQwfyRFVm8m->wf:1OEdRKTJul9grsHT:tgv-post-intake",
+          "source": "wf:c7B4trQwfyRFVm8m",
+          "target": "wf:1OEdRKTJul9grsHT",
+          "type": "webhook_call",
+          "label": "tgv-post-intake"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:eATEzPsbFjHUWcpD->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
+          "source": "wf:eATEzPsbFjHUWcpD",
+          "target": "wf:gxMTA6s3Pl4Gsuzc",
+          "type": "webhook_call",
+          "label": "tgv-skill-upsert-contract-from-invoice"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:fJR8O8MZ2U7YkaGG->wf:1OEdRKTJul9grsHT:tgv-post-intake",
+          "source": "wf:fJR8O8MZ2U7YkaGG",
+          "target": "wf:1OEdRKTJul9grsHT",
+          "type": "webhook_call",
+          "label": "tgv-post-intake"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:fx9POuhD3ybynhat->wf:RKh1lq9ruckrpR24:tgv-cascade-trigger",
+          "source": "wf:fx9POuhD3ybynhat",
+          "target": "wf:RKh1lq9ruckrpR24",
+          "type": "webhook_call",
+          "label": "tgv-cascade-trigger"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:dT1VRLPnDdYxVIKH:tgv-skill-store-file-to-drive",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:dT1VRLPnDdYxVIKH",
+          "type": "webhook_call",
+          "label": "tgv-skill-store-file-to-drive"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:gxMTA6s3Pl4Gsuzc",
+          "type": "webhook_call",
+          "label": "tgv-skill-upsert-contract-from-invoice"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:MkG0m64HF9Z7jmxK:tgv-skill-reconcile-payment",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:MkG0m64HF9Z7jmxK",
+          "type": "webhook_call",
+          "label": "tgv-skill-reconcile-payment"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:5jYCxB9NzqyRMqjI:tgv-skill-extract-contract-pdf",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:5jYCxB9NzqyRMqjI",
+          "type": "webhook_call",
+          "label": "tgv-skill-extract-contract-pdf"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UvNspgnrKvQKz9Ln:tgv-skill-import-banking-csv",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:UvNspgnrKvQKz9Ln",
+          "type": "webhook_call",
+          "label": "tgv-skill-import-banking-csv"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:d3xO540JEcAu9Rol:tgv-skill-pdf-invoice-extract",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:d3xO540JEcAu9Rol",
+          "type": "webhook_call",
+          "label": "tgv-skill-pdf-invoice-extract"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:EhYORO07kDF5u5Xn:tgv-skill-resolve-supplier",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:EhYORO07kDF5u5Xn",
+          "type": "webhook_call",
+          "label": "tgv-skill-resolve-supplier"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:IV0MUfrbcjNZJNv0:tgv-pdf-text-snippet",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:IV0MUfrbcjNZJNv0",
+          "type": "webhook_call",
+          "label": "tgv-pdf-text-snippet"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UYKD3BC6qbUzJl0d:tgv-skill-import-timetrack-csv",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:UYKD3BC6qbUzJl0d",
+          "type": "webhook_call",
+          "label": "tgv-skill-import-timetrack-csv"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:LXB4KSgDbqFi1jc0:tgv-skill-classify-csv",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:LXB4KSgDbqFi1jc0",
+          "type": "webhook_call",
+          "label": "tgv-skill-classify-csv"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:orpWV2VGRPRQ3RsD->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
+          "source": "wf:orpWV2VGRPRQ3RsD",
+          "target": "wf:CbNkDkMss3YiHAmN",
+          "type": "webhook_call",
+          "label": "tgv-skill-orchestrator"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:orpWV2VGRPRQ3RsD->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
+          "source": "wf:orpWV2VGRPRQ3RsD",
+          "target": "wf:mvOybw4cBU7y8X5Y",
+          "type": "webhook_call",
+          "label": "tgv-skill-router"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:11->wf:LXB4KSgDbqFi1jc0",
+          "source": "skill:11",
+          "target": "wf:LXB4KSgDbqFi1jc0",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:14->wf:5jYCxB9NzqyRMqjI",
+          "source": "skill:14",
+          "target": "wf:5jYCxB9NzqyRMqjI",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:12->wf:UvNspgnrKvQKz9Ln",
+          "source": "skill:12",
+          "target": "wf:UvNspgnrKvQKz9Ln",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:13->wf:UYKD3BC6qbUzJl0d",
+          "source": "skill:13",
+          "target": "wf:UYKD3BC6qbUzJl0d",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:30->wf:RtTqaFYxiFtc9Pdm",
+          "source": "skill:30",
+          "target": "wf:RtTqaFYxiFtc9Pdm",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:10->wf:d3xO540JEcAu9Rol",
+          "source": "skill:10",
+          "target": "wf:d3xO540JEcAu9Rol",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:27->wf:IV0MUfrbcjNZJNv0",
+          "source": "skill:27",
+          "target": "wf:IV0MUfrbcjNZJNv0",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:16->wf:MkG0m64HF9Z7jmxK",
+          "source": "skill:16",
+          "target": "wf:MkG0m64HF9Z7jmxK",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:17->wf:EhYORO07kDF5u5Xn",
+          "source": "skill:17",
+          "target": "wf:EhYORO07kDF5u5Xn",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:40->wf:eATEzPsbFjHUWcpD",
+          "source": "skill:40",
+          "target": "wf:eATEzPsbFjHUWcpD",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:41->wf:rMBSFnMsw6NiasZ3",
+          "source": "skill:41",
+          "target": "wf:rMBSFnMsw6NiasZ3",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:26->wf:CbNkDkMss3YiHAmN",
+          "source": "skill:26",
+          "target": "wf:CbNkDkMss3YiHAmN",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:31->wf:bdejCuX2AN6ptdz5",
+          "source": "skill:31",
+          "target": "wf:bdejCuX2AN6ptdz5",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:32->wf:Xrhc3ajB3onuI8lv",
+          "source": "skill:32",
+          "target": "wf:Xrhc3ajB3onuI8lv",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:33->wf:TfR4CfEpElX8Nahy",
+          "source": "skill:33",
+          "target": "wf:TfR4CfEpElX8Nahy",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:34->wf:mZyMkagJPmMCNQqX",
+          "source": "skill:34",
+          "target": "wf:mZyMkagJPmMCNQqX",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:28->wf:gxMTA6s3Pl4Gsuzc",
+          "source": "skill:28",
+          "target": "wf:gxMTA6s3Pl4Gsuzc",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "bind:skill:9->wf:dT1VRLPnDdYxVIKH",
+          "source": "skill:9",
+          "target": "wf:dT1VRLPnDdYxVIKH",
+          "type": "skill_binding",
+          "label": "implements"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:action_requests_input_item_id_fkey",
+          "source": "table:action_requests",
+          "target": "table:input_items",
+          "type": "fk",
+          "label": "input_item_id -> input_item_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:action_requests_input_package_id_fkey",
+          "source": "table:action_requests",
+          "target": "table:input_packages",
+          "type": "fk",
+          "label": "input_package_id -> input_package_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_conversations_project_id_fkey",
+          "source": "table:agent_conversations",
+          "target": "table:prf_projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_decisions_audit_event_id_fkey",
+          "source": "table:agent_decisions",
+          "target": "table:audit_events",
+          "type": "fk",
+          "label": "audit_event_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_decisions_project_id_fkey",
+          "source": "table:agent_decisions",
+          "target": "table:prf_projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_events_conversation_id_fkey",
+          "source": "table:agent_events",
+          "target": "table:agent_conversations",
+          "type": "fk",
+          "label": "conversation_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_events_document_id_fkey",
+          "source": "table:agent_events",
+          "target": "table:documents",
+          "type": "fk",
+          "label": "document_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_events_project_id_fkey",
+          "source": "table:agent_events",
+          "target": "table:prf_projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_events_skill_id_fkey",
+          "source": "table:agent_events",
+          "target": "table:skill_definitions",
+          "type": "fk",
+          "label": "skill_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_events_transaction_id_fkey",
+          "source": "table:agent_events",
+          "target": "table:txn_master",
+          "type": "fk",
+          "label": "transaction_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:agent_prompts_project_id_fkey",
+          "source": "table:agent_prompts",
+          "target": "table:projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:core_match_candidates_input_item_id_fkey",
+          "source": "table:core_match_candidates",
+          "target": "table:input_items",
+          "type": "fk",
+          "label": "input_item_id -> input_item_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:core_match_candidates_input_package_id_fkey",
+          "source": "table:core_match_candidates",
+          "target": "table:input_packages",
+          "type": "fk",
+          "label": "input_package_id -> input_package_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:depot_positions_snapshot_id_fkey",
+          "source": "table:depot_positions",
+          "target": "table:depot_snapshots",
+          "type": "fk",
+          "label": "snapshot_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:documents_supplier_id_fkey",
+          "source": "table:documents",
+          "target": "table:md_suppliers",
+          "type": "fk",
+          "label": "supplier_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:documents_contract_id_fkey",
+          "source": "table:documents",
+          "target": "table:prf_contracts",
+          "type": "fk",
+          "label": "contract_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:documents_project_id_fkey",
+          "source": "table:documents",
+          "target": "table:projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:documents_tax_filing_id_fkey",
+          "source": "table:documents",
+          "target": "table:tax_filings",
+          "type": "fk",
+          "label": "tax_filing_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:documents_payment_txn_id_fkey",
+          "source": "table:documents",
+          "target": "table:txn_master",
+          "type": "fk",
+          "label": "payment_txn_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:file_versions_input_item_id_fkey",
+          "source": "table:file_versions",
+          "target": "table:input_items",
+          "type": "fk",
+          "label": "input_item_id -> input_item_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:hours_log_project_id_fkey",
+          "source": "table:hours_log",
+          "target": "table:prf_projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:input_items_input_package_id_fkey",
+          "source": "table:input_items",
+          "target": "table:input_packages",
+          "type": "fk",
+          "label": "input_package_id -> input_package_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:input_packages_source_connection_id_fkey",
+          "source": "table:input_packages",
+          "target": "table:source_connections",
+          "type": "fk",
+          "label": "source_connection_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:input_packages_source_policy_id_fkey",
+          "source": "table:input_packages",
+          "target": "table:source_policies",
+          "type": "fk",
+          "label": "source_policy_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:kb_suppliers_supplier_id_fkey",
+          "source": "table:kb_suppliers",
+          "target": "table:md_suppliers",
+          "type": "fk",
+          "label": "supplier_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:learning_events_decision_id_fkey",
+          "source": "table:learning_events",
+          "target": "table:agent_decisions",
+          "type": "fk",
+          "label": "decision_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:learning_events_context_doc_id_fkey",
+          "source": "table:learning_events",
+          "target": "table:documents",
+          "type": "fk",
+          "label": "context_doc_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:learning_events_context_txn_id_fkey",
+          "source": "table:learning_events",
+          "target": "table:txn_master",
+          "type": "fk",
+          "label": "context_txn_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_account_aliases_account_id_fkey",
+          "source": "table:md_account_aliases",
+          "target": "table:md_accounts",
+          "type": "fk",
+          "label": "account_id -> account_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_accounts_owner_person_id_fkey",
+          "source": "table:md_accounts",
+          "target": "table:md_persons",
+          "type": "fk",
+          "label": "owner_person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_companies_owner_person_id_fkey",
+          "source": "table:md_companies",
+          "target": "table:md_persons",
+          "type": "fk",
+          "label": "owner_person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_merchants_default_person_id_fkey",
+          "source": "table:md_merchants",
+          "target": "table:md_persons",
+          "type": "fk",
+          "label": "default_person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_merchants_default_property_id_fkey",
+          "source": "table:md_merchants",
+          "target": "table:md_properties",
+          "type": "fk",
+          "label": "default_property_id -> property_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_properties_owner_person_id_fkey",
+          "source": "table:md_properties",
+          "target": "table:md_persons",
+          "type": "fk",
+          "label": "owner_person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:md_vehicles_owner_person_id_fkey",
+          "source": "table:md_vehicles",
+          "target": "table:md_persons",
+          "type": "fk",
+          "label": "owner_person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:prf_contracts_document_id_fkey",
+          "source": "table:prf_contracts",
+          "target": "table:documents",
+          "type": "fk",
+          "label": "document_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:prf_contracts_supplier_id_fkey",
+          "source": "table:prf_contracts",
+          "target": "table:md_suppliers",
+          "type": "fk",
+          "label": "supplier_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:prf_contracts_project_id_fkey",
+          "source": "table:prf_contracts",
+          "target": "table:projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:prf_timetrack_project_id_fkey",
+          "source": "table:prf_timetrack",
+          "target": "table:prf_projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:provider_credentials_supplier_id_fkey",
+          "source": "table:provider_credentials",
+          "target": "table:md_suppliers",
+          "type": "fk",
+          "label": "supplier_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:chunks_source_document_id_fkey",
+          "source": "table:rag_chunks",
+          "target": "table:documents",
+          "type": "fk",
+          "label": "source_document_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:routing_decisions_input_item_id_fkey",
+          "source": "table:routing_decisions",
+          "target": "table:input_items",
+          "type": "fk",
+          "label": "input_item_id -> input_item_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:routing_decisions_input_package_id_fkey",
+          "source": "table:routing_decisions",
+          "target": "table:input_packages",
+          "type": "fk",
+          "label": "input_package_id -> input_package_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:skill_definitions_project_id_fkey",
+          "source": "table:skill_definitions",
+          "target": "table:prf_projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:skill_gap_signals_context_doc_id_fkey",
+          "source": "table:skill_gap_signals",
+          "target": "table:documents",
+          "type": "fk",
+          "label": "context_doc_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:source_policies_source_connection_id_fkey",
+          "source": "table:source_policies",
+          "target": "table:source_connections",
+          "type": "fk",
+          "label": "source_connection_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_document_id_fkey",
+          "source": "table:txn_master",
+          "target": "table:documents",
+          "type": "fk",
+          "label": "document_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_account_id_fkey",
+          "source": "table:txn_master",
+          "target": "table:md_accounts",
+          "type": "fk",
+          "label": "account_id -> account_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_person_id_fkey",
+          "source": "table:txn_master",
+          "target": "table:md_persons",
+          "type": "fk",
+          "label": "person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_property_id_fkey",
+          "source": "table:txn_master",
+          "target": "table:md_properties",
+          "type": "fk",
+          "label": "property_id -> property_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_supplier_id_fkey",
+          "source": "table:txn_master",
+          "target": "table:md_suppliers",
+          "type": "fk",
+          "label": "supplier_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_tax_tag_fkey",
+          "source": "table:txn_master",
+          "target": "table:md_tax_tags",
+          "type": "fk",
+          "label": "tax_tag -> tax_tag_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:txn_master_project_id_fkey",
+          "source": "table:txn_master",
+          "target": "table:projects",
+          "type": "fk",
+          "label": "project_id -> id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:wealth_asset_owners_asset_id_fkey",
+          "source": "table:wealth_asset_owners",
+          "target": "table:wealth_assets",
+          "type": "fk",
+          "label": "asset_id -> asset_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:wealth_valuations_asset_id_fkey",
+          "source": "table:wealth_valuations",
+          "target": "table:wealth_assets",
+          "type": "fk",
+          "label": "asset_id -> asset_id"
+        }
+      }
+    ]
+  }
+}
