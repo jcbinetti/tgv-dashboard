@@ -2263,6 +2263,23 @@ body.chat-open #main-content {
         <div class="spinner-wrap"><div class="spinner"></div> Lade KPIs…</div>
       </div>
 
+      <!-- PIPELINE-HEALTH-WIDGET (Iter 27.C2) — speist aus topology.json (Live-Enrichment) -->
+      <div class="card" id="pipeline-health-card">
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <h2>🩺 Pipeline-Health (24h)</h2>
+          <div style="font-size:11px;color:var(--tx2);" id="pipeline-health-meta">—</div>
+        </div>
+        <div class="card-body">
+          <div id="pipeline-health-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Pipeline-Status…</div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--tx2);">
+            Quelle: <code>06_DASHBOARD/topology.json</code> (Live-Enrichment via <code>poll_wf_status.py</code> + <code>extract_system_topology.py --with-live</code>).
+            Pipeline-Mapping siehe <a href="#lernen" style="color:var(--blu);">📚 Lernen-Tab</a>.
+          </div>
+        </div>
+      </div>
+
       <!-- SYSTEM STATUS -->
       <div class="card">
         <div class="card-head"><h2>🔧 System Status — n8n Workflows</h2></div>
@@ -3511,6 +3528,9 @@ body.chat-open #main-content {
               <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-filter-skill" checked onchange="renderTopologyGraph()"> Skills (<span id="topo-cnt-skill">0</span>)</label>
               <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-filter-table" onchange="renderTopologyGraph()"> Tables (<span id="topo-cnt-table">0</span>)</label>
               <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-only-active" onchange="renderTopologyGraph()"> nur aktive WFs</label>
+              <label style="display:flex;gap:4px;align-items:center;cursor:pointer;" title="Iter 27 — Knoten-Farbe nach last_status (success/error/waiting)"><input type="checkbox" id="topo-show-live" checked onchange="renderTopologyGraph()"> Live-Status</label>
+              <label style="display:flex;gap:4px;align-items:center;cursor:pointer;" title="Iter 27 — Border-Width skaliert mit execs_24h"><input type="checkbox" id="topo-show-heatmap" onchange="renderTopologyGraph()"> Cost-Heatmap</label>
+              <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:3px 8px;" onclick="refreshTopologyLive()" title="Iter 27.A4 — Live-Status pollen (lokal: 08_OPS/poll_wf_status.py)">⟳ Live-Refresh</button>
               <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:3px 8px;" onclick="loadTopologyGraph(true)" title="topology.json neu laden">↻ Reload</button>
             </div>
           </div>
@@ -4199,12 +4219,6 @@ function showPage(pageId, btn) {
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
   if (pageId === 'actions') loadActions();
-  // Iter 26 Hotfix: Lernen-Tab Default-Sub-Tab "docs" muss bei Page-Switch initialisieren
-  // (showLernenTab fired sonst nur bei Sub-Tab-Click, nicht beim Tab-Eintritt)
-  if (pageId === 'lernen') {
-    const docsPanelActive = document.getElementById('lernen-panel-docs')?.classList.contains('active');
-    if (docsPanelActive) initLernenDocs();
-  }
 }
 
 // Lazy-load Architektur-iframe nur beim ersten Anzeigen (CDN-Last vermeiden bis benötigt)
@@ -4278,6 +4292,84 @@ async function loadUebersicht() {
   loadKPIs();
   loadLetzteEingaenge();
   loadWfStatusGrid();
+  loadPipelineHealth();  /* Iter 27.C2 */
+}
+
+/* ═══════════════════════════════════════════════════════
+   Iter 27.C2 — Pipeline-Health-Widget
+   speist 5 Pipeline-Cards (A2/B/Cascade/D/E) aus topology.json
+   ═══════════════════════════════════════════════════════ */
+const PIPELINE_HEALTH_MAP = [
+  { key: 'A2',      label: '📧 A2 Mail Intake',     wf_name_includes: ['WF A2 Mail Intake'],            doc_anchor: 'PIPELINE_A2' },
+  { key: 'B',       label: '📁 B Drive Adapter',    wf_name_includes: ['WF B'],                          doc_anchor: 'PIPELINE_B' },
+  { key: 'Cascade', label: '🔁 Cascade Trigger',    wf_name_includes: ['Cascade Trigger'],               doc_anchor: 'PIPELINE_CASCADE' },
+  { key: 'D',       label: '🎯 D Dispatcher',       wf_name_includes: ['Workflow D', 'Reclass Doc'],     doc_anchor: 'PIPELINE_D' },
+  { key: 'E',       label: '📤 E Buchhalter',       wf_name_includes: ['Buchhalter Versand v1.7.2', 'Workflow E - Buchhalter Versand v1.11'], doc_anchor: 'PIPELINE_E' },
+];
+
+async function loadPipelineHealth() {
+  const grid = document.getElementById('pipeline-health-grid');
+  const meta = document.getElementById('pipeline-health-meta');
+  if (!grid) return;
+  try {
+    const r = await fetch('topology.json?t=' + Date.now(), { cache: 'no-cache' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const topo = await r.json();
+    const wfNodes = (topo.elements?.nodes || []).filter(n => n.data.type === 'wf');
+    const live = topo.stats?.live || null;
+
+    const cards = PIPELINE_HEALTH_MAP.map(p => {
+      // Aktive WFs deren Name die p.wf_name_includes-Strings enthält
+      const matches = wfNodes.filter(n => n.data.active && p.wf_name_includes.some(s => (n.data.label || '').includes(s)));
+      if (matches.length === 0) {
+        return { ...p, status: 'missing', execs_24h: 0, errors_24h: 0, last_status: null, last_at: null };
+      }
+      // Best-effort: nimm den WF mit den meisten 24h Execs (oder den ersten)
+      matches.sort((a, b) => (b.data.execs_24h || 0) - (a.data.execs_24h || 0));
+      const top = matches[0].data;
+      const errors = matches.reduce((s, n) => s + (n.data.errors_24h || 0), 0);
+      const execs  = matches.reduce((s, n) => s + (n.data.execs_24h  || 0), 0);
+      let status;
+      if (errors > 0 && errors >= execs / 2) status = 'red';
+      else if (errors > 0) status = 'yellow';
+      else if (execs === 0) status = 'idle';
+      else status = 'green';
+      return { ...p, status, execs_24h: execs, errors_24h: errors, last_status: top.last_status, last_at: top.last_at, wf_name: top.label };
+    });
+
+    const statusBadge = {
+      green:   { bg: '#10b981', txt: 'OK',          icon: '🟢' },
+      yellow:  { bg: '#f59e0b', txt: 'WARN',        icon: '🟡' },
+      red:     { bg: '#dc2626', txt: 'ERROR',       icon: '🔴' },
+      idle:    { bg: '#6b7280', txt: 'IDLE 24h',    icon: '⚪' },
+      missing: { bg: '#374151', txt: 'KEIN WF',     icon: '❓' },
+    };
+    grid.innerHTML = cards.map(c => {
+      const sb = statusBadge[c.status];
+      const lastAt = (c.last_at || '').slice(0, 16).replace('T', ' ');
+      return `<div style="background:var(--s1);border:1px solid var(--bdr);border-left:4px solid ${sb.bg};border-radius:6px;padding:10px 12px;cursor:pointer;" onclick="openLernenAtCitation('${c.doc_anchor}','preamble')" title="Zur Pipeline-Doku">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;">
+          <span>${sb.icon} ${escHtml(c.label)}</span>
+          <span style="font-size:10px;color:${sb.bg};font-weight:700;">${sb.txt}</span>
+        </div>
+        <div style="font-size:11px;color:var(--tx2);margin-top:4px;">
+          24h: <strong>${c.execs_24h}</strong> execs · <strong style="color:${c.errors_24h > 0 ? '#dc2626' : 'var(--tx2)'};">${c.errors_24h}</strong> errors
+        </div>
+        ${c.last_at ? `<div style="font-size:10px;color:var(--tx2);margin-top:2px;">letzte: <code>${escHtml(lastAt)}</code></div>` : ''}
+        ${c.wf_name ? `<div style="font-size:10px;color:var(--tx2);margin-top:2px;font-style:italic;">${escHtml(c.wf_name.substring(0, 50))}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    if (meta) {
+      if (live) {
+        meta.innerHTML = `polled <code>${escHtml((live.polled_at || '').slice(0,19).replace('T',' '))} UTC</code> · ${live.execs_24h_total} execs / ${live.errors_24h_total} errors`;
+      } else {
+        meta.innerHTML = '<span style="color:#dc2626;">Keine Live-Daten — <code>poll_wf_status.py</code> lokal ausführen + deployen</span>';
+      }
+    }
+  } catch (e) {
+    grid.innerHTML = `<p style="color:#dc2626;font-size:13px;">⚠️ Fehler beim Laden: ${escHtml(e.message)}. Stelle sicher dass <code>06_DASHBOARD/topology.json</code> via <code>deploy_user_docs_mirror.py</code> gepushed wurde.</p>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -6184,7 +6276,11 @@ async function loadTopologyGraph(forceReload = false) {
     const cntTb = document.getElementById('topo-cnt-table');  if (cntTb) cntTb.textContent = byType.table || 0;
     if (meta) {
       const gen = (data.generated_at || '').slice(0, 19).replace('T', ' ');
-      meta.innerHTML = `Generiert: <code>${escapeHtml(gen)} UTC</code> · ${stats.nodes_total} Nodes · ${stats.edges_total} Edges · ${stats.total_audit_hits || 0} Audit-Hits · Quelle: <code>08_OPS/extract_system_topology.py</code>`;
+      const live = stats.live || null;
+      const liveBadge = live
+        ? ` · 🟢 Live: ${live.polled_workflows} WFs · ${live.execs_24h_total} execs / ${live.errors_24h_total} errors 24h · polled <code>${escapeHtml((live.polled_at || '').slice(0,19).replace('T',' '))} UTC</code>`
+        : ` · <span style="color:var(--tx2);">Live-Status: keine Daten (run <code>poll_wf_status.py</code>)</span>`;
+      meta.innerHTML = `Generiert: <code>${escapeHtml(gen)} UTC</code> · ${stats.nodes_total} Nodes · ${stats.edges_total} Edges · ${stats.total_audit_hits || 0} Audit-Hits${liveBadge}`;
     }
     renderTopologyGraph();
   } catch (e) {
@@ -6214,6 +6310,9 @@ function renderTopologyGraph() {
   const allEdges = TOPOLOGY_STATE.data.elements.edges;
 
   const keepIds = new Set();
+  const showLive = document.getElementById('topo-show-live')?.checked ?? true;
+  const showHeatmap = document.getElementById('topo-show-heatmap')?.checked ?? false;
+
   const nodes = allNodes.filter(n => {
     if (!types.has(n.data.type)) return false;
     if (onlyAct && n.data.type === 'wf' && !n.data.active) return false;
@@ -6222,12 +6321,36 @@ function renderTopologyGraph() {
   });
   const edges = allEdges.filter(e => keepIds.has(e.data.source) && keepIds.has(e.data.target));
 
+  // Iter 27.A3 — Heatmap: quantize execs_24h to border-width 1..8
+  let maxExecs = 0;
+  if (showHeatmap) {
+    for (const n of nodes) {
+      if (n.data.type === 'wf' && (n.data.execs_24h || 0) > maxExecs) maxExecs = n.data.execs_24h;
+    }
+  }
+  // Mutate node data with derived display fields (cloned shallowly)
+  const displayNodes = nodes.map(n => {
+    const d = { ...n.data };
+    if (showLive && d.type === 'wf') {
+      d.live_class = (d.last_status || 'none').toLowerCase();  // success/error/running/waiting/none
+    } else {
+      d.live_class = 'off';
+    }
+    if (showHeatmap && d.type === 'wf' && maxExecs > 0) {
+      const ratio = (d.execs_24h || 0) / maxExecs;
+      d.heat_width = Math.max(1, Math.round(ratio * 7) + 1);  // 1..8
+    } else {
+      d.heat_width = 0;
+    }
+    return { data: d };
+  });
+
   // Destroy + rebuild — small dataset, simple
   if (TOPOLOGY_STATE.cy) { try { TOPOLOGY_STATE.cy.destroy(); } catch(_) {} }
 
   const cy = cytoscape({
     container: root,
-    elements: [...nodes, ...edges],
+    elements: [...displayNodes, ...edges],
     minZoom: 0.2,
     maxZoom: 3,
     wheelSensitivity: 0.25,
@@ -6244,6 +6367,20 @@ function renderTopologyGraph() {
         style: { 'background-color': '#10b981', 'shape': 'ellipse' } },
       { selector: 'node[type = "table"]',
         style: { 'background-color': '#f59e0b', 'shape': 'rectangle', 'width': 28, 'height': 18 } },
+      /* Iter 27.A3 — Live-Status-Färbung (überschreibt background-color für WF-Knoten) */
+      { selector: 'node[type = "wf"][live_class = "success"]',
+        style: { 'background-color': '#10b981' } },
+      { selector: 'node[type = "wf"][live_class = "error"]',
+        style: { 'background-color': '#dc2626' } },
+      { selector: 'node[type = "wf"][live_class = "running"]',
+        style: { 'background-color': '#f59e0b' } },
+      { selector: 'node[type = "wf"][live_class = "waiting"]',
+        style: { 'background-color': '#a78bfa' } },
+      { selector: 'node[type = "wf"][live_class = "none"][active = "true"]',
+        style: { 'background-color': '#6b7280' } },  /* aktiv aber 24h keine Exec */
+      /* Iter 27.A3 — Cost-Heatmap (Border-Width skaliert mit execs_24h) */
+      { selector: 'node[heat_width > 0]',
+        style: { 'border-width': 'data(heat_width)', 'border-color': '#001F3F' } },
       { selector: 'node[hits_count > 0]',
         style: { 'border-color': '#dc2626', 'border-width': 3 } },
       { selector: 'edge',
@@ -6279,6 +6416,17 @@ function renderTopologyGraph() {
   });
 }
 
+/* Iter 27.A4 — Live-Refresh-Button: reload topology.json (User must have re-run
+   08_OPS/poll_wf_status.py + extract_system_topology.py --with-live locally and
+   re-deployed via deploy_user_docs_mirror.py). Browser kann n8n-API nicht direkt
+   pollen (CORS + Key). */
+async function refreshTopologyLive() {
+  const meta = document.getElementById('topo-meta');
+  if (meta) meta.innerHTML = '⟳ Live-Refresh: reload topology.json …';
+  TOPOLOGY_STATE.loaded = false;
+  await loadTopologyGraph(true);
+}
+
 function showTopoNodeDetail(n) {
   const det = document.getElementById('topo-node-detail');
   if (!det) return;
@@ -6286,6 +6434,18 @@ function showTopoNodeDetail(n) {
   lines.push(`<strong>${escapeHtml(n.label || n.id)}</strong> <span style="color:var(--tx2);">(${n.type})</span>`);
   if (n.type === 'wf') {
     lines.push(`active: ${n.active ? '✅' : '⏸'}  ·  hits: ${n.hits_count || 0}  ·  WF-ID: <code>${escapeHtml(n.wf_id || '?')}</code>`);
+    /* Iter 27.A3 — Live-Status-Zeile, wenn enrichment vorhanden */
+    if (n.last_status !== undefined) {
+      const statusBadge = {
+        success: '<span style="color:#10b981;">●</span> success',
+        error:   '<span style="color:#dc2626;">●</span> error',
+        running: '<span style="color:#f59e0b;">●</span> running',
+        waiting: '<span style="color:#a78bfa;">●</span> waiting',
+      }[(n.last_status || '').toLowerCase()] || `<span style="color:#6b7280;">●</span> ${escapeHtml(n.last_status || '—')}`;
+      const lastAt = (n.last_at || '').slice(0, 19).replace('T', ' ');
+      lines.push(`last: ${statusBadge}  ·  at <code>${escapeHtml(lastAt || '—')}</code>`);
+      lines.push(`24h: ${n.execs_24h || 0} execs · ${n.errors_24h || 0} errors · ${Math.round((n.duration_24h_ms || 0) / 1000)}s total`);
+    }
     const pk = guessPipelineForNode({ data: n });
     if (pk) lines.push(`<a href="#lernen:${pk}:preamble" style="color:var(--blu);">📚 ${pk} Pipeline-Doku öffnen</a>`);
   } else if (n.type === 'skill') {
