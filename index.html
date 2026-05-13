@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.65.1">
-<title>TGV Dashboard v11.65.1 — Financial OS</title>
+<meta name="version" content="11.65.2">
+<title>TGV Dashboard v11.65.2 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4219,6 +4219,12 @@ function showPage(pageId, btn) {
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
   if (pageId === 'actions') loadActions();
+  // Iter 26 Hotfix: Lernen-Tab Default-Sub-Tab "docs" muss bei Page-Switch initialisieren
+  // (showLernenTab fired sonst nur bei Sub-Tab-Click, nicht beim Tab-Eintritt)
+  if (pageId === 'lernen') {
+    const docsPanelActive = document.getElementById('lernen-panel-docs')?.classList.contains('active');
+    if (docsPanelActive) initLernenDocs();
+  }
 }
 
 // Lazy-load Architektur-iframe nur beim ersten Anzeigen (CDN-Last vermeiden bis benötigt)
@@ -10462,7 +10468,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════════════
 //  Iter 20.1c — Live-Quota-Ticker (Mig 060 cost_telemetry_n8n)
 // ═══════════════════════════════════════════════════════
-const TGV_N8N_PLAN_MONTHLY = 2500; // n8n Cloud Pro plan limit per month
+const TGV_N8N_PLAN_MONTHLY = 10000; // n8n Cloud Pro plan limit per month (Iter 25 Plan-Upgrade 2026-05-13: 2.500 -> 10.000)
 
 async function fetchQuotaMtd() {
   // v11.50: nutze cost_metrics.executions_mtd (cost-collector v0.4.0 paginiert n8n-API)
@@ -10547,7 +10553,7 @@ function renderQuotaTicker(payload, overrideObj) {
   const fillEl = document.getElementById('quota-ticker-fill');
   if (!valEl || !fillEl) return;
   if (!payload) {
-    valEl.textContent = '— / 2.500 (n/a)';
+    valEl.textContent = '— / 10.000 (n/a)';
     fillEl.style.width = '0%';
     fillEl.style.backgroundColor = '#6b7280';
     return;
