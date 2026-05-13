@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.64">
-<title>TGV Dashboard v11.64 — Financial OS</title>
+<meta name="version" content="11.65">
+<title>TGV Dashboard v11.65 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4199,6 +4199,12 @@ function showPage(pageId, btn) {
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
   if (pageId === 'actions') loadActions();
+  // Iter 26 Hotfix: Lernen-Tab Default-Sub-Tab "docs" muss bei Page-Switch initialisieren
+  // (showLernenTab fired sonst nur bei Sub-Tab-Click, nicht beim Tab-Eintritt)
+  if (pageId === 'lernen') {
+    const docsPanelActive = document.getElementById('lernen-panel-docs')?.classList.contains('active');
+    if (docsPanelActive) initLernenDocs();
+  }
 }
 
 // Lazy-load Architektur-iframe nur beim ersten Anzeigen (CDN-Last vermeiden bis benötigt)
