@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.66.0">
+<meta name="version" content="11.67.0">
 <title>TGV Dashboard v11.66 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2215,6 +2215,11 @@ body.chat-open #main-content {
       <span class="nav-label">Entit&auml;ten</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('mailoutbox', this)" title="Mail-Outbox (outbound_mails): jede ausgehende Mail mit Status, Use-Case, Bounce-Tracking. Detail-Ansicht + Retry fuer fehlgeschlagene Mails.">
+      <span class="nav-icon">&#128228;</span>
+      <span class="nav-label">Mail-Outbox</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('architektur', this)" title="TGV 7-Layer-Architektur als Cytoscape-Graph (3 Modi: Erklären/Lehren/Live). Quelle: KONZEPT_v2 §2.">
       <span class="nav-icon">🏗</span>
       <span class="nav-label">Architektur</span>
@@ -3460,6 +3465,38 @@ body.chat-open #main-content {
       </div>
     </div>
 
+    <!-- ===============================================
+         PAGE: MAIL-OUTBOX (Iter 31 Block B - outbound_mails)
+    ================================================ -->
+    <div class="page" id="page-mailoutbox">
+      <div class="page-header" style="margin-bottom:14px">
+        <h1>&#128228; Mail-Outbox</h1>
+        <p style="font-size:12px;color:var(--tx2);margin-top:4px;max-width:780px">
+          Alle ausgehenden Mails (<code>outbound_mails</code>) &mdash; Status, Use-Case,
+          Bounce-Tracking. Zeile anklicken f&uuml;r Details; fehlgeschlagene Mails k&ouml;nnen
+          erneut versendet werden. Quelle: <code>tgv-skill-send-mail</code>.
+        </p>
+      </div>
+      <div id="mailoutbox-content">
+        <div class="spinner-wrap"><div class="spinner"></div> Lade Mail-Outbox&hellip;</div>
+      </div>
+    </div>
+
+    <!-- MAIL-OUTBOX DETAIL MODAL (Iter 31 B2) -->
+    <div class="modal-bg" id="mailoutbox-detail-modal">
+      <div class="modal-box" style="max-width:680px;width:96%;max-height:90vh;overflow-y:auto">
+        <div class="modal-title" id="mo-modal-title">Mail-Detail</div>
+        <div class="modal-body-text" style="text-align:left">
+          <div id="mo-modal-body">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade&hellip;</div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" onclick="moCloseDetail()">Schlie&szlig;en</button>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-architektur">
       <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
         <div>
@@ -4329,6 +4366,7 @@ function showPage(pageId, btn) {
   if (pageId === 'system') loadSystem();
   if (pageId === 'mailrules') loadMailRules();
   if (pageId === 'entitaeten') loadEntitaeten();
+  if (pageId === 'mailoutbox') loadMailOutbox();
   if (pageId === 'linkrate') loadLinkrate();
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
@@ -4345,6 +4383,261 @@ function showPage(pageId, btn) {
 function loadArchitektur() {
   const f = document.getElementById('architektur-frame');
   if (f && !f.src && f.dataset.src) f.src = f.dataset.src;
+}
+
+// ===========================================================
+//  MAIL-OUTBOX - outbound_mails (Iter 31 Block B)
+// ===========================================================
+const MO_SEND_MAIL_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-send-mail';
+const MO_PAGE_SIZE = 50;
+let moData = [];
+let moPage = 0;
+let moFilter = { status: '', use_case: '', entity: '' };
+
+function moEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+function moFmtTs(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return '—';
+  return d.toLocaleString('de-DE', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function moStatusBadge(st) {
+  const map = {
+    sent:    ['var(--grn-bg)','var(--grn)','gesendet'],
+    queued:  ['var(--blu-bg)','var(--blu)','wartet'],
+    sending: ['var(--amb-bg)','var(--amb)','sendet'],
+    bounced: ['var(--red-bg)','var(--red)','bounce'],
+    failed:  ['var(--red-bg)','var(--red)','fehler']
+  };
+  const c = map[st] || ['var(--s2)','var(--tx2)', st || '?'];
+  return '<span style="display:inline-block;padding:1px 8px;border-radius:9999px;font-size:10px;font-weight:600;'
+    + 'background:' + c[0] + ';color:' + c[1] + '">' + moEsc(c[2]) + '</span>';
+}
+
+async function loadMailOutbox() {
+  const wrap = document.getElementById('mailoutbox-content');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Mail-Outbox...</div>';
+  try {
+    moData = await supa('outbound_mails?select=id,entity,to_email,subject,use_case,status,provider,provider_msg_id,retry_count,last_error,scheduled_at,sent_at,bounced_at,failed_at&order=id.desc&limit=500');
+    moPage = 0;
+    renderMailOutbox();
+  } catch (e) {
+    wrap.innerHTML = '<div class="alert alert-err">&#9888; Fehler beim Laden: ' + moEsc(e.message) + '</div>';
+  }
+}
+
+function moFiltered() {
+  return moData.filter(function (r) {
+    if (moFilter.status && r.status !== moFilter.status) return false;
+    if (moFilter.use_case && r.use_case !== moFilter.use_case) return false;
+    if (moFilter.entity && r.entity !== moFilter.entity) return false;
+    return true;
+  });
+}
+
+function moSetFilter(kind, val) {
+  moFilter[kind] = val;
+  moPage = 0;
+  renderMailOutbox();
+}
+function moSetPage(delta) {
+  moPage += delta;
+  renderMailOutbox();
+}
+
+function renderMailOutbox() {
+  const wrap = document.getElementById('mailoutbox-content');
+  // KPI counters (from full loaded set)
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const since24h = Date.now() - 24 * 3600 * 1000;
+  const sentToday = moData.filter(r => r.status === 'sent' && r.sent_at && new Date(r.sent_at) >= dayStart).length;
+  const failed24h = moData.filter(r => r.status === 'failed' && r.failed_at && new Date(r.failed_at).getTime() >= since24h).length;
+  const bouncedTotal = moData.filter(r => r.status === 'bounced').length;
+  const failColor = failed24h >= 5 ? 'var(--red)' : 'var(--tx0)';
+  const kpi = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
+    + moKpiBox('Gesendet heute', sentToday, 'var(--tx0)')
+    + moKpiBox('Fehler (24h)', failed24h, failColor)
+    + moKpiBox('Bounces gesamt', bouncedTotal, bouncedTotal > 0 ? 'var(--red)' : 'var(--tx0)')
+    + moKpiBox('Mails geladen', moData.length, 'var(--tx2)')
+    + '</div>';
+
+  // filter bar
+  const useCases = Array.from(new Set(moData.map(r => r.use_case).filter(Boolean))).sort();
+  const entities = Array.from(new Set(moData.map(r => r.entity).filter(Boolean))).sort();
+  const sel = function (id, kind, cur, opts) {
+    return '<select onchange="moSetFilter(\'' + kind + '\',this.value)" '
+      + 'style="padding:5px 8px;border:1px solid var(--brd);border-radius:6px;font-size:12px;background:var(--s1);color:var(--tx1)">'
+      + opts.map(o => '<option value="' + moEsc(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + moEsc(o[1]) + '</option>').join('')
+      + '</select>';
+  };
+  const filterBar = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'
+    + '<span style="font-size:11px;color:var(--tx2)">Filter:</span>'
+    + sel('f-st', 'status', moFilter.status, [['','Status: alle'], ['queued','wartet'], ['sending','sendet'], ['sent','gesendet'], ['bounced','bounce'], ['failed','fehler']])
+    + sel('f-uc', 'use_case', moFilter.use_case, [['', 'Use-Case: alle']].concat(useCases.map(u => [u, u])))
+    + sel('f-en', 'entity', moFilter.entity, [['', 'Entitaet: alle']].concat(entities.map(e => [e, e])))
+    + '</div>';
+
+  const rows = moFiltered();
+  if (!rows.length) {
+    wrap.innerHTML = kpi + filterBar
+      + '<div class="empty-state"><div class="empty-icon">&#128228;</div><p>Keine Mails fuer diesen Filter.</p></div>';
+    return;
+  }
+  const pages = Math.max(1, Math.ceil(rows.length / MO_PAGE_SIZE));
+  if (moPage > pages - 1) moPage = pages - 1;
+  if (moPage < 0) moPage = 0;
+  const slice = rows.slice(moPage * MO_PAGE_SIZE, moPage * MO_PAGE_SIZE + MO_PAGE_SIZE);
+
+  const body = slice.map(function (r) {
+    const ts = r.sent_at || r.failed_at || r.bounced_at || r.scheduled_at;
+    return '<tr style="cursor:pointer;border-bottom:1px solid var(--s2)" onclick="moOpenDetail(' + r.id + ')">'
+      + '<td style="padding:6px 8px;font-size:11px;color:var(--tx2)">#' + r.id + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px;white-space:nowrap">' + moFmtTs(ts) + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px">' + moEsc(r.entity) + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px">' + moEsc(r.use_case) + '</td>'
+      + '<td style="padding:6px 8px">' + moStatusBadge(r.status) + '</td>'
+      + '<td style="padding:6px 8px;font-size:11px">' + moEsc(r.to_email) + '</td>'
+      + '<td style="padding:6px 8px;font-size:12px;color:var(--tx1)">' + moEsc(r.subject || '') + '</td>'
+      + '</tr>';
+  }).join('');
+  const table = '<div class="card" style="overflow:auto"><table style="width:100%;border-collapse:collapse">'
+    + '<thead><tr style="background:var(--s1)">'
+    + ['ID', 'Zeitpunkt', 'Entitaet', 'Use-Case', 'Status', 'An', 'Betreff']
+        .map(h => '<th style="padding:7px 8px;text-align:left;font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px">' + h + '</th>').join('')
+    + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+
+  let pager = '';
+  if (pages > 1) {
+    pager = '<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px;font-size:12px">'
+      + '<button class="btn-sm" onclick="moSetPage(-1)"' + (moPage === 0 ? ' disabled' : '')
+      + ' style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:4px 10px">&#8592;</button>'
+      + '<span style="color:var(--tx2)">Seite ' + (moPage + 1) + ' / ' + pages + ' (' + rows.length + ' Mails)</span>'
+      + '<button class="btn-sm" onclick="moSetPage(1)"' + (moPage >= pages - 1 ? ' disabled' : '')
+      + ' style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:4px 10px">&#8594;</button>'
+      + '</div>';
+  }
+  wrap.innerHTML = kpi + filterBar + table + pager;
+}
+
+function moKpiBox(label, value, color) {
+  return '<div style="background:var(--s0);border:1px solid var(--s2);border-radius:8px;padding:10px 16px;min-width:120px">'
+    + '<div style="font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px">' + moEsc(label) + '</div>'
+    + '<div style="font-size:20px;font-weight:700;color:' + color + ';margin-top:2px">' + value + '</div></div>';
+}
+
+async function moOpenDetail(id) {
+  document.getElementById('mo-modal-title').textContent = 'Mail #' + id;
+  document.getElementById('mo-modal-body').innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade...</div>';
+  document.getElementById('mailoutbox-detail-modal').classList.add('open');
+  try {
+    const rows = await supa('outbound_mails?id=eq.' + encodeURIComponent(id)
+      + '&select=id,entity,to_email,reply_to,subject,body_text,body_html,attachments,use_case,trigger_doc_id,trigger_skill,status,provider,provider_msg_id,retry_count,last_error,scheduled_at,sent_at,bounced_at,failed_at,created_at,updated_at');
+    if (!rows || !rows.length) {
+      document.getElementById('mo-modal-body').innerHTML = '<div class="alert alert-err">Mail #' + id + ' nicht gefunden.</div>';
+      return;
+    }
+    moRenderDetail(rows[0]);
+  } catch (e) {
+    document.getElementById('mo-modal-body').innerHTML = '<div class="alert alert-err">&#9888; ' + moEsc(e.message) + '</div>';
+  }
+}
+
+function moCloseDetail() {
+  document.getElementById('mailoutbox-detail-modal').classList.remove('open');
+}
+
+function moRenderDetail(r) {
+  const kv = function (label, val) {
+    return '<tr><td style="padding:3px 10px 3px 0;color:var(--tx2);font-size:11px;white-space:nowrap;vertical-align:top">' + label
+      + '</td><td style="padding:3px 0;font-size:12px;color:var(--tx1);word-break:break-word">' + val + '</td></tr>';
+  };
+  // status timeline
+  const tl = [];
+  if (r.scheduled_at) tl.push('eingereiht ' + moFmtTs(r.scheduled_at));
+  if (r.sent_at) tl.push('gesendet ' + moFmtTs(r.sent_at));
+  if (r.bounced_at) tl.push('bounce ' + moFmtTs(r.bounced_at));
+  if (r.failed_at) tl.push('fehlgeschlagen ' + moFmtTs(r.failed_at));
+  // attachments
+  let att = '<span style="color:var(--tx2)">keine</span>';
+  if (Array.isArray(r.attachments) && r.attachments.length) {
+    att = r.attachments.map(function (a) {
+      const sizeKb = a.content_base64 ? Math.round(a.content_base64.length * 0.75 / 1024) : null;
+      return '&#128206; ' + moEsc(a.filename || '?') + (a.mime ? ' <span style="color:var(--tx2)">(' + moEsc(a.mime) + (sizeKb ? ', ~' + sizeKb + ' KB' : '') + ')</span>' : '');
+    }).join('<br>');
+  }
+  // resend link
+  let providerCell = moEsc(r.provider || '—');
+  if (r.provider_msg_id && !/^idem:/.test(r.provider_msg_id)) {
+    providerCell += ' &middot; <a href="https://resend.com/emails/' + moEsc(r.provider_msg_id)
+      + '" target="_blank" rel="noopener" style="color:var(--blu)">bei Resend &#8599;</a>';
+  } else if (r.provider_msg_id) {
+    providerCell += ' <span style="color:var(--tx2);font-size:10px">(' + moEsc(r.provider_msg_id) + ')</span>';
+  }
+  const bodyPreview = moEsc((r.body_text || (r.body_html || '').replace(/<[^>]+>/g, ' ')).slice(0, 1200));
+
+  let html = '<table style="width:100%;border-collapse:collapse;margin-bottom:10px">'
+    + kv('Status', moStatusBadge(r.status) + (r.retry_count ? ' <span style="font-size:10px;color:var(--tx2)">retry ' + r.retry_count + '</span>' : ''))
+    + kv('Entit&auml;t', moEsc(r.entity))
+    + kv('An', moEsc(r.to_email))
+    + kv('Reply-To', moEsc(r.reply_to || '—'))
+    + kv('Betreff', moEsc(r.subject || ''))
+    + kv('Use-Case', moEsc(r.use_case))
+    + kv('Provider', providerCell)
+    + kv('Verlauf', moEsc(tl.join('  &rarr;  ')) || '—')
+    + kv('Anh&auml;nge', att)
+    + (r.trigger_doc_id ? kv('Trigger-Doc', '#' + r.trigger_doc_id) : '')
+    + (r.last_error ? kv('Letzter Fehler', '<span style="color:var(--red)">' + moEsc(r.last_error) + '</span>') : '')
+    + '</table>'
+    + '<div style="font-size:11px;color:var(--tx2);margin-bottom:3px">Body-Vorschau</div>'
+    + '<div style="background:var(--s1);border:1px solid var(--s2);border-radius:6px;padding:8px 10px;font-size:11px;'
+    + 'white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--tx1)">' + (bodyPreview || '<i>kein Text</i>') + '</div>';
+
+  if (r.status === 'failed' || r.status === 'bounced') {
+    html += '<div style="margin-top:12px">'
+      + '<button class="btn-sm btn-approve" id="mo-retry-btn" onclick="moRetry(' + r.id + ',this)" style="padding:7px 14px">'
+      + '&#8635; Erneut senden</button>'
+      + '<div id="mo-retry-status" style="font-size:11px;margin-top:6px"></div></div>';
+  }
+  document.getElementById('mo-modal-body').innerHTML = html;
+  document.getElementById('mo-modal-body')._row = r;
+}
+
+async function moRetry(id, btn) {
+  const r = document.getElementById('mo-modal-body')._row;
+  const status = document.getElementById('mo-retry-status');
+  if (!r || r.id !== id) { if (status) status.innerHTML = '<span style="color:var(--red)">Zeile nicht geladen.</span>'; return; }
+  if (btn) btn.disabled = true;
+  if (status) status.innerHTML = '<span style="color:var(--tx2)">&#8987; Sende erneut...</span>';
+  const payload = {
+    entity: r.entity,
+    to_email: r.to_email,
+    subject: r.subject,
+    use_case: r.use_case,
+    idempotency_key: 'retry-' + r.id + '-' + Date.now()
+  };
+  if (r.body_html) payload.body_html = r.body_html;
+  if (r.body_text || !r.body_html) payload.body_text = r.body_text || '(kein Text)';
+  if (Array.isArray(r.attachments) && r.attachments.length) payload.attachments = r.attachments;
+  try {
+    const res = await fetch(MO_SEND_MAIL_WEBHOOK, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (res.ok && (data.ok === true || data.status === 'sent' || data.success === true)) {
+      if (status) status.innerHTML = '<span style="color:var(--grn)">&#10003; Neu eingereiht &mdash; siehe oberste Zeile nach Reload.</span>';
+      await loadMailOutbox();
+    } else {
+      const msg = data.reason || data.error || data.message || ('HTTP ' + res.status);
+      if (status) status.innerHTML = '<span style="color:var(--amb)">&#9888; ' + moEsc(msg) + '</span>';
+    }
+  } catch (e) {
+    if (status) status.innerHTML = '<span style="color:var(--red)">&#9888; ' + moEsc(e.message) + '</span>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ===========================================================
@@ -4573,7 +4866,7 @@ async function entSendTestMail(id, btn) {
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen','entitaeten'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen','entitaeten','mailoutbox'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
