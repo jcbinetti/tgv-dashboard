@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.65.3">
+<meta name="version" content="11.66.0">
 <title>TGV Dashboard v11.66 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2210,6 +2210,11 @@ body.chat-open #main-content {
       <span class="nav-label">System</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('entitaeten', this)" title="Entity-Steckbriefe (entity_signatures): Legal-Daten, Logo, Bank, Mail-Absender pro Entitaet. KIVISAI erbt den Legal-Footer von C3. Hier editierbar ohne SQL.">
+      <span class="nav-icon">&#127970;</span>
+      <span class="nav-label">Entit&auml;ten</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('architektur', this)" title="TGV 7-Layer-Architektur als Cytoscape-Graph (3 Modi: Erklären/Lehren/Live). Quelle: KONZEPT_v2 §2.">
       <span class="nav-icon">🏗</span>
       <span class="nav-label">Architektur</span>
@@ -3418,6 +3423,43 @@ body.chat-open #main-content {
          v8: Mode C mit Mock/Live-Toggle (Supabase-Realtime auf agent_events).
          Quelle: 09_ARCHITEKTUR/tgv-architecture-v8.html
     ════════════════════════════════════════════════ -->
+    <!-- ===============================================
+         PAGE: ENTITAETEN (Iter 31 Block A - entity_signatures Steckbriefe)
+    ================================================ -->
+    <div class="page" id="page-entitaeten">
+      <div class="page-header" style="margin-bottom:14px">
+        <h1>&#127970; Entit&auml;ten</h1>
+        <p style="font-size:12px;color:var(--tx2);margin-top:4px;max-width:780px">
+          Steckbriefe der Mail-Versand-Entit&auml;ten (<code>entity_signatures</code>): Legal-Daten,
+          Logo, Bank, Absender-Adresse. <strong>KIVISAI</strong> ist eine Marke von CONVIS (C3) und
+          erbt den Legal-Footer automatisch &mdash; vererbte Felder sind grau markiert. &Auml;nderungen
+          wirken sofort auf alle ausgehenden Mails.
+        </p>
+      </div>
+      <div id="entitaeten-content">
+        <div class="spinner-wrap"><div class="spinner"></div> Lade Entit&auml;ten&hellip;</div>
+      </div>
+    </div>
+
+    <!-- ENTITY EDIT MODAL (Iter 31 A3) -->
+    <div class="modal-bg" id="entity-edit-modal">
+      <div class="modal-box" style="max-width:600px;width:96%;max-height:90vh;overflow-y:auto">
+        <div class="modal-title" id="ent-modal-title">Entit&auml;t bearbeiten</div>
+        <div class="modal-body-text" style="text-align:left">
+          <div id="ent-modal-inherit-hint" style="font-size:11px;color:var(--blu);background:var(--blu-bg);border:1px solid var(--blu-bd);border-radius:6px;padding:8px 10px;margin:6px 0 12px;display:none">
+            &#8627; Diese Entit&auml;t erbt Legal-Felder von <strong id="ent-modal-parent"></strong>.
+            Leer lassen = weiter erben &middot; Wert eintragen = Override (&uuml;berschreibt die Vererbung).
+          </div>
+          <div id="ent-modal-fields" style="display:grid;gap:10px"></div>
+          <div id="ent-modal-status" style="margin-top:10px;font-size:12px"></div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3)" onclick="entCloseEdit()">Abbrechen</button>
+          <button class="btn-sm btn-approve" id="ent-modal-save" onclick="entSaveEdit()" style="padding:7px 16px">&#128190; Speichern</button>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-architektur">
       <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
         <div>
@@ -4286,6 +4328,7 @@ function showPage(pageId, btn) {
   if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
   if (pageId === 'mailrules') loadMailRules();
+  if (pageId === 'entitaeten') loadEntitaeten();
   if (pageId === 'linkrate') loadLinkrate();
   if (pageId === 'triage') loadTriage();
   if (pageId === 'architektur') loadArchitektur();
@@ -4304,11 +4347,233 @@ function loadArchitektur() {
   if (f && !f.src && f.dataset.src) f.src = f.dataset.src;
 }
 
+// ===========================================================
+//  ENTITAETEN - entity_signatures Steckbriefe (Iter 31 Block A)
+// ===========================================================
+const ENT_SEND_MAIL_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-send-mail';
+// [key, label, type]  type: text | textarea | legal | legal-area
+const ENT_EDIT_FIELDS = [
+  ['display_name',        'Anzeige-Name',                'text'],
+  ['logo_url',            'Logo-URL',                    'text'],
+  ['email_default',       'Absender-Adresse',            'text'],
+  ['email_reply_to',      'Reply-To',                    'text'],
+  ['legal_name',          'Legal-Name',                  'legal'],
+  ['legal_form',          'Rechtsform',                  'legal'],
+  ['address_lines',       'Adresse (1 Zeile pro Feld)',  'legal-area'],
+  ['ust_id',              'USt-ID / TVA',                'legal'],
+  ['registration',        'Register-Eintrag',            'legal'],
+  ['bank_iban',           'IBAN',                        'legal'],
+  ['bank_bic',            'BIC',                         'legal'],
+  ['bank_holder',         'Kontoinhaber',                'legal'],
+  ['representative',      'Vertreter',                   'legal'],
+  ['representative_role', 'Funktion',                    'legal'],
+  ['notes',               'Notizen (intern)',            'textarea']
+];
+const ENT_REQUIRED = ['display_name', 'email_default'];
+let entitaetenData = [];
+let entEditId = null;
+
+function entEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+function entById(id) { return entitaetenData.find(e => e.entity === id) || null; }
+function entHasVal(v) { return !(v == null || v === '' || (Array.isArray(v) && !v.length)); }
+function entFmt(v) {
+  if (!entHasVal(v)) return '';
+  return Array.isArray(v) ? v.join(', ') : String(v);
+}
+
+async function loadEntitaeten() {
+  const wrap = document.getElementById('entitaeten-content');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Entitaeten...</div>';
+  try {
+    entitaetenData = await supa('entity_signatures?select=*&order=entity');
+    renderEntitaeten();
+  } catch (e) {
+    wrap.innerHTML = '<div class="alert alert-err">&#9888; Fehler beim Laden: ' + entEsc(e.message) + '</div>';
+  }
+}
+
+function renderEntitaeten() {
+  const wrap = document.getElementById('entitaeten-content');
+  if (!entitaetenData.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">&#127970;</div><p>Keine Eintraege in <code>entity_signatures</code>.</p></div>';
+    return;
+  }
+  wrap.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">'
+    + entitaetenData.map(entCardHtml).join('') + '</div>';
+}
+
+function entCardHtml(row) {
+  const parent = row.parent_entity ? entById(row.parent_entity) : null;
+  const logoOk = row.logo_url && /^https?:\/\//.test(row.logo_url);
+  const logoHtml = logoOk
+    ? '<img src="' + entEsc(row.logo_url) + '" alt="Logo" style="max-height:32px;max-width:130px;object-fit:contain;background:#fff;border-radius:3px;padding:1px 3px" onerror="this.style.display=&quot;none&quot;;this.nextElementSibling.style.display=&quot;inline&quot;"><span style="display:none;font-size:11px;color:#fbbf24">&#9888; Logo laedt nicht</span>'
+    : '<span style="font-size:11px;color:rgba(255,255,255,0.55);font-style:italic">kein Logo' + (row.logo_url ? ' (TBD)' : '') + '</span>';
+  const inactiveBadge = row.active ? '' : '<span class="badge badge-other" style="margin-left:6px">inaktiv</span>';
+  const parentBadge = parent
+    ? '<span class="badge" style="background:var(--blu);color:#fff;margin-left:6px" title="Erbt Legal-Footer von ' + entEsc(parent.display_name) + '">&#8627; Marke von ' + entEsc(parent.display_name) + '</span>'
+    : '';
+  const legalRows = [
+    ['legal_name', 'Legal-Name'], ['legal_form', 'Rechtsform'],
+    ['address_lines', 'Adresse'], ['ust_id', 'USt-ID / TVA'],
+    ['registration', 'Register'], ['bank_iban', 'IBAN'],
+    ['bank_bic', 'BIC'], ['bank_holder', 'Kontoinhaber'],
+    ['representative', 'Vertreter'], ['representative_role', 'Funktion']
+  ].map(function (pair) {
+    const k = pair[0], label = pair[1];
+    let val = entFmt(row[k]), inherited = false;
+    if (!val && parent && entHasVal(parent[k])) { val = entFmt(parent[k]); inherited = true; }
+    const valStyle = inherited ? 'color:var(--tx2);font-style:italic'
+      : (val ? 'color:var(--tx1)' : 'color:var(--amb)');
+    const mark = inherited
+      ? ' <span style="font-size:9px;color:var(--blu)" title="geerbt von ' + entEsc(parent.display_name) + '">&#8627; erbt</span>'
+      : '';
+    return '<tr><td style="padding:3px 8px 3px 0;color:var(--tx2);font-size:11px;white-space:nowrap;vertical-align:top">' + label
+      + '</td><td style="padding:3px 0;font-size:12px;' + valStyle + '">' + entEsc(val || '—') + mark + '</td></tr>';
+  }).join('');
+
+  return '<div class="card" style="margin-bottom:0">'
+    + '<div class="card-head" style="background:var(--navy)">'
+    + '<div style="display:flex;align-items:center;gap:8px;min-width:0">' + logoHtml + '</div>'
+    + '<code style="font-size:10px;color:rgba(255,255,255,0.6)">' + entEsc(row.entity) + '</code>'
+    + '</div>'
+    + '<div style="padding:14px 16px">'
+    + '<div style="font-size:14px;font-weight:700;color:var(--tx0)">' + entEsc(row.display_name) + inactiveBadge + parentBadge + '</div>'
+    + '<div style="font-size:11px;color:var(--tx2);margin-top:2px">&#9993; ' + entEsc(row.email_default || '—')
+    + (row.email_reply_to ? ' &middot; Reply-To ' + entEsc(row.email_reply_to) : '') + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-top:10px">' + legalRows + '</table>'
+    + '<div style="display:flex;gap:8px;margin-top:12px">'
+    + '<button class="btn-sm" onclick="entOpenEdit(\'' + entEsc(row.entity) + '\')" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:6px 12px">&#9999; Bearbeiten</button>'
+    + '<button class="btn-sm btn-approve" onclick="entSendTestMail(\'' + entEsc(row.entity) + '\',this)" style="padding:6px 12px" title="Schickt eine Test-Mail mit der aktuellen Signatur an jcbinetti@gmail.com">&#128231; Test-Mail an mich</button>'
+    + '</div>'
+    + '<div id="ent-testmail-' + entEsc(row.entity) + '" style="font-size:11px;margin-top:6px"></div>'
+    + '</div></div>';
+}
+
+function entOpenEdit(id) {
+  const row = entById(id);
+  if (!row) return;
+  entEditId = id;
+  const parent = row.parent_entity ? entById(row.parent_entity) : null;
+  document.getElementById('ent-modal-title').textContent = 'Bearbeiten: ' + (row.display_name || id);
+  const hint = document.getElementById('ent-modal-inherit-hint');
+  if (parent) {
+    document.getElementById('ent-modal-parent').textContent = parent.display_name;
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+  const inpStyle = 'width:100%;padding:6px 9px;border:1px solid var(--brd);border-radius:6px;font-size:12px;background:var(--s1);color:var(--tx1)';
+  document.getElementById('ent-modal-fields').innerHTML = ENT_EDIT_FIELDS.map(function (f) {
+    const key = f[0], label = f[1], type = f[2];
+    const isLegal = (type === 'legal' || type === 'legal-area');
+    const ownEmpty = !entHasVal(row[key]);
+    const inheritedNow = isLegal && parent && ownEmpty;
+    const ownVal = Array.isArray(row[key]) ? row[key].join('\n') : (row[key] == null ? '' : String(row[key]));
+    let ph = '';
+    if (inheritedNow && entHasVal(parent[key])) ph = 'erbt: ' + entFmt(parent[key]);
+    const labelHtml = '<label style="font-size:11px;font-weight:600;color:var(--tx2);display:block;margin-bottom:3px">'
+      + entEsc(label) + (inheritedNow ? ' <span style="color:var(--blu);font-weight:500">&#8627; geerbt</span>' : '') + '</label>';
+    let input;
+    if (type === 'legal-area' || type === 'textarea') {
+      input = '<textarea id="ent-f-' + key + '" rows="3" placeholder="' + entEsc(ph)
+        + '" style="' + inpStyle + ';font-family:inherit;resize:vertical">' + entEsc(ownVal) + '</textarea>';
+    } else {
+      input = '<input id="ent-f-' + key + '" type="text" value="' + entEsc(ownVal)
+        + '" placeholder="' + entEsc(ph) + '" style="' + inpStyle + '">';
+    }
+    return '<div>' + labelHtml + input + '</div>';
+  }).join('');
+  document.getElementById('ent-modal-status').innerHTML = '';
+  document.getElementById('entity-edit-modal').classList.add('open');
+}
+
+function entCloseEdit() {
+  document.getElementById('entity-edit-modal').classList.remove('open');
+  entEditId = null;
+}
+
+async function entSaveEdit() {
+  if (!entEditId) return;
+  const saveBtn = document.getElementById('ent-modal-save');
+  const status = document.getElementById('ent-modal-status');
+  const patch = {};
+  for (let i = 0; i < ENT_EDIT_FIELDS.length; i++) {
+    const key = ENT_EDIT_FIELDS[i][0];
+    const el = document.getElementById('ent-f-' + key);
+    if (!el) continue;
+    const v = el.value.trim();
+    if (ENT_REQUIRED.indexOf(key) !== -1 && v === '') {
+      status.innerHTML = '<span style="color:var(--red)">&#9888; ' + entEsc(ENT_EDIT_FIELDS[i][1]) + ' darf nicht leer sein.</span>';
+      return;
+    }
+    if (key === 'address_lines') {
+      const arr = v.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+      patch[key] = arr.length ? arr : null;
+    } else {
+      patch[key] = v === '' ? null : v;
+    }
+  }
+  patch.updated_at = new Date().toISOString();
+  saveBtn.disabled = true;
+  status.innerHTML = '<span style="color:var(--tx2)">&#8987; Speichere...</span>';
+  try {
+    await supaPatch('entity_signatures', 'entity=eq.' + encodeURIComponent(entEditId), patch);
+    status.innerHTML = '<span style="color:var(--grn)">&#10003; Gespeichert</span>';
+    await loadEntitaeten();
+    setTimeout(entCloseEdit, 700);
+  } catch (e) {
+    status.innerHTML = '<span style="color:var(--red)">&#9888; ' + entEsc(e.message) + '</span>';
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+async function entSendTestMail(id, btn) {
+  const row = entById(id);
+  if (!row) return;
+  const out = document.getElementById('ent-testmail-' + id);
+  if (btn) btn.disabled = true;
+  if (out) out.innerHTML = '<span style="color:var(--tx2)">&#8987; Sende Test-Mail...</span>';
+  const payload = {
+    entity: id,
+    to_email: 'jcbinetti@gmail.com',
+    subject: 'TGV Steckbrief-Test - ' + (row.display_name || id),
+    body_text: 'Test-Mail aus dem TGV-Dashboard (Tab Entitaeten).\n\n'
+      + 'Entitaet: ' + (row.display_name || id) + ' (' + id + ')\n'
+      + 'Absender: ' + (row.email_default || '?') + '\n'
+      + 'Prueft Signatur, Logo und Legal-Footer der aktuellen entity_signatures-Daten.\n\n'
+      + 'Ausgeloest: ' + new Date().toISOString(),
+    use_case: 'test_smoke',
+    idempotency_key: 'steckbrief-test-' + id + '-' + Date.now()
+  };
+  try {
+    const res = await fetch(ENT_SEND_MAIL_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(function () { return {}; });
+    if (res.ok && (data.ok === true || data.status === 'sent' || data.success === true)) {
+      if (out) out.innerHTML = '<span style="color:var(--grn)">&#10003; Test-Mail verschickt an jcbinetti@gmail.com</span>';
+    } else {
+      const msg = data.reason || data.error || data.message || ('HTTP ' + res.status);
+      if (out) out.innerHTML = '<span style="color:var(--amb)">&#9888; ' + entEsc(msg) + '</span>';
+    }
+  } catch (e) {
+    if (out) out.innerHTML = '<span style="color:var(--red)">&#9888; ' + entEsc(e.message) + '</span>';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // Deep-link via hash: #system, #inbox, #finanzen, etc.
 function applyHashRoute() {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
-  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen'];
+  const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen','entitaeten'];
   if (valid.includes(h)) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
