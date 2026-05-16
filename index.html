@@ -1,12 +1,12 @@
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
-<!-- TGV Dashboard v11.69.1 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0: Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button auf needs_review-Docs, U1 Skill-Lauf-Status entdeutigt, Topology-Buttons 2→1. v11.69.1 (C2 Monatsabschluss): U4 neue Spalte "Art" (Kreditor/Debitor/Intern) + Wording "○ nicht verknüpft"/"kein Konto"-Tooltip, U6 Block-3-Handlungsanleitung. -->
+<!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.69.1">
-<title>TGV Dashboard v11.69.1 — Financial OS</title>
+<meta name="version" content="11.70.0">
+<title>TGV Dashboard v11.70.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1889,9 +1889,9 @@ body.chat-open #main-content {
     <span class="brand-sub">Financial OS</span>
   </div>
   <div class="topbar-right">
-    <span class="topbar-version" id="topbar-version">v?</span>
+    <span class="topbar-version" id="topbar-version" title="Versionsstand des Dashboards. Steigt mit jedem Deploy — hilft beim Abgleich, ob du die aktuelle Version siehst.">v?</span>
     <button id="chat-btn" onclick="toggleChat()" title="TGV Chat (Claude + MCP-Tools) — Ad-hoc-Anfragen, Korrekturen, Tool-Calls in natürlicher Sprache. 22 Tools verfügbar (Liste folgt im Hub-Tab Iter 20 P1 Welle c).">💬 Chat</button>
-    <button id="health-btn" onclick="runHealthCheck()">⚡ Health Check</button>
+    <button id="health-btn" onclick="runHealthCheck()" title="Health Check — prüft mit einem Klick, ob das Dashboard die Datenbank erreicht (Dokumente, Transaktionen, Verträge, Projekte, Lieferanten). Zeigt pro Tabelle ✅ + Anzahl oder ❌. Ändert nichts.">⚡ Health Check</button>
     <button id="auth-logout-btn" onclick="authLogout()" title="Abmelden" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.8);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:6px">🔒 Abmelden</button>
   </div>
 </div>
@@ -1933,6 +1933,7 @@ body.chat-open #main-content {
       <div class="chat-header-sub" id="chat-key-status">Claude Haiku — TGV-Kontext</div>
     </div>
     <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="showHelp('chat_api_key')" title="Warum braucht der Chat einen eigenen API-Key?" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:12px">ⓘ</button>
       <button onclick="configureChatKey()" title="API-Key konfigurieren" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.7);cursor:pointer;padding:4px 8px;border-radius:4px;font-size:12px">🔑</button>
       <button class="chat-close" onclick="toggleChat()">×</button>
     </div>
@@ -2271,7 +2272,7 @@ body.chat-open #main-content {
     <div class="page active" id="page-uebersicht">
       <div class="page-header">
         <h1>📊 Übersicht</h1>
-        <p>Monitoring Dashboard — TGV Financial OS</p>
+        <p>Monitoring Dashboard — TGV Financial OS. Ein „—" in einer Kachel heißt <em>kein Wert vorhanden</em>, nicht „kaputt". <button class="help-icon" onclick="showHelp('empty_value')" aria-label="Was bedeutet ein leeres Feld?">ⓘ</button></p>
       </div>
 
       <!-- KPI CARDS -->
@@ -2916,8 +2917,13 @@ body.chat-open #main-content {
 
     <div class="page" id="page-linkrate">
       <div class="page-header">
-        <h1>🔗 Linkrate-Monitoring</h1>
-        <p>Reconcile-Quote pro Provider — Skill-Hardening-Backlog (Iter 15.5)</p>
+        <h1>🔗 Linkrate-Monitoring <button class="help-icon" onclick="showHelp('linkrate')" aria-label="Was bedeutet Linkrate?">ⓘ</button></h1>
+        <p>Wie viele Rechnungen TGV schon mit der passenden Bank-Zahlung verknüpft hat.</p>
+      </div>
+      <div class="alert alert-info" style="margin:0 0 14px;font-size:12px;">
+        <strong>Was du hier siehst:</strong> Die <strong>Linkrate</strong> ist der Anteil der Rechnungen, denen TGV bereits eine Bank-Transaktion zugeordnet hat (80% = 8 von 10 Rechnungen verknüpft).<br>
+        <strong>Warum sie selten 100% ist:</strong> Eine Rechnung kann nur verknüpft werden, wenn die zugehörige Bank-Buchung in TGV vorliegt. Fehlt der <strong>Kontoauszug-Import (CSV)</strong> für einen Zeitraum, bleiben dessen Rechnungen unverlinkt — TGV macht keinen Fehler, es fehlt nur die Gegenseite.<br>
+        <strong>Was zu tun ist:</strong> Niedrige Linkrate bei einem Provider → fehlenden Kontoauszug als CSV in den Drive-Ordner <code>/INBOX</code> legen. Die Linkrate steigt dann automatisch.
       </div>
 
       <!-- KPI TILES -->
@@ -2995,7 +3001,11 @@ body.chat-open #main-content {
     <div class="page" id="page-mailrules">
       <div class="page-header">
         <h1>📬 Mail Rules</h1>
-        <p>E-Mail-Weiterleitungsregeln verwalten — mail_routing_rules</p>
+        <p>Regeln, die entscheiden, welche eingehenden E-Mails TGV verarbeitet — und welche es ignoriert.</p>
+      </div>
+      <div class="alert alert-info" style="margin:0 0 14px;font-size:12px;">
+        <strong>Was du hier siehst:</strong> Pro Zeile eine Regel: trifft eine eingehende Mail auf <em>Absender</em> oder <em>Betreff</em> zu, führt TGV die <em>Aktion</em> aus — <strong>➡️ Weiterleiten</strong> (Mail in die Beleg-Verarbeitung geben) oder <strong>🚫 Blockieren</strong> (Mail ignorieren, kein Beleg).<br>
+        <strong>Was zu tun ist:</strong> Eine Regel gilt für künftige Mails, sobald sie <strong>aktiv</strong> (✅) ist — nicht rückwirkend. ✏️ ändert eine Regel, ✅/❌ schaltet sie an/aus. Mit <strong>🧪 Test mit Beispiel-Mail</strong> kannst du gefahrlos prüfen, welche Regel bei einer Beispiel-Mail greifen würde.
       </div>
 
       <!-- STATS BAR -->
@@ -3539,6 +3549,10 @@ body.chat-open #main-content {
         </div>
       </div>
 
+      <div class="alert alert-info" style="margin:0 0 14px;font-size:12px;">
+        <strong>Lesen vs. Schreiben:</strong> Die meisten Tools hier <strong>lesen nur</strong> (📊 Lesen/Status, 🔍 Suche) — sie zeigen Daten und verändern nichts, beliebig anklickbar.
+        Die Gruppe <strong>✏️ Aktionen/Schreiben</strong> dagegen <strong>verändert echte Daten</strong> oder löst etwas aus (Doc bestätigen, Mail verschicken, Skill starten) — diese Wirkung ist sofort und real. Jede Tool-Karte beschreibt im Abschnitt „Was passiert", was sie konkret tut. <button class="help-icon" onclick="showHelp('action_hub_write')" aria-label="Lesen vs. Schreiben erklärt">ⓘ</button>
+      </div>
       <div class="card" style="margin-bottom:14px;">
         <div class="card-body" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--tx2);">
           <span><strong>Gruppen:</strong></span>
@@ -3681,6 +3695,10 @@ body.chat-open #main-content {
             </div>
           </div>
           <div class="card-body">
+            <div class="alert alert-info" style="margin:0 0 10px;font-size:12px;">
+              <strong>Was du hier siehst:</strong> Eine Gesamt-Karte aller TGV-Bausteine — Workflows, Skills und (optional) Datenbank-Tabellen — und wie sie zusammenhängen. Die Karte ist bewusst groß; sie ist zum Stöbern, nicht zum Auswendiglernen.<br>
+              <strong>Tipp für den Einstieg:</strong> Nutze die Häkchen oben rechts, um die Ansicht zu vereinfachen — z.B. nur <strong>WFs</strong> anzeigen oder <strong>„nur aktive WFs"</strong> setzen. Klick auf einen Knoten zeigt Details darunter.
+            </div>
             <div id="topo-meta" style="font-size:11px;color:var(--tx2);margin-bottom:8px;">Lade Topology…</div>
             <div id="topology-graph" style="width:100%;height:620px;border:1px solid var(--bdr);border-radius:6px;background:var(--s0);position:relative;">
               <div id="topology-graph-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:13px;">Klick links auf <strong>System-Karte</strong> um den Graph zu laden.</div>
@@ -4123,9 +4141,12 @@ const mapEntity = raw => {
 const ENTITY_FULL_NAMES = { c3: 'C3 Convis GmbH', c4: 'C4 Convis SARL', priv: 'Privat', kivisai: 'KIVISAI' };
 const entityBadge = raw => {
   const e = mapEntity(raw);
+  const known = e === 'priv' || e === 'c3' || e === 'c4' || e === 'kivisai';
   const cls = e === 'priv' ? 'badge-priv' : e === 'c3' ? 'badge-c3' : e === 'c4' ? 'badge-c4' : 'badge-other';
   const label = e === 'priv' ? 'PRIV' : e === 'c3' ? 'C3' : e === 'c4' ? 'C4' : (raw || '—').toUpperCase();
-  const full = ENTITY_FULL_NAMES[e] || raw || 'unbekannte Entität';
+  const full = known
+    ? (ENTITY_FULL_NAMES[e] || raw)
+    : 'Entität noch nicht zugeordnet — bitte in Triage/Inbox die richtige Firma wählen (kein Fehler).';
   return `<span class="badge ${cls}" title="${full}">${label}</span>`;
 };
 
@@ -4281,6 +4302,61 @@ const HELP_TOPICS = {
               • <strong>schon gelaufen</strong> — der Skill lief bereits; erneutes Anwenden startet ihn neu.<br>
               • <strong>noch nicht verfügbar</strong> — der Skill ist noch in Entwicklung.</p>
            <p><strong>NICHT verwechseln mit:</strong> Das sagt <em>nichts</em> darüber aus, was TGV inhaltlich über das Dokument weiß. „noch nicht gelaufen" heißt nicht „TGV fehlt Wissen" — es heißt nur „dieser Arbeitsschritt steht noch aus". Was TGV weiß, steht in den Doc-Feldern + der Doc-Sicherheit (📋).</p>`,
+  },
+  chat_api_key: {
+    title: '🔑 Warum braucht der Chat einen eigenen API-Key?',
+    body: `<p><strong>Warum:</strong> Der TGV-Chat spricht direkt mit Claude (Anthropic). Damit das Dashboard keine fremden Kosten verursacht, läuft der Chat über <strong>deinen persönlichen</strong> Anthropic-API-Key — nicht über einen geteilten System-Key.</p>
+           <p><strong>Wo bleibt der Key:</strong> Nur lokal in deinem Browser (<code>localStorage</code>). Er wird nicht an TGV-Server, n8n oder Supabase gesendet — nur an Anthropic, für deine Chat-Anfragen.</p>
+           <p><strong>Key holen:</strong> Unter <code>console.anthropic.com</code> → API Keys. Beginnt mit <code>sk-ant-</code>. Einmal über das 🔑-Symbol eintragen, dann gemerkt.</p>
+           <p><strong>Wichtig:</strong> Der Rest des Dashboards (Inbox, Triage, Monatsabschluss …) braucht <em>keinen</em> Key — nur der 💬 Chat.</p>`,
+  },
+  mail_rule_action: {
+    title: '📬 Mail-Regel — Aktion (Weiterleiten / Blockieren)',
+    body: `<p><strong>Was es ist:</strong> Was TGV mit einer eingehenden E-Mail tut, wenn diese Regel auf sie zutrifft (Treffer auf Absender oder Betreff).</p>
+           <p>• <strong>➡️ Weiterleiten (forward)</strong> — die Mail wird in die TGV-Verarbeitung gegeben: Anhänge werden als Belege aufgenommen (Pipeline A2). Das ist der Normalfall für Rechnungs-/Vertrags-Mails.<br>
+              • <strong>🚫 Blockieren (block)</strong> — die Mail wird <em>nicht</em> verarbeitet (Newsletter, Werbung, Privates). Sie wird nicht zum Beleg.</p>
+           <p><strong>Geltung:</strong> Regeln gelten für künftige eingehende Mails, ab dem Moment, in dem die Regel <strong>aktiv</strong> (✅) ist. Sie wirken nicht rückwirkend.</p>
+           <p><strong>Editieren:</strong> ✏️ ändert eine Regel · der ✅/❌-Schalter aktiviert/deaktiviert sie · 🧪 „Test mit Beispiel-Mail" zeigt gefahrlos, welche Regel bei einer Beispiel-Mail gegriffen hätte.</p>`,
+  },
+  linkrate: {
+    title: '🔗 Linkrate',
+    body: `<p><strong>Was es ist:</strong> Der Anteil der Rechnungen, zu denen TGV bereits die <strong>passende Bank-Transaktion</strong> gefunden und verknüpft hat. 80% Linkrate = 8 von 10 Rechnungen sind einer Zahlung zugeordnet.</p>
+           <p><strong>Warum sie nicht 100% ist:</strong> Eine Rechnung kann nur verknüpft werden, wenn die zugehörige Bank-Buchung in TGV vorliegt. Fehlt der <strong>Kontoauszug-Import (CSV)</strong> für einen Zeitraum, bleiben dessen Rechnungen zwangsläufig unverlinkt — nicht weil TGV einen Fehler macht, sondern weil die Gegenseite (die Transaktion) fehlt.</p>
+           <p><strong>Was zu tun ist:</strong> Niedrige Linkrate bei einem Provider → meist fehlt der Banking-CSV-Import. Kontoauszug als CSV in den Drive-Ordner <code>/INBOX</code> legen, dann steigt die Linkrate automatisch.</p>
+           <p><strong>NICHT verwechseln mit:</strong> Klassifizierungs-Sicherheit (ob ein Doc-Feld korrekt ist) — Linkrate misst nur die Rechnung↔Zahlung-Verknüpfung.</p>`,
+  },
+  action_hub_write: {
+    title: '✏️ Aktionen/Schreiben — was diese Tools bewirken',
+    body: `<p><strong>Was es ist:</strong> Der Tool-Hub hat zwei Sorten Werkzeuge. Die meisten <strong>lesen</strong> nur (📊 Lesen/Status, 🔍 Suche) — sie zeigen Daten an und verändern nichts.</p>
+           <p><strong>✏️ Aktionen/Schreiben</strong> dagegen <strong>verändern echte Daten</strong> oder lösen etwas aus: ein Dokument bestätigen, eine Transaktion zuordnen, eine Mail verschicken, einen Skill starten. Diese Wirkung ist real und sofort.</p>
+           <p><strong>Mental-Modell:</strong> Lesen-Tools sind gefahrlos — beliebig anklickbar. Schreib-Tools bitte erst nach kurzer Prüfung der Eingaben ausführen, denn sie schreiben in die DB oder versenden etwas.</p>
+           <p><strong>Erkennung:</strong> Schreib-Tools sind in der Gruppe ✏️ zusammengefasst und auf jeder Tool-Karte mit ihren Konsequenzen beschrieben (Abschnitt „Was passiert").</p>`,
+  },
+  target_stream: {
+    title: '🎯 target_stream (Verarbeitungs-Strang)',
+    body: `<p><strong>Was es ist:</strong> Die grobe Sortier-Schublade, in die der Triage-Agent ein Dokument legt — sie entscheidet, welche Skill-Kette läuft.</p>
+           <p><strong>Werte:</strong> <code>RECHNUNG</code> · <code>STEUER</code> · <code>VERTRAG</code> · <code>TIMETRACK</code> · <code>SONSTIGES</code>.</p>
+           <p><strong>Mental-Modell:</strong> „In welche Verarbeitung gehört dieser Beleg?" Eine RECHNUNG läuft z.B. durch Invoice-Extract + Reconcile, ein VERTRAG durch Contract-Extract.</p>
+           <p><strong>Unterschied zum Doc-Type:</strong> Doc-Type ist die feine Klassifikation (Rechnung/Quittung/Kontoauszug …), target_stream der grobe Verarbeitungs-Strang. Die Skills routen nach target_stream.</p>`,
+  },
+  term_cascade: {
+    title: '🔁 Cascade (Skill-Kette)',
+    body: `<p><strong>Was es ist:</strong> Die automatische Kette von Skills, die nach einer Freigabe nacheinander auf einem Dokument laufen — ohne dass du jeden Schritt einzeln anstößt.</p>
+           <p><strong>Beispiel:</strong> Du bestätigst eine Rechnung → die Cascade führt aus: PDF auslesen → Lieferant auflösen → Zahlung abgleichen. Läuft im Hintergrund (ca. 5–9 Sekunden).</p>
+           <p><strong>Mental-Modell:</strong> „Ein OK-Klick → mehrere Skills laufen automatisch hintereinander." Du musst die Einzelschritte nicht kennen.</p>`,
+  },
+  term_unbekannt: {
+    title: '❔ UNBEKANNT / unbekannt',
+    body: `<p><strong>Was es ist:</strong> TGV konnte ein Feld (meist die Entität — also welche Firma) noch <strong>nicht sicher zuordnen</strong>. Es ist <em>kein Fehler</em> — nur ein noch offener Punkt.</p>
+           <p><strong>Was zu tun ist:</strong> In Triage oder Inbox das Dokument öffnen und die richtige Entität (C3 / C4 / Privat / KIVISAI) auswählen. TGV lernt aus deiner Korrektur für ähnliche künftige Belege.</p>
+           <p><strong>NICHT verwechseln mit:</strong> einem leeren Feld „—" (= gar kein Wert vorhanden). „UNBEKANNT" heißt: ein Wert wird erwartet, ist aber noch nicht bestimmt.</p>`,
+  },
+  empty_value: {
+    title: '— Leeres Feld / Kachel ohne Zahl',
+    body: `<p><strong>Was „—" bedeutet:</strong> Für dieses Feld liegt <strong>kein Wert</strong> vor. Das ist <em>kein Fehler und keine kaputte Kachel</em> — es ist schlicht „nichts einzutragen".</p>
+           <p><strong>Typische Gründe:</strong> die Information wurde noch nicht erfasst (z.B. Rechnungsdatum vor dem PDF-Auslesen), oder es gibt sie für diesen Eintrag gar nicht (z.B. kein Betrag bei einem Vertrag).</p>
+           <p><strong>Wann doch ein Problem:</strong> Zeigt eine Kachel dauerhaft „—", obwohl dort Daten stehen müssten, und steht daneben eine Fehlermeldung (⚠️) — dann erst ist es ein echter Defekt. „—" allein = nur leer.</p>
+           <p><strong>Unterschied:</strong> „—" = kein Wert · „UNBEKANNT" = Wert erwartet, aber noch nicht zugeordnet · „0" = echte Null.</p>`,
   },
 };
 
@@ -9956,7 +10032,7 @@ function triageReplaceCardWithSuccess(docId, skillsRun, beforeSnapshot) {
           <strong>Vorher:</strong> ${escHtml(beforeProvider)} · ${escHtml(beforeEntity)} · Doc-Felder ${escHtml(beforeConf)}
           <span id="sp-diff-${docId}" style="margin-left:6px;color:var(--tx2);">· lade Nachher-Stand…</span>
         </div>
-        <div style="font-size:10px;color:var(--tx2);margin-top:6px;font-style:italic;">📚 in learning_events geloggt · Cascade läuft im Backend (5–9 Sek)</div>
+        <div style="font-size:10px;color:var(--tx2);margin-top:6px;font-style:italic;">📚 in learning_events geloggt · Cascade läuft im Backend (5–9 Sek) ${helpIcon('term_cascade')}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
         <button onclick="openSidePanelForDocId(${docId})" title="Steckbrief mit Skill-Aktivität öffnen" style="background:var(--blu);color:white;border:0;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:500;">📋 Steckbrief öffnen</button>
@@ -10266,7 +10342,7 @@ function renderMailRules() {
   html += '<th>Feld</th>';
   html += '<th>Wert</th>';
   html += '<th>Typ</th>';
-  html += '<th>Aktion</th>';
+  html += `<th>Aktion ${helpIcon('mail_rule_action')}</th>`;
   html += '<th>Entität</th>';
   html += '<th style="text-align:center">Aktiv</th>';
   html += '<th>Notiz</th>';
@@ -10564,14 +10640,53 @@ Anchor + highlighten 2s. NICHT abwandeln, NICHT weglassen.
 Pipeline-Key-Mapping für die URLs (case-sensitive):
   A2 | B | Cascade | D | E | README
 
+=== WAS TGV KANN — CAPABILITY-SELBSTBILD (Iter 34 U9-Fix) ===
+TGV CORE, seine Skills und die von Skills ausgelösten n8n-Workflows sind EIN
+zusammenhängendes System. Für den User gibt es KEINE Grenze zwischen „CORE",
+„Skill" und „n8n" — was einer der Skills tut, das tut TGV.
+TGV erledigt via Skills u.a.: Dokumente klassifizieren, PDFs auslesen, Belege
+in Google Drive ablegen/verschieben, Mails abholen und versenden, Zahlungen
+mit Rechnungen abgleichen, Lieferanten auflösen, Verträge erfassen.
+Die VOLLSTÄNDIGE, AKTUELLE Liste steht unten im Abschnitt
+„=== TGV-SKILL-REGISTRY (live) ===" — sie wird live aus der DB-Tabelle
+skill_definitions geladen, nicht hier fest eingetippt.
+
+REGEL bei „Kann TGV …?"-Fragen: Prüfe IMMER zuerst die TGV-Skill-Registry
+unten. Deckt ein Skill die Frage ab → Antwort ist JA (TGV kann es, über diesen
+Skill). Sage NIEMALS „TGV kann das nicht", nur weil DU als Chat-Assistent das
+Tool nicht direkt im Chat ausführst. Deine 6 Chat-Tools sind dein eigener
+Werkzeugkasten — NICHT die Grenze dessen, was TGV kann. Im Zweifel:
+„Das übernimmt in TGV der Skill X" statt „Das geht nicht".
+
 === DEIN VERHALTEN ===
 - Antworte auf Deutsch, CFO-like, präzise
 - Bei TECHNISCHEN Prozessfragen über Pipelines: lookup_pipeline_doc (PFLICHT)
 - Bei sonstigen Prozessdetails: search_knowledge (kurze Topic-Artikel)
 - Bei unklarer Entität: frage nach oder schlag basierend auf Lieferant-Regeln vor
-- Du kannst Dokumente per confirm_document bestätigen — das löst die komplette Pipeline aus
-- Du KANNST keine Dateien in Google Drive direkt verschieben (nur via n8n Skill Router)
-- Du KANNST keine n8n Workflows direkt starten (nur via Skill Router Webhook)`;
+- Du kannst Dokumente per confirm_document bestätigen — das löst die komplette Pipeline aus`;
+
+// ── Iter 34 C6 (U9-Fix): Capability-Selbstbild LIVE aus skill_definitions ──
+// Kein hardcodeter Capability-Absatz (A1-Workshop Entscheidung 4). Ein neuer
+// Skill erweitert das Selbstbild automatisch — keine künftige Drift.
+let TGV_SKILL_REGISTRY_BLOCK = '';
+let _skillRegistryLoaded = false;
+async function ensureSkillRegistryLoaded() {
+  if (_skillRegistryLoaded) return;
+  try {
+    const skills = await supa('skill_definitions?select=name,description,domain&active=eq.true&order=domain,name');
+    if (skills && skills.length) {
+      const lines = skills.map(s =>
+        `• ${s.name}${s.domain ? ' [' + s.domain + ']' : ''} — ${s.description || 'kein Beschreibungstext'}`);
+      TGV_SKILL_REGISTRY_BLOCK =
+        `\n\n=== TGV-SKILL-REGISTRY (live aus skill_definitions, ${skills.length} aktive Skills) ===\n` +
+        `Autoritative Liste dessen, was TGV kann. Ist eine Capability-Frage hierdurch gedeckt → Antwort JA.\n` +
+        lines.join('\n');
+    }
+    _skillRegistryLoaded = true;
+  } catch (e) {
+    console.warn('[chat] skill_definitions nicht ladbar — kein Hardcode-Fallback:', e);
+  }
+}
 
 
 const TGV_TOOLS = [
@@ -11010,6 +11125,7 @@ async function sendChat() {
   const thinkingBubble = addChatBubble('thinking', '⏳ Denke nach…');
 
   try {
+    await ensureSkillRegistryLoaded();
     const response = await callClaude(chatHistory);
     if (thinkingBubble) thinkingBubble.remove();
     await processChatResponse(response);
@@ -11066,7 +11182,7 @@ async function callClaude(messages) {
   const payload = {
     model: CLAUDE_MODEL,
     max_tokens: 1024,
-    system: TGV_SYSTEM_PROMPT,
+    system: TGV_SYSTEM_PROMPT + TGV_SKILL_REGISTRY_BLOCK,
     tools: TGV_TOOLS,
     messages: messages
   };
