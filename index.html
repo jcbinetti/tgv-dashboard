@@ -4,8 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.67.0">
-<title>TGV Dashboard v11.66 — Financial OS</title>
+<meta name="version" content="11.68.0">
+<title>TGV Dashboard v11.68 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -217,7 +217,7 @@ body {
   font-weight: 600;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.55);
   padding: 16px 16px 6px;
   white-space: nowrap;
   overflow: hidden;
@@ -3829,7 +3829,7 @@ async function startStreamSubscription() {
   setStreamMeta('verbinde …', '');
   // Letzte 20 vorab laden
   try {
-    const url = `${SUPABASE_URL}/rest/v1/agent_events?select=id,tool_name,workflow_name,node_name,event_type,document_id,created_at,metadata,tool_input,tool_output&order=created_at.desc&limit=20`;
+    const url = `${SUPABASE_URL}/rest/v1/agent_events?select=id,tool_name,event_type,document_id,created_at,tool_input,tool_output&order=created_at.desc&limit=20`;
     const r = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }});
     if (r.ok) {
       const rows = await r.json();
@@ -7294,7 +7294,7 @@ async function loadPatternRulesLifecycle() {
   el.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade pattern_rules…</div>`;
   const scopeFilter = scope === 'all' ? '' : `&scope=eq.${encodeURIComponent(scope)}`;
   try {
-    const url = `${SUPABASE_URL}/rest/v1/pattern_rules?select=id,scope,pattern_key,stage,verification_count,conflict_count,trust_score,active,last_seen,created_at${scopeFilter}&order=trust_score.desc.nullslast,verification_count.desc.nullslast&limit=200`;
+    const url = `${SUPABASE_URL}/rest/v1/pattern_rules?select=id,scope,match_condition,stage,verification_count,conflict_count,trust_score,active,created_at${scopeFilter}&order=trust_score.desc.nullslast,verification_count.desc.nullslast&limit=200`;
     const r = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }});
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const rows = await r.json();
@@ -7323,10 +7323,12 @@ async function loadPatternRulesLifecycle() {
       const promoteTitle = promoteBtnDisabled
         ? 'Stage am Endpunkt — keine weitere Promotion'
         : 'Manueller Promoter (Skill noch nicht deployed — Iter 21+)';
-      // v11.59: escapeHtml-Härtung — pattern_key + scope sind DB-Strings (Pattern-Engine schreibt direkt).
+      // Iter 33 D2: pattern_key existiert nicht im Schema — match_condition (jsonb) ist der Regel-Identifier.
+      const condStr = rr.match_condition == null ? '—'
+        : (typeof rr.match_condition === 'string' ? rr.match_condition : JSON.stringify(rr.match_condition));
       return `<tr>
         <td style="font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mute)">${escapeHtml(rr.scope || '—')}</td>
-        <td style="font-family:ui-monospace,monospace;font-size:10.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(rr.pattern_key || '')}">${escapeHtml(rr.pattern_key || '—')}</td>
+        <td style="font-family:ui-monospace,monospace;font-size:10.5px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(condStr)}">${escapeHtml(condStr)}</td>
         <td>${stageBadge(rr.stage)}</td>
         <td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px">${rr.verification_count ?? 0}</td>
         <td style="text-align:right;font-family:ui-monospace,monospace;font-size:11px;color:${(rr.conflict_count||0) > 0 ? '#ef4444' : 'var(--mute)'}">${rr.conflict_count ?? 0}</td>
@@ -7340,7 +7342,7 @@ async function loadPatternRulesLifecycle() {
       <table class="mig-table" style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--bg2);border-bottom:1px solid var(--s3)">
           <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">scope</th>
-          <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">pattern_key</th>
+          <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">match_condition</th>
           <th style="text-align:left;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600">stage</th>
           <th style="text-align:right;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600" title="verification_count">vc</th>
           <th style="text-align:right;padding:8px 10px;font-size:10.5px;color:var(--mute);font-weight:600" title="conflict_count">cc</th>
@@ -7453,11 +7455,12 @@ async function loadCostsView() {
     {
       const quotaPctM = latest['n8n|quota_pct'];
       const execMonth = latest['n8n|executions_month'];
-      const quotaTotal = latest['n8n|quota_total'];
       const t = thMap['n8n|quota_pct'];
-      const v = quotaPctM ? Number(quotaPctM.value) : null;
       const used = execMonth ? Number(execMonth.value) : null;
-      const cap  = quotaTotal ? Number(quotaTotal.value) : 2500;
+      // Iter 33 S12: Plan-Limit ist eine bekannte Konstante (n8n Cloud Pro = 10.000/Monat, Iter 25).
+      // cost_metrics 'n8n|quota_total' ist veraltet (2500) → erzeugte 150%-Fehlalarm in der Hochrechnung.
+      const cap  = 10000;
+      const v    = (used != null) ? (used / cap) * 100 : (quotaPctM ? Number(quotaPctM.value) : null);
       const lvl  = (v != null && t) ? levelFor(v, t.warn_at, t.alarm_at) : 'ok';
       // Burn rate projection
       let projection = null;
@@ -7516,15 +7519,19 @@ async function loadCostsView() {
 
     // ── Anthropic orchestrator calls ─────────────────────────────────
     {
-      const m = latest['anthropic|orchestrator_calls_24h'];
-      const v = m ? Number(m.value) : null;
+      // Iter 33 S13: direkt aus agent_events zählen — cost_metrics['anthropic|orchestrator_calls_24h'] wird nie befüllt → Kachel zeigte immer 0.
+      const since24h = new Date(Date.now() - 24*3600*1000).toISOString();
+      let v = null;
+      try {
+        v = await supaCount('agent_events', `created_at=gte.${since24h}&or=(tool_name.ilike.*orchestrator*,tool_name.ilike.*dispatcher*,event_type.eq.plan,event_type.eq.dispatch)`);
+      } catch (e) { console.warn('[costs] orchestrator count failed', e); }
       out.push(tile({
         title: 'Anthropic — Orchestrator Calls (24h)',
-        subtitle: 'agent_events count',
+        subtitle: 'agent_events — orchestrator/dispatch, letzte 24h',
         valueDisplay: v != null ? v.toLocaleString('de-DE') : '—',
         percent: null,
         level: null,
-        foot: `Stand ${lastUpdated(m)}`,
+        foot: v != null ? 'live aus agent_events' : '—',
       }));
     }
 
@@ -7585,6 +7592,16 @@ async function loadCostsView() {
 // ═══════════════════════════════════════════════════════
 //  PATTERN HEALTH VIEW (System sub-tab)
 // ═══════════════════════════════════════════════════════
+// Iter 33 S16: repariert double-encoded UTF-8 (Latin-1-Fehldecode) — "GeschÃ¤ft" → "Geschäft", "â†'" → "→".
+// Konservativ: feuert nur bei typischen Mojibake-Markern; Original bei Fehlschlag. Anzeige-Mitigation —
+// die eigentliche Korruption sitzt in pattern_rules_seed.description (→ Block-C Daten-Integrität).
+function fixMojibake(s) {
+  if (typeof s !== 'string' || !s || !/Ã.|Â.|â€|â†/.test(s)) return s;
+  try {
+    const r = decodeURIComponent(escape(s));
+    return /�/.test(r) ? s : r;
+  } catch { return s; }
+}
 let _phLoaded = false;
 async function loadPatternHealthView() {
   if (_phLoaded) return;
@@ -7637,7 +7654,7 @@ async function loadPatternHealthView() {
     orEl.innerHTML = orphans.length
       ? orphans.map(r => `<div class="mig-row">
           <span class="mig-num">seed:${r.id}</span>
-          <span class="mig-name">${stagePill(r.stage)} ${escHtml(r.source)} · ${escHtml(r.description||'')}</span>
+          <span class="mig-name">${stagePill(r.stage)} ${escHtml(r.source)} · ${escHtml(fixMojibake(r.description||''))}</span>
           <span class="mig-status">${new Date(r.created_at).toLocaleDateString('de-DE')}</span>
         </div>`).join('')
       : '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— keine Orphans</span></div>';
@@ -7645,7 +7662,7 @@ async function loadPatternHealthView() {
     prEl.innerHTML = promotions.length
       ? promotions.map(e => `<div class="mig-row">
           <span class="mig-num">${new Date(e.created_at).toLocaleString('de-DE')}</span>
-          <span class="mig-name">${escHtml(e.content||'')}</span>
+          <span class="mig-name">${escHtml(fixMojibake(e.content||''))}</span>
           <span class="mig-status mig-ok">promoted</span>
         </div>`).join('')
       : '<div class="mig-row"><span class="mig-name" style="color:var(--tx2)">— noch keine Promotions</span></div>';
@@ -10577,7 +10594,7 @@ const TGV_TOOLS = [
         doc_type:  { type: 'string', description: 'Doc-Typ', enum: ['Rechnung','Vertrag','Lohnsteuer','Kontoauszug','Quittung','Sonstiges'] },
         supplier:  { type: 'string', description: 'ILIKE-Match auf provider (z.B. "vodafone", "ionos")' },
         status:    { type: 'string', description: 'Doc-Status', enum: ['inbox','needs_review','pending_review','approved','rejected'] },
-        group_by:  { type: 'string', description: 'Gruppierung (statt Einzel-Rows)', enum: ['entity','supplier','month','category_l1'] },
+        group_by:  { type: 'string', description: 'Gruppierung (statt Einzel-Rows)', enum: ['entity','supplier','month','category'] },
         sort_by:   { type: 'string', description: 'Sort-Feld (immer DESC)', enum: ['date_received','invoice_date','amount','entity','provider'] },
         limit:     { type: 'integer', description: 'Max. Treffer (1-200)' }
       },
@@ -10665,7 +10682,7 @@ async function executeTool(toolName, toolInput) {
       const VALID_ENT  = new Set(['privat','c3-convis-gmbh','c4-convis-sarl','kivisai']);
       const VALID_TYPE = new Set(['Rechnung','Vertrag','Lohnsteuer','Kontoauszug','Quittung','Sonstiges']);
       const VALID_ST   = new Set(['inbox','needs_review','pending_review','approved','rejected']);
-      const VALID_GRP  = new Set(['entity','supplier','month','category_l1']);
+      const VALID_GRP  = new Set(['entity','supplier','month','category']);
       const VALID_SRT  = new Set(['date_received','invoice_date','amount','entity','provider']);
       const args = toolInput || {};
       if (args.entity   && !VALID_ENT.has(args.entity))   return `Fehler: entity="${args.entity}" nicht erlaubt.`;
@@ -10674,7 +10691,7 @@ async function executeTool(toolName, toolInput) {
       if (args.group_by && !VALID_GRP.has(args.group_by)) return `Fehler: group_by="${args.group_by}" nicht erlaubt.`;
       if (args.sort_by  && !VALID_SRT.has(args.sort_by))  return `Fehler: sort_by="${args.sort_by}" nicht erlaubt.`;
       const limit = Math.max(1, Math.min(+args.limit || 50, 200));
-      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category_l1,subject'];
+      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category,subject'];
       if (args.date_from) filters.push(`invoice_date=gte.${encodeURIComponent(args.date_from)}`);
       if (args.date_to)   filters.push(`invoice_date=lt.${encodeURIComponent(args.date_to)}`);
       if (args.entity)    filters.push(`entity=eq.${encodeURIComponent(args.entity)}`);
@@ -10697,7 +10714,7 @@ async function executeTool(toolName, toolInput) {
           if (args.group_by === 'entity')         k = r.entity || '—';
           else if (args.group_by === 'supplier')  k = r.provider || '—';
           else if (args.group_by === 'month')     k = (r.invoice_date || r.date_received || '').slice(0,7) || '—';
-          else if (args.group_by === 'category_l1') k = r.category_l1 || '—';
+          else if (args.group_by === 'category') k = r.category || '—';
           else k = '?';
           const b = (buckets[k] = buckets[k] || { count: 0, sum: 0, currency: r.currency || 'EUR', samples: [] });
           b.count++;
@@ -11369,7 +11386,7 @@ const ACTION_GROUPS = [
           const mm = String(p.month).padStart(2,'0');
           const start = `${p.year}-${mm}-01`;
           const next = p.month == 12 ? `${+p.year+1}-01-01` : `${p.year}-${String(+p.month+1).padStart(2,'0')}-01`;
-          return `documents?select=category_l1,amount,doc_type,status&entity=eq.${encodeURIComponent(p.entity)}&invoice_date=gte.${start}&invoice_date=lt.${next}&order=category_l1`;
+          return `documents?select=category,amount,doc_type,status&entity=eq.${encodeURIComponent(p.entity)}&invoice_date=gte.${start}&invoice_date=lt.${next}&order=category`;
         }}},
       { name: 'get_contracts_expiring', what: 'Verträge die in N Tagen ablaufen (notice_deadline).',
         when: 'Ende-Monats-Routine — was muss gekündigt werden.',
@@ -11379,27 +11396,27 @@ const ACTION_GROUPS = [
             { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
             { key: 'name', label: 'Vertrag' },
             { key: 'entity', label: 'Entity', fmt: (v) => v ? entityBadge(v) : '—' },
-            { key: 'supplier', label: 'Lieferant' },
-            { key: 'monthly_amount', label: '€/Monat', fmt: (v) => v != null ? Number(v).toFixed(2) : '—' },
+            { key: 'provider', label: 'Lieferant' },
+            { key: 'amount', label: '€/Monat', fmt: (v) => v != null ? Number(v).toFixed(2) : '—' },
             { key: 'notice_deadline', label: 'Kündig-Frist', fmt: (v) => v ? `<strong>${String(v).slice(0,10)}</strong>` : '—' },
-            { key: 'end_date', label: 'End-Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
+            { key: 'contract_end_date', label: 'End-Datum', fmt: (v) => v ? String(v).slice(0,10) : '—' },
           ],
           build: (p) => {
             const d = new Date(); d.setDate(d.getDate() + (+p.days||60));
             const future = d.toISOString().slice(0,10);
             const today = new Date().toISOString().slice(0,10);
-            return `prf_contracts?select=id,name,entity,supplier,monthly_amount,notice_deadline,end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
+            return `prf_contracts?select=id,name,entity,provider,amount,notice_deadline,contract_end_date&notice_deadline=gte.${today}&notice_deadline=lte.${future}&order=notice_deadline.asc`;
           }}},
       { name: 'get_account_status', what: 'Pro Bankkonto: letztes Buchungsdatum + frühestes + Lücke.',
         when: 'Wenn du wissen willst, ob CSV-Imports aktuell sind.',
         params: [{ key: 'entity', label: 'Entität', type: 'select', options: ['all', ..._ACT_ENTITIES], default: 'all' }],
         exec: { kind: 'postgrest', build: (p) => {
           const ent = p.entity && p.entity !== 'all' ? `&entity=eq.${encodeURIComponent(p.entity)}` : '';
-          return `txn_master?select=entity,iban,booking_date&order=booking_date.desc.nullslast&limit=2000${ent}`;
+          return `txn_master?select=entity,account_iban,booking_date&order=booking_date.desc.nullslast&limit=2000${ent}`;
         }, format: (rows) => {
           const byKey = {};
           rows.forEach(r => {
-            const k = (r.entity||'?') + ' / ' + (r.iban||'?');
+            const k = (r.entity||'?') + ' / ' + (r.account_iban||'?');
             if (!byKey[k]) byKey[k] = { count: 0, last: '', first: '' };
             byKey[k].count++;
             if (!byKey[k].last  || r.booking_date > byKey[k].last)  byKey[k].last  = r.booking_date;
@@ -11413,14 +11430,14 @@ const ACTION_GROUPS = [
         exec: { kind: 'postgrest_table',
           columns: [
             { key: 'id', label: '#', fmt: (v) => `<code>${v}</code>` },
-            { key: 'skill_name', label: 'Skill', fmt: (v) => `<code>${esc(v||'')}</code>` },
+            { key: 'name', label: 'Skill', fmt: (v) => `<code>${esc(v||'')}</code>` },
             { key: 'version', label: 'Version' },
             { key: 'domain', label: 'Domain' },
             { key: 'webhook_url', label: 'Webhook', fmt: (v) => v ? '<span style="color:var(--grn)">✓ live</span>' : '<span style="color:var(--tx2)">stub</span>' },
             { key: 'active', label: 'Aktiv', fmt: (v) => v ? '✓' : '✗' },
             { key: 'description', label: 'Beschreibung', fmt: (v) => v ? `<span title="${esc(v)}">${esc(String(v).slice(0,60))}${v.length>60?'…':''}</span>` : '—' },
           ],
-          build: () => 'skill_definitions?select=id,skill_name,version,description,webhook_url,active,domain&order=domain,skill_name' }},
+          build: () => 'skill_definitions?select=id,name,version,description,webhook_url,active,domain&order=domain,name' }},
       { name: 'get_conversation_context', what: 'Letzte Events einer Agent-Konversation (Audit-Trail).',
         when: 'Debug: was hat der Orchestrator zuletzt für eine Doc-Pipeline gemacht.',
         params: [
@@ -11495,7 +11512,7 @@ const ACTION_GROUPS = [
         when: 'Wenn du eine Korrektur explizit als Lern-Signal markieren willst.',
         params: [
           { key: 'document_id', label: 'Doc-ID', type: 'integer', default: '' },
-          { key: 'field',  label: 'Feld', type: 'select', options: ['entity','provider','doc_type','amount','category_l1'], default: 'entity' },
+          { key: 'field',  label: 'Feld', type: 'select', options: ['entity','provider','doc_type','amount','category'], default: 'entity' },
           { key: 'before', label: 'Vorher (alter Wert)', type: 'string', default: '' },
           { key: 'after',  label: 'Nachher (neuer Wert)', type: 'string', default: '' },
           { key: 'reason', label: 'Begründung', type: 'string', default: 'manual' },
@@ -11525,7 +11542,7 @@ const ACTION_GROUPS = [
           { key: 'doc_type',  label: 'Doc-Type', type: 'select', options: ['', ..._ACT_DOC_TYPES], default: '' },
           { key: 'supplier',  label: 'Supplier (ILIKE)', type: 'string', default: '' },
           { key: 'status',    label: 'Status', type: 'select', options: ['','inbox','needs_review','pending_review','approved','rejected'], default: '' },
-          { key: 'group_by',  label: 'Gruppieren nach', type: 'select', options: ['','entity','supplier','month','category_l1'], default: '' },
+          { key: 'group_by',  label: 'Gruppieren nach', type: 'select', options: ['','entity','supplier','month','category'], default: '' },
           { key: 'sort_by',   label: 'Sortieren nach', type: 'select', options: ['date_received','invoice_date','amount','entity','provider'], default: 'date_received' },
           { key: 'limit',     label: 'Max. Ergebnisse', type: 'integer', default: 50 },
         ],
@@ -11580,7 +11597,7 @@ const ACTION_GROUPS = [
         exec: { kind: 'postgrest', build: (p) => {
           if (!p.query) throw new Error('query Pflicht');
           const q = encodeURIComponent(p.query.replace(/[%,*]/g,' ').trim());
-          return `agent_knowledge?select=topic,summary,detail,scope&or=(topic.ilike.*${q}*,summary.ilike.*${q}*)&limit=${p.limit||5}`;
+          return `agent_knowledge?select=topic,title,content,tags&or=(topic.ilike.*${q}*,title.ilike.*${q}*,content.ilike.*${q}*)&limit=${p.limit||5}`;
         }}},
     ]
   },
@@ -11991,7 +12008,7 @@ function _mcpRenderGroupedTable(rows, groupBy, columns) {
     if (groupBy === 'entity')         k = r.entity || '—';
     else if (groupBy === 'supplier')  k = r.provider || '—';
     else if (groupBy === 'month')     k = (r.invoice_date || r.date_received || '').slice(0,7) || '—';
-    else if (groupBy === 'category_l1') k = r.category_l1 || '—';
+    else if (groupBy === 'category') k = r.category || '—';
     else k = '?';
     const b = (buckets[k] = buckets[k] || { count: 0, sum: 0, currency: r.currency || 'EUR', rows: [] });
     b.count++;
@@ -12084,7 +12101,7 @@ async function mcpRunExecute() {
       const VALID_ENT  = new Set(_ACT_ENTITIES);
       const VALID_TYPE = new Set(_ACT_DOC_TYPES);
       const VALID_ST   = new Set(['inbox','needs_review','pending_review','approved','rejected']);
-      const VALID_GRP  = new Set(['entity','supplier','month','category_l1']);
+      const VALID_GRP  = new Set(['entity','supplier','month','category']);
       const VALID_SRT  = new Set(['date_received','invoice_date','amount','entity','provider']);
       if (params.entity   && !VALID_ENT.has(params.entity))   throw new Error(`entity="${params.entity}" nicht erlaubt`);
       if (params.doc_type && !VALID_TYPE.has(params.doc_type)) throw new Error(`doc_type="${params.doc_type}" nicht erlaubt`);
@@ -12092,7 +12109,7 @@ async function mcpRunExecute() {
       if (params.group_by && !VALID_GRP.has(params.group_by)) throw new Error(`group_by="${params.group_by}" nicht erlaubt`);
       if (params.sort_by  && !VALID_SRT.has(params.sort_by))  throw new Error(`sort_by="${params.sort_by}" nicht erlaubt`);
       const limit = Math.max(1, Math.min(+params.limit || 50, 200));
-      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category_l1,subject'];
+      const filters = ['select=id,invoice_date,date_received,entity,provider,doc_type,amount,currency,status,category,subject'];
       if (params.date_from) filters.push(`invoice_date=gte.${encodeURIComponent(params.date_from)}`);
       if (params.date_to)   filters.push(`invoice_date=lt.${encodeURIComponent(params.date_to)}`);
       if (params.entity)    filters.push(`entity=eq.${encodeURIComponent(params.entity)}`);
@@ -12214,6 +12231,18 @@ function _spDriveEmbedUrl(driveFileId) {
   return driveFileId
     ? `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/preview`
     : null;
+}
+
+// Iter 33 S10/S11: Datei-Typ aus drive_file_name ableiten — Vorschau-Label + Inline-Fähigkeit.
+// Der Drive-/preview-iframe rendert PDF + Standardbilder zuverlässig, AVIF/CSV/Tabellen nicht.
+function _spFileKind(fileName) {
+  const ext = (String(fileName || '').match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+  if (ext === 'pdf') return { ext, icon: '📄', label: 'PDF-Vorschau', inline: true };
+  if (['png','jpg','jpeg','gif','webp'].includes(ext)) return { ext, icon: '🖼', label: 'Bild-Vorschau', inline: true };
+  if (ext === 'avif') return { ext, icon: '🖼', label: 'Bild-Vorschau (AVIF)', inline: false };
+  if (['csv','tsv'].includes(ext)) return { ext, icon: '📊', label: 'CSV-Datei', inline: false };
+  if (['xlsx','xls','ods'].includes(ext)) return { ext, icon: '📊', label: 'Tabelle', inline: false };
+  return { ext: ext || '?', icon: '📎', label: ext ? ext.toUpperCase() + '-Datei' : 'Datei', inline: false };
 }
 
 function _spEntityOptions(currentEntity) {
@@ -12356,7 +12385,7 @@ async function _spFetchLearningHints(docType) {
   if (!docType) return [];
   try {
     // 1. pattern_rules direkt
-    const prUrl = `${SUPABASE_URL}/rest/v1/pattern_rules?scope=eq.skill_routing&select=id,stage,match_condition,action,promote_count,active&order=promote_count.desc.nullslast&limit=20`;
+    const prUrl = `${SUPABASE_URL}/rest/v1/pattern_rules?scope=eq.skill_routing&select=id,stage,match_condition,action,applied_count,active&order=applied_count.desc.nullslast&limit=20`;
     const headers = await _supaAuthHeaders();
     const prRes = await fetch(prUrl, { headers });
     const rules = prRes.ok ? await prRes.json() : [];
@@ -12715,9 +12744,9 @@ function _spKbAddOpen() {
     pattern: doc.provider || '',
     name_normalized: doc.provider || '',
     entity: doc.entity || '',
-    category_l1: doc.category_l1 || '',
-    category_l2: doc.category_l2 || '',
-    category_l3: doc.category_l3 || '',
+    category_l1: doc.category || '',
+    category_l2: '',
+    category_l3: '',
     recurring: false,
     active: true,
   });
@@ -12886,17 +12915,27 @@ function openSidePanel(doc) {
   title.textContent = `${doc.provider || '— kein Provider —'}`;
   sub.textContent = `#${doc.id} · ${doc.doc_type || '?'} · ${doc.invoice_date || (doc.date_received||'').slice(0,10) || '—'}`;
 
-  // === PDF Section ===
+  // === Datei-Vorschau Section (Iter 33 S10/S11: typ-abhängig statt hartkodiert "PDF") ===
+  const fileKind = _spFileKind(doc.drive_file_name);
   const pdfUrl = _spDriveEmbedUrl(doc.drive_file_id);
-  const pdfHtml = pdfUrl
-    ? `<iframe id="side-panel-pdf-frame" src="${pdfUrl}" title="PDF-Vorschau" loading="lazy"></iframe>
+  let pdfHtml;
+  if (!pdfUrl) {
+    pdfHtml = `<div style="padding:24px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
+         ⚠️ Keine Datei — Doc hat kein drive_file_id (z.B. duplicate-stub oder WG/Fwd-Verlust).
+       </div>`;
+  } else if (fileKind.inline) {
+    pdfHtml = `<iframe id="side-panel-pdf-frame" src="${pdfUrl}" title="${fileKind.label}" loading="lazy"></iframe>
        <div style="margin-top:6px;font-size:10px;color:var(--tx2);">
          📎 ${_spEsc(doc.drive_file_name || 'unbenannt')} ·
          <a href="https://drive.google.com/file/d/${encodeURIComponent(doc.drive_file_id)}/view" target="_blank" rel="noopener" style="color:var(--blu)">In Drive öffnen ↗</a>
-       </div>`
-    : `<div style="padding:24px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
-         ⚠️ Kein PDF — Doc hat kein drive_file_id (z.B. duplicate-stub oder WG/Fwd-Verlust).
        </div>`;
+  } else {
+    pdfHtml = `<div style="padding:20px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
+         ${fileKind.icon} Keine Inline-Vorschau für <strong>.${_spEsc(fileKind.ext)}</strong>-Dateien — der Drive-Viewer rendert diesen Typ nicht zuverlässig.
+         <div style="margin-top:8px;">📎 ${_spEsc(doc.drive_file_name || 'unbenannt')}</div>
+         <a href="https://drive.google.com/file/d/${encodeURIComponent(doc.drive_file_id)}/view" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;background:var(--blu);color:#fff;padding:6px 14px;border-radius:4px;text-decoration:none;font-size:11px;">In Drive öffnen ↗</a>
+       </div>`;
+  }
 
   // === Skill-Output Cards (Read-First, Edit-on-Toggle) ===
   const amount = doc.amount != null ? Number(doc.amount).toFixed(2) : '';
@@ -12954,7 +12993,7 @@ function openSidePanel(doc) {
 
   body.innerHTML = `
     <div class="side-panel-section">
-      <h4>📄 PDF-Vorschau</h4>
+      <h4>${fileKind.icon} ${fileKind.label}</h4>
       ${pdfHtml}
     </div>
     <div class="side-panel-section">
