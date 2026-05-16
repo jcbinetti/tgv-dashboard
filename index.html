@@ -1,11 +1,12 @@
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
+<!-- TGV Dashboard v11.69.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C, Teil 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status), entityBadge zeigt vollen Firmennamen, Inbox- + Triage-Header mit Klartext-Erklärern, U3 Action-Button "→ bearbeiten" auf needs_review-Docs im Verlauf, U1 Skill-Lauf-Status entdeutigt, Topology-Buttons konsolidiert (2→1 ehrlich). topology.json Live-Stand. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.68.1">
-<title>TGV Dashboard v11.68.1 — Financial OS</title>
+<meta name="version" content="11.69.0">
+<title>TGV Dashboard v11.69.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2419,8 +2420,8 @@ body.chat-open #main-content {
     ════════════════════════════════════════════════ -->
     <div class="page" id="page-inbox">
       <div class="page-header">
-        <h1>📥 Inbox — Human in the Loop</h1>
-        <p>Dokumente und Transaktionen die Freigabe benötigen</p>
+        <h1>📥 Inbox — Freigabe-Warteschlange <button class="help-icon" onclick="showHelp('term_inbox')" aria-label="Was bedeutet Inbox?">ⓘ</button></h1>
+        <p>Deine To-Do-Liste: Dokumente und Transaktionen, die TGV verarbeitet hat und die jetzt deine Freigabe brauchen. „Inbox" hat im System 3 Bedeutungen — ⓘ erklärt sie.</p>
       </div>
 
       <!-- INBOX TABS -->
@@ -2858,8 +2859,8 @@ body.chat-open #main-content {
     ════════════════════════════════════════════════ -->
     <div class="page" id="page-triage">
       <div class="page-header">
-        <h1>🎯 Triage <span style="font-size:13px;color:var(--tx2);font-weight:400;">— UI Variante C (Iter 15.2)</span></h1>
-        <p>Skill-driven Multi-Select für Inbox-Action-Queue. Default: Docs die noch User-Eingriff brauchen.</p>
+        <h1>🎯 Triage <span style="font-size:13px;color:var(--tx2);font-weight:400;">— Dokumente bearbeiten</span></h1>
+        <p>Hier korrigierst du ein einzelnes Dokument (Typ, Entität, Anbieter) und lässt die passenden TGV-Skills laufen. Zeigt standardmäßig die Dokumente, bei denen TGV deine Hilfe braucht. <strong>Unterschied:</strong> „Inbox" = Überblick über alles Offene · „Triage" = die Bearbeitungs-Werkbank · „Alle Dokumente" = die vollständige Suchliste.</p>
       </div>
 
       <!-- FILTER BAR -->
@@ -3672,8 +3673,7 @@ body.chat-open #main-content {
               <label style="display:flex;gap:4px;align-items:center;cursor:pointer;"><input type="checkbox" id="topo-only-active" onchange="renderTopologyGraph()"> nur aktive WFs</label>
               <label style="display:flex;gap:4px;align-items:center;cursor:pointer;" title="Iter 27 — Knoten-Farbe nach last_status (success/error/waiting)"><input type="checkbox" id="topo-show-live" checked onchange="renderTopologyGraph()"> Live-Status</label>
               <label style="display:flex;gap:4px;align-items:center;cursor:pointer;" title="Iter 27 — Border-Width skaliert mit execs_24h"><input type="checkbox" id="topo-show-heatmap" onchange="renderTopologyGraph()"> Cost-Heatmap</label>
-              <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:3px 8px;" onclick="refreshTopologyLive()" title="Iter 27.A4 — Live-Status pollen (lokal: 08_OPS/poll_wf_status.py)">⟳ Live-Refresh</button>
-              <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:3px 8px;" onclick="loadTopologyGraph(true)" title="topology.json neu laden">↻ Reload</button>
+              <button class="btn-sm" style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:3px 8px;" onclick="loadTopologyGraph(true)" title="Lädt die Topologie-Datei neu. Hinweis: das ist ein beim Deploy erzeugter Stand-Snapshot — ein echter Live-Abruf von n8n ist im Browser nicht möglich.">↻ Topologie neu laden</button>
             </div>
           </div>
           <div class="card-body">
@@ -4116,11 +4116,13 @@ const mapEntity = raw => {
   return r;
 };
 
+const ENTITY_FULL_NAMES = { c3: 'C3 Convis GmbH', c4: 'C4 Convis SARL', priv: 'Privat', kivisai: 'KIVISAI' };
 const entityBadge = raw => {
   const e = mapEntity(raw);
   const cls = e === 'priv' ? 'badge-priv' : e === 'c3' ? 'badge-c3' : e === 'c4' ? 'badge-c4' : 'badge-other';
   const label = e === 'priv' ? 'PRIV' : e === 'c3' ? 'C3' : e === 'c4' ? 'C4' : (raw || '—').toUpperCase();
-  return `<span class="badge ${cls}">${label}</span>`;
+  const full = ENTITY_FULL_NAMES[e] || raw || 'unbekannte Entität';
+  return `<span class="badge ${cls}" title="${full}">${label}</span>`;
 };
 
 const STATUS_LABELS = {
@@ -4230,6 +4232,31 @@ const HELP_TOPICS = {
               • <code>auto_orchestrator_v0.6</code> = Standard-Pfad</p>
            <p><strong>Wichtig:</strong> Wenn <code>duplicate_of_*</code> → roter Banner oben. Original öffnen!</p>`,
   },
+  term_inbox: {
+    title: '📥 „Inbox" — 3 verschiedene Bedeutungen',
+    body: `<p>Das Wort „Inbox" meint im TGV-Umfeld <strong>drei verschiedene Dinge</strong>. Das Dashboard benennt sie ab jetzt eindeutig:</p>
+           <p><strong>1. Mail-Eingang</strong> — das echte E-Mail-Postfach, aus dem TGV neue Belege per Mail abholt (Pipeline A2).</p>
+           <p><strong>2. Status „neu" (unprozessiert)</strong> — der DB-Status <code>processing_state = inbox</code>: ein Dokument ist erfasst, aber noch nicht durch die Verarbeitung gelaufen.</p>
+           <p><strong>3. Drive-Ordner /INBOX</strong> — der Ablage-Ordner in Google Drive, in den du Dateien legst, damit TGV sie aufnimmt (Pipeline B).</p>
+           <p><strong>Merksatz:</strong> Mail-Eingang = wo Mails ankommen · Status „neu" = wo das Doc im Lebenszyklus steht · Drive-Ordner /INBOX = ein Ordner zum Reinlegen.</p>`,
+  },
+  entity_canon: {
+    title: '🏢 Entitäten — Schreibweise',
+    body: `<p><strong>Was es ist:</strong> TGV ordnet jeden Beleg einer der Firmen/Bereiche zu. Dieselbe Entität taucht je nach Kontext in verschiedenen Schreibweisen auf:</p>
+           <p>• Kurz-Badge: <code>C3</code> / <code>C4</code> / <code>PRIV</code> / <code>KIVISAI</code> (in Tabellen, platzsparend)<br>
+              • Voller Name: <strong>C3 Convis GmbH</strong> · C4 Convis SARL · Privat · KIVISAI<br>
+              • Technischer Slug: <code>c3-convis-gmbh</code> (nur in DB-Feldern/IDs, nicht für dich gedacht)</p>
+           <p><strong>Mental-Modell:</strong> Alle drei meinen dasselbe. Der volle Name erscheint beim Hovern über dem Kurz-Badge.</p>`,
+  },
+  skill_run_status: {
+    title: '⏱ Skill-Lauf-Status',
+    body: `<p><strong>Was es ist:</strong> Ob ein bestimmter Skill auf <strong>diesem konkreten Dokument</strong> schon ausgeführt wurde — eine reine Ablauf-Information.</p>
+           <p><strong>Werte:</strong></p>
+           <p>• <strong>noch nicht gelaufen</strong> — der Skill wurde auf diesem Doc noch nicht angewendet. Häkchen setzen + „Anwenden" startet ihn.<br>
+              • <strong>schon gelaufen</strong> — der Skill lief bereits; erneutes Anwenden startet ihn neu.<br>
+              • <strong>noch nicht verfügbar</strong> — der Skill ist noch in Entwicklung.</p>
+           <p><strong>NICHT verwechseln mit:</strong> Das sagt <em>nichts</em> darüber aus, was TGV inhaltlich über das Dokument weiß. „noch nicht gelaufen" heißt nicht „TGV fehlt Wissen" — es heißt nur „dieser Arbeitsschritt steht noch aus". Was TGV weiß, steht in den Doc-Feldern + der Doc-Sicherheit (📋).</p>`,
+  },
 };
 
 function showHelp(topicKey) {
@@ -4336,6 +4363,14 @@ function toggleSidebar() {
   sidebarCollapsed = !sidebarCollapsed;
   document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
   document.getElementById('main-content').classList.toggle('sidebar-collapsed', sidebarCollapsed);
+}
+
+function gotoTriageDoc(docId) {
+  showPage('triage', document.querySelector('.nav-item[onclick*="triage"]'));
+  setTimeout(() => {
+    const f = document.getElementById('triage-search');
+    if (f) { f.value = '#' + docId; f.dispatchEvent(new Event('input')); }
+  }, 300);
 }
 
 function showPage(pageId, btn) {
@@ -7052,17 +7087,6 @@ function renderTopologyGraph() {
   });
 }
 
-/* Iter 27.A4 — Live-Refresh-Button: reload topology.json (User must have re-run
-   08_OPS/poll_wf_status.py + extract_system_topology.py --with-live locally and
-   re-deployed via deploy_user_docs_mirror.py). Browser kann n8n-API nicht direkt
-   pollen (CORS + Key). */
-async function refreshTopologyLive() {
-  const meta = document.getElementById('topo-meta');
-  if (meta) meta.innerHTML = '⟳ Live-Refresh: reload topology.json …';
-  TOPOLOGY_STATE.loaded = false;
-  await loadTopologyGraph(true);
-}
-
 function showTopoNodeDetail(n) {
   const det = document.getElementById('topo-node-detail');
   if (!det) return;
@@ -8023,10 +8047,14 @@ function fmtAmount(a, c) {
 }
 
 function statusBadge(d) {
-  if (d.txn_id) return '<span style="color:var(--grn);font-weight:600">✅ Reconciled</span>';
-  if (d.status === 'approved') return '<span style="color:var(--teal)">✓ Approved</span>';
-  if (d.status === 'inbox' || !d.status) return '<span style="color:#6B7280">📦 Stored</span>';
-  return `<span style="color:#6B7280">${d.status}</span>`;
+  if (d.txn_id) return '<span style="color:var(--grn);font-weight:600">✅ Verbucht</span>';
+  if (d.status === 'approved') return '<span style="color:var(--teal)">✓ Freigegeben</span>';
+  if (d.status === 'needs_review' || d.status === 'pending_review') {
+    return `<span style="color:var(--amb);font-weight:600">⚠️ Prüfen</span>`
+      + ` <button class="btn-sm" onclick="event.stopPropagation();gotoTriageDoc(${d.id})" title="Dieses Dokument im Triage-Tab öffnen und bearbeiten" style="font-size:10px;padding:2px 8px;margin-left:4px;">→ bearbeiten</button>`;
+  }
+  if (d.status === 'inbox' || !d.status) return '<span style="color:#6B7280">📦 Abgelegt</span>';
+  return `<span style="color:#6B7280">${escapeHtml(d.status)}</span>`;
 }
 
 function folderLinkFromPath(d) {
@@ -9536,11 +9564,11 @@ function triageDocCard(doc) {
     // v11.53 T4 — Skill-Status-Badge ⏳ pending / ✅ done / ↻ rerun
     let statusBadge;
     if (isFuture) {
-      statusBadge = `<span class="skill-status-badge pending" title="Skill noch nicht bereit / future">⏳ in der Mache</span>`;
+      statusBadge = `<span class="skill-status-badge pending" title="Dieser Skill ist noch nicht verfügbar (in Entwicklung)">⏳ noch nicht verfügbar</span>`;
     } else if (s.done) {
-      statusBadge = `<span class="skill-status-badge rerun" title="Skill ist auf diesem Doc bereits gelaufen — Häkchen + Apply triggert Re-Run">↻ re-runnable</span>`;
+      statusBadge = `<span class="skill-status-badge rerun" title="Dieser Skill ist auf diesem Dokument bereits gelaufen — Häkchen + Anwenden startet ihn erneut">↻ schon gelaufen</span>`;
     } else {
-      statusBadge = `<span class="skill-status-badge pending" title="Skill noch nicht auf diesem Doc gelaufen — wartet auf Apply">⏳ ausstehend</span>`;
+      statusBadge = `<span class="skill-status-badge pending" title="Dieser Skill ist auf diesem Dokument noch nicht gelaufen — Häkchen + Anwenden startet ihn">⏳ noch nicht gelaufen</span>`;
     }
 
     // v11.53 T5 — Stats-Tripel (3 Werte klar getrennt: Relevanz / Trefferquote / Status)
@@ -9549,14 +9577,14 @@ function triageDocCard(doc) {
       ? `${stats.correct}/${stats.total} (${Math.round(100 * stats.correct / stats.total)}%)`
       : '—';
     const tqColor = stats && stats.total >= 1 && stats.correct / stats.total >= 0.5 ? 'var(--grn)' : (stats && stats.total >= 1 ? 'var(--orng)' : 'var(--tx2)');
-    const statusLabel = isFuture ? 'in der Mache' : (s.done ? 're-runnable' : 'ausstehend');
+    const statusLabel = isFuture ? 'noch nicht verfügbar' : (s.done ? 'schon gelaufen' : 'noch nicht gelaufen');
     const statusColor = isFuture ? 'var(--orng)' : (s.done ? 'var(--blu)' : 'var(--orng)');
 
     const tripel = conf > 0 ? `
       <div class="skill-stats-tripel" title="Drei verschiedene Kennzahlen — siehe ⓘ-Buttons.">
         <div title="🔧 Skill-Relevanz für DIESES Doc"><span class="stats-label">🔧 Relevanz ${helpIcon('confidence_skill_relevance')}</span><span class="stats-value" style="color:${confColor}">${conf}%</span></div>
         <div title="📚 Skill-Trefferquote über alle Docs (learning_events)"><span class="stats-label">📚 Trefferquote ${helpIcon('confidence_skill_history')}</span><span class="stats-value" style="color:${tqColor}">${tqHtml}</span></div>
-        <div title="Skill-Aktivitätsstatus"><span class="stats-label">⏱ Status</span><span class="stats-value" style="color:${statusColor}">${statusLabel}</span></div>
+        <div title="Ist dieser Skill auf diesem Dokument schon gelaufen?"><span class="stats-label">⏱ Lauf-Status ${helpIcon('skill_run_status')}</span><span class="stats-value" style="color:${statusColor}">${statusLabel}</span></div>
       </div>
     ` : '';
 
