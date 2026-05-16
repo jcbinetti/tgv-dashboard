@@ -1,25 +1,25 @@
 {
   "iter": "27.A2",
-  "generated_at": "2026-05-13T15:00:50.962116+00:00",
+  "generated_at": "2026-05-16T15:15:48.416879+00:00",
   "stats": {
-    "nodes_total": 140,
-    "edges_total": 99,
+    "nodes_total": 138,
+    "edges_total": 101,
     "by_node_type": {
-      "wf": 45,
+      "wf": 40,
       "skill": 30,
-      "table": 65
+      "table": 68
     },
     "by_edge_type": {
-      "webhook_call": 26,
+      "webhook_call": 25,
       "skill_binding": 18,
-      "fk": 55
+      "fk": 58
     },
-    "total_audit_hits": 62,
+    "total_audit_hits": 11,
     "live": {
-      "polled_workflows": 45,
-      "execs_24h_total": 176,
-      "errors_24h_total": 37,
-      "polled_at": "2026-05-13T14:59:08.305973+00:00"
+      "polled_workflows": 40,
+      "execs_24h_total": 74,
+      "errors_24h_total": 1,
+      "polled_at": "2026-05-16T15:15:38.741052+00:00"
     }
   },
   "elements": {
@@ -49,8 +49,8 @@
           "hits_count": 0,
           "wf_id": "5jYCxB9NzqyRMqjI",
           "tags": [],
-          "last_status": "success",
-          "last_at": "2026-05-09T08:32:57.225Z",
+          "last_status": null,
+          "last_at": null,
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -58,18 +58,18 @@
       },
       {
         "data": {
-          "id": "wf:7JigJ4QiWwhVOPCs",
+          "id": "wf:8n3VhGkb4OqU7g8c",
           "type": "wf",
-          "label": "WF E - Buchhalter Versand v1.7.2",
-          "active": false,
-          "hits_count": 2,
-          "wf_id": "7JigJ4QiWwhVOPCs",
+          "label": "TGV Webhook Resend Bounce v0.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "8n3VhGkb4OqU7g8c",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
+          "last_status": "success",
+          "last_at": "2026-05-16T00:58:34.485Z",
+          "execs_24h": 9,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 13469
         }
       },
       {
@@ -81,11 +81,11 @@
           "hits_count": 0,
           "wf_id": "CbNkDkMss3YiHAmN",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
+          "last_status": "success",
+          "last_at": "2026-05-16T01:53:38.990Z",
+          "execs_24h": 2,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 12052
         }
       },
       {
@@ -94,14 +94,14 @@
           "type": "wf",
           "label": "TGV Skill Cost Collector v0.1",
           "active": true,
-          "hits_count": 1,
+          "hits_count": 0,
           "wf_id": "DV1qyZgjSk7cTbim",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-13T11:56:09.819Z",
-          "execs_24h": 4,
+          "last_at": "2026-05-16T12:13:48.650Z",
+          "execs_24h": 5,
           "errors_24h": 0,
-          "duration_24h_ms": 38172
+          "duration_24h_ms": 19820
         }
       },
       {
@@ -129,27 +129,27 @@
           "hits_count": 0,
           "wf_id": "EhYORO07kDF5u5Xn",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-13T13:46:38.492Z",
-          "execs_24h": 10,
-          "errors_24h": 10,
-          "duration_24h_ms": 3331
+          "last_status": "success",
+          "last_at": "2026-05-16T09:33:31.827Z",
+          "execs_24h": 2,
+          "errors_24h": 0,
+          "duration_24h_ms": 1371
         }
       },
       {
         "data": {
-          "id": "wf:I7BJ9Bgb21J1b5Ap",
+          "id": "wf:G9a0SNY1bMhPfIUS",
           "type": "wf",
-          "label": "TGV Workflow E - Buchhalter Versand v1.9 Address Fix",
-          "active": false,
-          "hits_count": 2,
-          "wf_id": "I7BJ9Bgb21J1b5Ap",
+          "label": "TGV Cron Mail Failure-Notify v0.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "G9a0SNY1bMhPfIUS",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
+          "last_status": "success",
+          "last_at": "2026-05-16T06:00:00.131Z",
+          "execs_24h": 1,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 3064
         }
       },
       {
@@ -177,11 +177,11 @@
           "hits_count": 0,
           "wf_id": "KRNRcSLSUiVC8nTW",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
-          "errors_24h": 0,
-          "duration_24h_ms": 0
+          "last_status": "success",
+          "last_at": "2026-05-16T01:53:36.074Z",
+          "execs_24h": 3,
+          "errors_24h": 1,
+          "duration_24h_ms": 13419
         }
       },
       {
@@ -193,11 +193,11 @@
           "hits_count": 0,
           "wf_id": "LXB4KSgDbqFi1jc0",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-12T22:54:27.481Z",
-          "execs_24h": 1,
-          "errors_24h": 1,
-          "duration_24h_ms": 919
+          "last_status": "success",
+          "last_at": "2026-05-16T09:26:23.631Z",
+          "execs_24h": 3,
+          "errors_24h": 0,
+          "duration_24h_ms": 125
         }
       },
       {
@@ -209,27 +209,11 @@
           "hits_count": 0,
           "wf_id": "MkG0m64HF9Z7jmxK",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-13T13:46:39.180Z",
-          "execs_24h": 6,
-          "errors_24h": 6,
-          "duration_24h_ms": 267
-        }
-      },
-      {
-        "data": {
-          "id": "wf:Pofm867HQoLoWBXA",
-          "type": "wf",
-          "label": "TGV - One-shot TXN AI Reclass v1",
-          "active": false,
-          "hits_count": 3,
-          "wf_id": "Pofm867HQoLoWBXA",
-          "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
+          "last_status": "success",
+          "last_at": "2026-05-16T10:12:44.531Z",
+          "execs_24h": 3,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 2225
         }
       },
       {
@@ -258,10 +242,10 @@
           "wf_id": "RKh1lq9ruckrpR24",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-13T10:17:30.186Z",
-          "execs_24h": 12,
-          "errors_24h": 6,
-          "duration_24h_ms": 388772
+          "last_at": "2026-05-16T09:33:24.757Z",
+          "execs_24h": 1,
+          "errors_24h": 0,
+          "duration_24h_ms": 12949
         }
       },
       {
@@ -273,11 +257,11 @@
           "hits_count": 0,
           "wf_id": "RtTqaFYxiFtc9Pdm",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
+          "last_status": "success",
+          "last_at": "2026-05-16T01:53:40.688Z",
+          "execs_24h": 4,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 2433
         }
       },
       {
@@ -289,8 +273,8 @@
           "hits_count": 0,
           "wf_id": "TfR4CfEpElX8Nahy",
           "tags": [],
-          "last_status": "success",
-          "last_at": "2026-05-09T11:21:36.709Z",
+          "last_status": null,
+          "last_at": null,
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -321,11 +305,11 @@
           "hits_count": 0,
           "wf_id": "UvNspgnrKvQKz9Ln",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
+          "last_status": "success",
+          "last_at": "2026-05-16T09:26:24.125Z",
+          "execs_24h": 3,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 115
         }
       },
       {
@@ -337,8 +321,8 @@
           "hits_count": 0,
           "wf_id": "X4LH5CnG2GH1InkX",
           "tags": [],
-          "last_status": "success",
-          "last_at": "2026-05-12T01:23:08.290Z",
+          "last_status": null,
+          "last_at": null,
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -346,18 +330,34 @@
       },
       {
         "data": {
+          "id": "wf:XZhRMWSvKzTqvwt1",
+          "type": "wf",
+          "label": "TGV Skill Send Mail v0.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "XZhRMWSvKzTqvwt1",
+          "tags": [],
+          "last_status": "success",
+          "last_at": "2026-05-15T23:34:14.043Z",
+          "execs_24h": 4,
+          "errors_24h": 0,
+          "duration_24h_ms": 9790
+        }
+      },
+      {
+        "data": {
           "id": "wf:XiV614kH0syjxU1T",
           "type": "wf",
           "label": "WF E - Buchhalter Versand v1.7.2",
-          "active": true,
+          "active": false,
           "hits_count": 0,
           "wf_id": "XiV614kH0syjxU1T",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-13T09:37:10.808Z",
-          "execs_24h": 2,
-          "errors_24h": 2,
-          "duration_24h_ms": 4046
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -369,56 +369,8 @@
           "hits_count": 0,
           "wf_id": "Xrhc3ajB3onuI8lv",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-13T10:37:00.453Z",
-          "execs_24h": 1,
-          "errors_24h": 1,
-          "duration_24h_ms": 1318
-        }
-      },
-      {
-        "data": {
-          "id": "wf:YvTqsmvC4lpgylDH",
-          "type": "wf",
-          "label": "TGV Workflow E - Buchhalter Versand v1.4 FRLabels",
-          "active": false,
-          "hits_count": 2,
-          "wf_id": "YvTqsmvC4lpgylDH",
-          "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
-          "errors_24h": 0,
-          "duration_24h_ms": 0
-        }
-      },
-      {
-        "data": {
-          "id": "wf:ZtZ6wQQ0DAEQr7Ub",
-          "type": "wf",
-          "label": "TGV — C. Claude Review (pending_review → ai_suggestion)",
-          "active": false,
-          "hits_count": 5,
-          "wf_id": "ZtZ6wQQ0DAEQr7Ub",
-          "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
-          "errors_24h": 0,
-          "duration_24h_ms": 0
-        }
-      },
-      {
-        "data": {
-          "id": "wf:ZwkBC1AXAnobIUuN",
-          "type": "wf",
-          "label": "WF E - Buchhalter Versand v1.7.2",
-          "active": false,
-          "hits_count": 2,
-          "wf_id": "ZwkBC1AXAnobIUuN",
-          "tags": [],
-          "last_status": null,
-          "last_at": null,
+          "last_status": "success",
+          "last_at": "2026-05-14T09:50:27.732Z",
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -458,22 +410,6 @@
       },
       {
         "data": {
-          "id": "wf:c7B4trQwfyRFVm8m",
-          "type": "wf",
-          "label": "TGV B GDrive Intake V3 cc-svcacct",
-          "active": false,
-          "hits_count": 30,
-          "wf_id": "c7B4trQwfyRFVm8m",
-          "tags": [],
-          "last_status": null,
-          "last_at": null,
-          "execs_24h": 0,
-          "errors_24h": 0,
-          "duration_24h_ms": 0
-        }
-      },
-      {
-        "data": {
           "id": "wf:ceurPCxGciw1CN0v",
           "type": "wf",
           "label": "TGV Claude Proxy v1.4",
@@ -482,10 +418,10 @@
           "wf_id": "ceurPCxGciw1CN0v",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-12T00:04:04.621Z",
-          "execs_24h": 0,
+          "last_at": "2026-05-16T14:24:18.553Z",
+          "execs_24h": 4,
           "errors_24h": 0,
-          "duration_24h_ms": 0
+          "duration_24h_ms": 6054
         }
       },
       {
@@ -498,10 +434,10 @@
           "wf_id": "d3xO540JEcAu9Rol",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-12T22:54:28.442Z",
-          "execs_24h": 4,
+          "last_at": "2026-05-16T10:12:39.292Z",
+          "execs_24h": 3,
           "errors_24h": 0,
-          "duration_24h_ms": 53004
+          "duration_24h_ms": 12870
         }
       },
       {
@@ -514,10 +450,10 @@
           "wf_id": "dT1VRLPnDdYxVIKH",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-13T13:46:39.878Z",
+          "last_at": "2026-05-16T10:12:46.211Z",
           "execs_24h": 3,
           "errors_24h": 0,
-          "duration_24h_ms": 3938
+          "duration_24h_ms": 9039
         }
       },
       {
@@ -529,11 +465,11 @@
           "hits_count": 0,
           "wf_id": "eATEzPsbFjHUWcpD",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-13T01:30:31.932Z",
-          "execs_24h": 1,
-          "errors_24h": 1,
-          "duration_24h_ms": 44
+          "last_status": "success",
+          "last_at": "2026-05-15T01:30:37.638Z",
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
         }
       },
       {
@@ -562,10 +498,10 @@
           "wf_id": "fx9POuhD3ybynhat",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-12T22:53:16.100Z",
-          "execs_24h": 16,
+          "last_at": "2026-05-16T09:33:18.133Z",
+          "execs_24h": 2,
           "errors_24h": 0,
-          "duration_24h_ms": 387688
+          "duration_24h_ms": 26599
         }
       },
       {
@@ -593,24 +529,24 @@
           "hits_count": 0,
           "wf_id": "gxMTA6s3Pl4Gsuzc",
           "tags": [],
-          "last_status": "error",
-          "last_at": "2026-05-13T13:46:39.531Z",
-          "execs_24h": 4,
-          "errors_24h": 4,
-          "duration_24h_ms": 255
+          "last_status": "success",
+          "last_at": "2026-05-16T10:12:45.430Z",
+          "execs_24h": 3,
+          "errors_24h": 0,
+          "duration_24h_ms": 1347
         }
       },
       {
         "data": {
-          "id": "wf:iAocgXD6t8Ik4anM",
+          "id": "wf:hVt5zeQkKX0vk521",
           "type": "wf",
-          "label": "WF E - Buchhalter Versand v2.0 PROD",
-          "active": false,
+          "label": "TGV WF E - Buchhalter Versand v2.0",
+          "active": true,
           "hits_count": 0,
-          "wf_id": "iAocgXD6t8Ik4anM",
+          "wf_id": "hVt5zeQkKX0vk521",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
+          "last_status": "success",
+          "last_at": "2026-05-15T00:49:02.364Z",
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -625,8 +561,8 @@
           "hits_count": 0,
           "wf_id": "mZyMkagJPmMCNQqX",
           "tags": [],
-          "last_status": null,
-          "last_at": null,
+          "last_status": "success",
+          "last_at": "2026-05-13T21:27:16.752Z",
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -642,10 +578,10 @@
           "wf_id": "mvOybw4cBU7y8X5Y",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-13T13:46:34.636Z",
-          "execs_24h": 102,
-          "errors_24h": 3,
-          "duration_24h_ms": 364468
+          "last_at": "2026-05-16T13:47:52.333Z",
+          "execs_24h": 19,
+          "errors_24h": 0,
+          "duration_24h_ms": 63732
         }
       },
       {
@@ -656,22 +592,6 @@
           "active": true,
           "hits_count": 0,
           "wf_id": "nf0LbVTOdtlqe6kI",
-          "tags": [],
-          "last_status": "success",
-          "last_at": "2026-05-12T22:53:01.136Z",
-          "execs_24h": 9,
-          "errors_24h": 3,
-          "duration_24h_ms": 17224
-        }
-      },
-      {
-        "data": {
-          "id": "wf:orpWV2VGRPRQ3RsD",
-          "type": "wf",
-          "label": "TGV WF A2 v2 Mail Adapter (thin)",
-          "active": false,
-          "hits_count": 2,
-          "wf_id": "orpWV2VGRPRQ3RsD",
           "tags": [],
           "last_status": null,
           "last_at": null,
@@ -689,8 +609,24 @@
           "hits_count": 0,
           "wf_id": "rMBSFnMsw6NiasZ3",
           "tags": [],
+          "last_status": null,
+          "last_at": null,
+          "execs_24h": 0,
+          "errors_24h": 0,
+          "duration_24h_ms": 0
+        }
+      },
+      {
+        "data": {
+          "id": "wf:tBwu2D2vK8jIsU0B",
+          "type": "wf",
+          "label": "TGV Skill Fetch Drive Binary v0.1",
+          "active": true,
+          "hits_count": 0,
+          "wf_id": "tBwu2D2vK8jIsU0B",
+          "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-12T01:23:10.420Z",
+          "last_at": "2026-05-15T01:32:17.119Z",
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -706,23 +642,7 @@
           "wf_id": "tnuT3QN4AwnbYdSz",
           "tags": [],
           "last_status": "success",
-          "last_at": "2026-05-13T01:30:00.096Z",
-          "execs_24h": 1,
-          "errors_24h": 0,
-          "duration_24h_ms": 32061
-        }
-      },
-      {
-        "data": {
-          "id": "wf:xFhnFWWazCDdepXX",
-          "type": "wf",
-          "label": "TGV Workflow E - Buchhalter Versand v1.11 FINAL FIXED",
-          "active": false,
-          "hits_count": 2,
-          "wf_id": "xFhnFWWazCDdepXX",
-          "tags": [],
-          "last_status": null,
-          "last_at": null,
+          "last_at": "2026-05-15T01:30:00.088Z",
           "execs_24h": 0,
           "errors_24h": 0,
           "duration_24h_ms": 0
@@ -1228,6 +1148,14 @@
       },
       {
         "data": {
+          "id": "table:entity_signatures",
+          "type": "table",
+          "label": "entity_signatures",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
           "id": "table:file_versions",
           "type": "table",
           "label": "file_versions",
@@ -1303,6 +1231,14 @@
           "id": "table:mail_routing_rules",
           "type": "table",
           "label": "mail_routing_rules",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:mail_templates",
+          "type": "table",
+          "label": "mail_templates",
           "hits_count": 0
         }
       },
@@ -1407,6 +1343,14 @@
           "id": "table:n8n_workflows",
           "type": "table",
           "label": "n8n_workflows",
+          "hits_count": 0
+        }
+      },
+      {
+        "data": {
+          "id": "table:outbound_mails",
+          "type": "table",
+          "label": "outbound_mails",
           "hits_count": 0
         }
       },
@@ -1598,20 +1542,20 @@
     "edges": [
       {
         "data": {
-          "id": "call:wf:1OEdRKTJul9grsHT->wf:RDA4Hv8058hqxTOf:tgv-reclass-doc",
-          "source": "wf:1OEdRKTJul9grsHT",
-          "target": "wf:RDA4Hv8058hqxTOf",
-          "type": "webhook_call",
-          "label": "tgv-reclass-doc"
-        }
-      },
-      {
-        "data": {
           "id": "call:wf:1OEdRKTJul9grsHT->wf:d3xO540JEcAu9Rol:tgv-skill-pdf-invoice-extract",
           "source": "wf:1OEdRKTJul9grsHT",
           "target": "wf:d3xO540JEcAu9Rol",
           "type": "webhook_call",
           "label": "tgv-skill-pdf-invoice-extract"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:1OEdRKTJul9grsHT->wf:RDA4Hv8058hqxTOf:tgv-reclass-doc",
+          "source": "wf:1OEdRKTJul9grsHT",
+          "target": "wf:RDA4Hv8058hqxTOf",
+          "type": "webhook_call",
+          "label": "tgv-reclass-doc"
         }
       },
       {
@@ -1625,11 +1569,11 @@
       },
       {
         "data": {
-          "id": "call:wf:KRNRcSLSUiVC8nTW->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
-          "source": "wf:KRNRcSLSUiVC8nTW",
-          "target": "wf:mvOybw4cBU7y8X5Y",
+          "id": "call:wf:G9a0SNY1bMhPfIUS->wf:XZhRMWSvKzTqvwt1:tgv-skill-send-mail",
+          "source": "wf:G9a0SNY1bMhPfIUS",
+          "target": "wf:XZhRMWSvKzTqvwt1",
           "type": "webhook_call",
-          "label": "tgv-skill-router"
+          "label": "tgv-skill-send-mail"
         }
       },
       {
@@ -1643,11 +1587,11 @@
       },
       {
         "data": {
-          "id": "call:wf:RDA4Hv8058hqxTOf->wf:X4LH5CnG2GH1InkX:tgv-kb-learn",
-          "source": "wf:RDA4Hv8058hqxTOf",
-          "target": "wf:X4LH5CnG2GH1InkX",
+          "id": "call:wf:KRNRcSLSUiVC8nTW->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
+          "source": "wf:KRNRcSLSUiVC8nTW",
+          "target": "wf:mvOybw4cBU7y8X5Y",
           "type": "webhook_call",
-          "label": "tgv-kb-learn"
+          "label": "tgv-skill-router"
         }
       },
       {
@@ -1657,6 +1601,15 @@
           "target": "wf:d3xO540JEcAu9Rol",
           "type": "webhook_call",
           "label": "tgv-skill-pdf-invoice-extract"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:RDA4Hv8058hqxTOf->wf:X4LH5CnG2GH1InkX:tgv-kb-learn",
+          "source": "wf:RDA4Hv8058hqxTOf",
+          "target": "wf:X4LH5CnG2GH1InkX",
+          "type": "webhook_call",
+          "label": "tgv-kb-learn"
         }
       },
       {
@@ -1688,15 +1641,6 @@
       },
       {
         "data": {
-          "id": "call:wf:c7B4trQwfyRFVm8m->wf:1OEdRKTJul9grsHT:tgv-post-intake",
-          "source": "wf:c7B4trQwfyRFVm8m",
-          "target": "wf:1OEdRKTJul9grsHT",
-          "type": "webhook_call",
-          "label": "tgv-post-intake"
-        }
-      },
-      {
-        "data": {
           "id": "call:wf:eATEzPsbFjHUWcpD->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
           "source": "wf:eATEzPsbFjHUWcpD",
           "target": "wf:gxMTA6s3Pl4Gsuzc",
@@ -1724,11 +1668,65 @@
       },
       {
         "data": {
+          "id": "call:wf:hVt5zeQkKX0vk521->wf:XZhRMWSvKzTqvwt1:tgv-skill-send-mail",
+          "source": "wf:hVt5zeQkKX0vk521",
+          "target": "wf:XZhRMWSvKzTqvwt1",
+          "type": "webhook_call",
+          "label": "tgv-skill-send-mail"
+        }
+      },
+      {
+        "data": {
           "id": "call:wf:mvOybw4cBU7y8X5Y->wf:MkG0m64HF9Z7jmxK:tgv-skill-reconcile-payment",
           "source": "wf:mvOybw4cBU7y8X5Y",
           "target": "wf:MkG0m64HF9Z7jmxK",
           "type": "webhook_call",
           "label": "tgv-skill-reconcile-payment"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:5jYCxB9NzqyRMqjI:tgv-skill-extract-contract-pdf",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:5jYCxB9NzqyRMqjI",
+          "type": "webhook_call",
+          "label": "tgv-skill-extract-contract-pdf"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:gxMTA6s3Pl4Gsuzc",
+          "type": "webhook_call",
+          "label": "tgv-skill-upsert-contract-from-invoice"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:LXB4KSgDbqFi1jc0:tgv-skill-classify-csv",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:LXB4KSgDbqFi1jc0",
+          "type": "webhook_call",
+          "label": "tgv-skill-classify-csv"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:dT1VRLPnDdYxVIKH:tgv-skill-store-file-to-drive",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:dT1VRLPnDdYxVIKH",
+          "type": "webhook_call",
+          "label": "tgv-skill-store-file-to-drive"
+        }
+      },
+      {
+        "data": {
+          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UYKD3BC6qbUzJl0d:tgv-skill-import-timetrack-csv",
+          "source": "wf:mvOybw4cBU7y8X5Y",
+          "target": "wf:UYKD3BC6qbUzJl0d",
+          "type": "webhook_call",
+          "label": "tgv-skill-import-timetrack-csv"
         }
       },
       {
@@ -1760,74 +1758,11 @@
       },
       {
         "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:dT1VRLPnDdYxVIKH:tgv-skill-store-file-to-drive",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:dT1VRLPnDdYxVIKH",
-          "type": "webhook_call",
-          "label": "tgv-skill-store-file-to-drive"
-        }
-      },
-      {
-        "data": {
           "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UvNspgnrKvQKz9Ln:tgv-skill-import-banking-csv",
           "source": "wf:mvOybw4cBU7y8X5Y",
           "target": "wf:UvNspgnrKvQKz9Ln",
           "type": "webhook_call",
           "label": "tgv-skill-import-banking-csv"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:gxMTA6s3Pl4Gsuzc:tgv-skill-upsert-contract-from-invoice",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:gxMTA6s3Pl4Gsuzc",
-          "type": "webhook_call",
-          "label": "tgv-skill-upsert-contract-from-invoice"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:LXB4KSgDbqFi1jc0:tgv-skill-classify-csv",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:LXB4KSgDbqFi1jc0",
-          "type": "webhook_call",
-          "label": "tgv-skill-classify-csv"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:UYKD3BC6qbUzJl0d:tgv-skill-import-timetrack-csv",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:UYKD3BC6qbUzJl0d",
-          "type": "webhook_call",
-          "label": "tgv-skill-import-timetrack-csv"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:mvOybw4cBU7y8X5Y->wf:5jYCxB9NzqyRMqjI:tgv-skill-extract-contract-pdf",
-          "source": "wf:mvOybw4cBU7y8X5Y",
-          "target": "wf:5jYCxB9NzqyRMqjI",
-          "type": "webhook_call",
-          "label": "tgv-skill-extract-contract-pdf"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:orpWV2VGRPRQ3RsD->wf:mvOybw4cBU7y8X5Y:tgv-skill-router",
-          "source": "wf:orpWV2VGRPRQ3RsD",
-          "target": "wf:mvOybw4cBU7y8X5Y",
-          "type": "webhook_call",
-          "label": "tgv-skill-router"
-        }
-      },
-      {
-        "data": {
-          "id": "call:wf:orpWV2VGRPRQ3RsD->wf:CbNkDkMss3YiHAmN:tgv-skill-orchestrator",
-          "source": "wf:orpWV2VGRPRQ3RsD",
-          "target": "wf:CbNkDkMss3YiHAmN",
-          "type": "webhook_call",
-          "label": "tgv-skill-orchestrator"
         }
       },
       {
@@ -2165,6 +2100,15 @@
       },
       {
         "data": {
+          "id": "fk:entity_signatures_parent_entity_fkey",
+          "source": "table:entity_signatures",
+          "target": "table:entity_signatures",
+          "type": "fk",
+          "label": "parent_entity -> entity"
+        }
+      },
+      {
+        "data": {
           "id": "fk:file_versions_input_item_id_fkey",
           "source": "table:file_versions",
           "target": "table:input_items",
@@ -2246,6 +2190,15 @@
       },
       {
         "data": {
+          "id": "fk:mail_templates_entity_override_fkey",
+          "source": "table:mail_templates",
+          "target": "table:entity_signatures",
+          "type": "fk",
+          "label": "entity_override -> entity"
+        }
+      },
+      {
+        "data": {
           "id": "fk:md_account_aliases_account_id_fkey",
           "source": "table:md_account_aliases",
           "target": "table:md_accounts",
@@ -2305,6 +2258,15 @@
           "target": "table:md_persons",
           "type": "fk",
           "label": "owner_person_id -> person_id"
+        }
+      },
+      {
+        "data": {
+          "id": "fk:outbound_mails_entity_fkey",
+          "source": "table:outbound_mails",
+          "target": "table:entity_signatures",
+          "type": "fk",
+          "label": "entity -> entity"
         }
       },
       {
