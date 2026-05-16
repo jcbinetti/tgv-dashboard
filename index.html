@@ -1,12 +1,12 @@
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
-<!-- TGV Dashboard v11.69.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C, Teil 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status), entityBadge zeigt vollen Firmennamen, Inbox- + Triage-Header mit Klartext-Erklärern, U3 Action-Button "→ bearbeiten" auf needs_review-Docs im Verlauf, U1 Skill-Lauf-Status entdeutigt, Topology-Buttons konsolidiert (2→1 ehrlich). topology.json Live-Stand. -->
+<!-- TGV Dashboard v11.69.1 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0: Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button auf needs_review-Docs, U1 Skill-Lauf-Status entdeutigt, Topology-Buttons 2→1. v11.69.1 (C2 Monatsabschluss): U4 neue Spalte "Art" (Kreditor/Debitor/Intern) + Wording "○ nicht verknüpft"/"kein Konto"-Tooltip, U6 Block-3-Handlungsanleitung. -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.69.0">
-<title>TGV Dashboard v11.69.0 — Financial OS</title>
+<meta name="version" content="11.69.1">
+<title>TGV Dashboard v11.69.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2776,6 +2776,10 @@ body.chat-open #main-content {
           <h2>🏦 Block 3 — Transaktionen ohne Beleg</h2>
           <span style="font-size:12px;color:rgba(255,255,255,0.6)">Buchungen ohne verknüpfte Rechnung</span>
         </div>
+        <div class="alert alert-info" style="margin:12px 16px 0;font-size:12px;">
+          <strong>Was du hier siehst:</strong> Bank-Buchungen dieses Monats, zu denen TGV (noch) keinen Beleg gefunden hat.<br>
+          <strong>Was zu tun ist:</strong> Pro Zeile entweder den fehlenden Beleg in den Drive-Ordner <code>/INBOX</code> legen (TGV verknüpft ihn dann automatisch) — oder, wenn es zu der Buchung keinen Beleg gibt (z.B. Bankgebühr, interne Überweisung), die Zeile als „kein Beleg nötig" markieren. Was hier offen bleibt, fehlt dem Buchhalter.
+        </div>
         <div id="ma-txn-content">
           <div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>
         </div>
@@ -4125,6 +4129,17 @@ const entityBadge = raw => {
   return `<span class="badge ${cls}" title="${full}">${label}</span>`;
 };
 
+const PARTY_ROLE_META = {
+  kreditor: { label: 'Kreditor', bg: '#FEE2E2', fg: '#991B1B', tip: 'Eingangsrechnung — ein Lieferant stellt uns in Rechnung, wir zahlen.' },
+  debitor:  { label: 'Debitor',  bg: '#DCFCE7', fg: '#166534', tip: 'Ausgangsrechnung — wir haben fakturiert, ein Kunde schuldet uns.' },
+  intern:   { label: 'Intern',   bg: '#E0E7FF', fg: '#3730A3', tip: 'Beleg zwischen eigenen Entitäten — Kreditor/Debitor je nach Blickrichtung.' },
+};
+const partyRoleBadge = raw => {
+  const m = PARTY_ROLE_META[String(raw || '').toLowerCase()];
+  if (!m) return `<span style="font-size:11px;color:var(--tx2)" title="Kreditor/Debitor noch nicht klassifiziert">—</span>`;
+  return `<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:${m.bg};color:${m.fg};font-weight:600;" title="${m.tip}">${m.label}</span>`;
+};
+
 const STATUS_LABELS = {
   'inbox':          '📥 Eingang',
   'needs_review':   '⚠️ Prüfen',
@@ -4247,6 +4262,16 @@ const HELP_TOPICS = {
               • Voller Name: <strong>C3 Convis GmbH</strong> · C4 Convis SARL · Privat · KIVISAI<br>
               • Technischer Slug: <code>c3-convis-gmbh</code> (nur in DB-Feldern/IDs, nicht für dich gedacht)</p>
            <p><strong>Mental-Modell:</strong> Alle drei meinen dasselbe. Der volle Name erscheint beim Hovern über dem Kurz-Badge.</p>`,
+  },
+  party_role: {
+    title: '🔁 Art — Kreditor / Debitor / Intern',
+    body: `<p><strong>Was es ist:</strong> Aus welcher Richtung das Geld zu diesem Beleg fließt.</p>
+           <p>• <strong>Kreditor</strong> — Eingangsrechnung: ein Lieferant stellt dir/einer Firma in Rechnung, <em>ihr zahlt</em>.<br>
+              • <strong>Debitor</strong> — Ausgangsrechnung: <em>ihr habt fakturiert</em>, ein Kunde schuldet euch.<br>
+              • <strong>Intern</strong> — Beleg zwischen den eigenen Entitäten (z.B. C3 ↔ C4).<br>
+              • <strong>—</strong> — noch nicht klassifiziert.</p>
+           <p><strong>Achtung Perspektive:</strong> Bei <em>internen</em> Belegen kann sich Kreditor/Debitor je nach betrachteter Entität umkehren — dieselbe Rechnung ist aus der einen Sicht eine Eingangs-, aus der anderen eine Ausgangsrechnung.</p>
+           <p><strong>Quelle:</strong> Skill <code>classify-party-role</code> (konservative Heuristik; bei Unsicherheit bleibt es offen).</p>`,
   },
   skill_run_status: {
     title: '⏱ Skill-Lauf-Status',
@@ -8659,7 +8684,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
 
   try {
     // Dokumente des Monats laden (mit neuen Feldern)
-    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
+    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id,party_role&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
     let docs = await supa(q);
 
     // Entity-Filter
@@ -8692,6 +8717,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
     let html = `<div class="tbl-wrap"><table>
       <thead><tr>
         <th>Anbieter</th>
+        <th>Art ${helpIcon('party_role')}</th>
         <th>Rechnungsdatum</th>
         <th>Konto</th>
         <th class="num">Betrag</th>
@@ -8734,7 +8760,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
 
       const txnCell = d.txn_id
         ? `<button class="ma-action-btn" onclick="openLinkedTxn('${d.txn_id}')" title="Transaktion ${escHtml(String(d.txn_id))} anzeigen" style="color:var(--grn);font-weight:700">🔗 Verknüpft</button>`
-        : `<span style="color:var(--tx2);font-size:11px">○ Offen</span>`;
+        : `<span style="color:var(--tx2);font-size:11px" title="Diese Rechnung ist noch keiner Bank-Transaktion zugeordnet">○ nicht verknüpft</span>`;
 
       // Gesendet-Spalte
       let sentCell;
@@ -8775,9 +8801,11 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
       const txnAcct = d.txn_id ? txnMap[d.txn_id] : null;
       const kontoCell = txnAcct?.account_name
         ? `<span style="font-size:11px;color:var(--tx1)" title="${escHtml(txnAcct.account_id||'')}"><strong>${escHtml(txnAcct.account_id||'')}</strong> ${escHtml(txnAcct.account_name)}</span>`
-        : `<span style="font-size:11px;color:var(--tx2)">— kein Konto</span>`;
+        : `<span style="font-size:11px;color:var(--tx2)" title="Das Bankkonto wird erst sichtbar, sobald die Rechnung mit einer Bank-Transaktion verknüpft ist">—</span>`;
+      const partyCell = partyRoleBadge(d.party_role);
       html += `<tr style="${rowStyle}">
         <td><strong>${escHtml(d.provider || d.drive_file_name || '—')}</strong></td>
+        <td>${partyCell}</td>
         <td style="white-space:nowrap;font-size:12px;color:var(--tx1)">${fmtDate(d.invoice_date || d.date_received)}</td>
         <td>${kontoCell}</td>
         <td class="num">${amtCell}</td>
