@@ -5,8 +5,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.70.0">
-<title>TGV Dashboard v11.70.0 — Financial OS</title>
+<meta name="version" content="11.71.0">
+<title>TGV Dashboard v11.71.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2561,6 +2561,7 @@ body.chat-open #main-content {
             <table>
               <thead>
                 <tr>
+                  <th style="width:64px">#ID</th>
                   <th style="width:120px">Eingang</th>
                   <th>Dateiname</th>
                   <th style="width:140px">Anbieter</th>
@@ -2573,7 +2574,7 @@ body.chat-open #main-content {
                 </tr>
               </thead>
               <tbody id="routed-tbody">
-                <tr><td colspan="9" class="spinner-wrap"><div class="spinner"></div> Lade Verlauf…</td></tr>
+                <tr><td colspan="10" class="spinner-wrap"><div class="spinner"></div> Lade Verlauf…</td></tr>
               </tbody>
             </table>
           </div>
@@ -5190,7 +5191,7 @@ async function loadKPIs() {
       supaCount('documents', `date_received=gte.${d7}`),
       supaCount('documents', `date_received=gte.${d30}`),
       supaCount('txn_master'),
-      supaCount('documents', `status=eq.inbox`),
+      supaCount('documents', `processing_state=eq.inbox`),
       supaCount('prf_contracts', `status=eq.active`)
     ]);
 
@@ -8171,7 +8172,7 @@ function folderLinkFromPath(d) {
 async function loadRouted() {
   const tbody = document.getElementById('routed-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" class="spinner-wrap"><div class="spinner"></div> Lade Verlauf…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="spinner-wrap"><div class="spinner"></div> Lade Verlauf…</td></tr>';
 
   // Time window
   let sinceFilter = '';
@@ -8190,7 +8191,7 @@ async function loadRouted() {
     const rows = await r.json();
     renderRouted(rows);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);text-align:center;padding:20px">Fehler beim Laden: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--red);text-align:center;padding:20px">Fehler beim Laden: ${e.message}</td></tr>`;
   }
 }
 
@@ -8198,7 +8199,7 @@ function renderRouted(rows) {
   const tbody = document.getElementById('routed-tbody');
   if (!tbody) return;
   if (!rows || rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280">Keine einsortierten Dokumente in diesem Zeitraum.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:#6B7280">Keine einsortierten Dokumente in diesem Zeitraum.</td></tr>';
     document.getElementById('routed-total').textContent = '0';
     document.getElementById('routed-c3').textContent = '0';
     document.getElementById('routed-c4').textContent = '0';
@@ -8240,6 +8241,7 @@ function renderRouted(rows) {
       : `<span style="font-size:11px;color:#6B7280">📁 ${escapeHtml(d.final_path || '—')}</span>`;
     const provider = d.provider || (d.ai_suggestion && d.ai_suggestion.provider) || '—';
     return `<tr>
+      <td style="font-size:11px;color:#6B7280;font-variant-numeric:tabular-nums">#${d.id}</td>
       <td style="font-size:11px;color:#6B7280">${fmtDateTime(d.date_received)}</td>
       <td style="font-size:12px">${fileCell}</td>
       <td style="font-size:11px">${escapeHtml(provider)}</td>
