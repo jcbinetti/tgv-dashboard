@@ -6,7 +6,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.74.0">
+<meta name="version" content="11.75.0">
 <title>TGV Dashboard v11.72.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12791,22 +12791,23 @@ function _spDrivePathHtml(doc) {
       <span style="font-size:10px;">Routing-Reason: ${_spEsc(doc.routing_reason || '—')}</span>
     </div>`;
   }
-  // Konstruktion gemäss store-file-to-drive Skill-Logik:
-  //   /TGV-CORE/DOCUMENTS/{ENTITY-FOLDER}/{YEAR}/{MM_MONAT}/{filename}
+  // Konstruktion EXAKT wie tgv-store-file-to-drive v0.4:
+  //   DOCUMENTS/{Entity-Mixed-Case}/{YYYY}/{MM}/{filename}  — KEIN „06_Juni"!
+  //   CONTRACTS/{Entity-Mixed-Case}/{filename}              — ohne Jahr/Monat
   const entityFolderMap = {
-    'c3-convis-gmbh': 'C3-CONVIS-GMBH',
-    'c4-convis-sarl': 'C4-CONVIS-SARL',
+    'c3-convis-gmbh': 'C3-Convis-GmbH',
+    'c4-convis-sarl': 'C4-Convis-SARL',
     'kivisai': 'KIVISAI',
     'privat': 'PRIVAT',
   };
-  const entFolder = entityFolderMap[doc.entity] || doc.entity?.toUpperCase() || '?';
+  const entFolder = entityFolderMap[doc.entity] || doc.entity || '?';
   const dateRef = doc.invoice_date || doc.date_received || '';
   const year = dateRef ? dateRef.slice(0,4) : '?';
   const monthNum = dateRef ? dateRef.slice(5,7) : '?';
-  const monthNames = {'01':'Januar','02':'Februar','03':'März','04':'April','05':'Mai','06':'Juni','07':'Juli','08':'August','09':'September','10':'Oktober','11':'November','12':'Dezember'};
-  const monthFolder = monthNum !== '?' ? `${monthNum}_${monthNames[monthNum]||''}` : '?';
   const docTypeFolder = doc.doc_type === 'Vertrag' ? 'CONTRACTS' : 'DOCUMENTS';
-  const constructedPath = `/TGV-CORE/${docTypeFolder}/${entFolder}/${year}/${monthFolder}/${doc.drive_file_name || '<filename>'}`;
+  const constructedPath = docTypeFolder === 'CONTRACTS'
+    ? `/TGV-CORE/CONTRACTS/${entFolder}/${doc.drive_file_name || '<filename>'}`
+    : `/TGV-CORE/DOCUMENTS/${entFolder}/${year}/${monthNum}/${doc.drive_file_name || '<filename>'}`;
 
   // Iter 38.A1 — Entity↔Drive-Pfad-Drift: liegt die Datei im Ordner der
   // aktuellen Entität? Der Skill-Ordnername.toLowerCase() entspricht dem entity-Key.
@@ -13166,29 +13167,40 @@ async function sidePanelRefile(opts) {
   }
 }
 
-// Lädt final_path/drive_folder_id des Docs neu (Skill patcht beides selbst)
-// und rendert die Drive-Pfad-Karte mit dem Ist-Stand neu.
+// Lädt final_path/drive_folder_id des Docs neu und rendert die Drive-Pfad-
+// Karte mit dem Ist-Stand neu. Pollt kurz (bis ~8 s), weil store-to-drive
+// final_path erst am Ende seiner Drive-Kette patcht. Erfolg = final_path
+// enthält die entity (timing-unabhängig, kein Vorher/Nachher-Vergleich).
 async function _spReloadDocPath(docId) {
   const doc = _sidePanelCurrentDoc;
   if (!doc || doc.id !== docId) return;
-  const beforePath = doc.final_path || '';
+  const pathHasEntity = (r) => !!(r && r.final_path && r.entity
+    && r.final_path.toLowerCase().includes(String(r.entity).toLowerCase()));
   let row = null;
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/documents?id=eq.${docId}&select=final_path,drive_folder_id,entity`;
-    const headers = await _supaAuthHeaders();
-    const res = await fetch(url, { headers });
-    if (res.ok) { const rows = await res.json(); row = rows && rows[0]; }
-  } catch (e) { /* fall through to status below */ }
-  if (row) { doc.final_path = row.final_path; doc.drive_folder_id = row.drive_folder_id; }
-  const moved = !!(row && row.final_path && row.final_path !== beforePath);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 2500));
+    try {
+      const url = `${SUPABASE_URL}/rest/v1/documents?id=eq.${docId}&select=final_path,drive_folder_id,entity`;
+      const headers = await _supaAuthHeaders();
+      const res = await fetch(url, { headers });
+      if (res.ok) { const rows = await res.json(); if (rows && rows[0]) row = rows[0]; }
+    } catch (e) { /* retry */ }
+    if (pathHasEntity(row)) break;
+  }
+  if (row) {
+    doc.final_path = row.final_path;
+    doc.drive_folder_id = row.drive_folder_id;
+    if (row.entity) doc.entity = row.entity;
+  }
+  const ok = pathHasEntity(row) || pathHasEntity(doc);
   const card = document.getElementById('sp-drivepath-card');
   if (card) card.outerHTML = _spDrivePathHtml(doc);
   const statusEl = document.getElementById('sp-refile-status');
   if (statusEl) {
     statusEl.style.display = 'block';
-    statusEl.innerHTML = moved
-      ? `<span style="color:var(--grn);">✅ Datei verschoben. Neuer Pfad: <code style="font-size:10px;">${escHtml(doc.final_path || '—')}</code></span>`
-      : `<span style="color:var(--orng);">⏳ Re-Filing angestoßen — final_path in der DB noch unverändert. Der Skill läuft ggf. noch; Side-Panel in ~30 s erneut öffnen.</span>`;
+    statusEl.innerHTML = ok
+      ? `<span style="color:var(--grn);">✅ Datei liegt jetzt im richtigen Ordner: <code style="font-size:10px;">${escHtml(doc.final_path || '—')}</code></span>`
+      : `<span style="color:var(--orng);">⏳ Re-Filing läuft noch — Pfad noch nicht aktualisiert. Side-Panel in ~30 s erneut öffnen.</span>`;
   }
 }
 
