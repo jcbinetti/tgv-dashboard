@@ -6,7 +6,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.72.0">
+<meta name="version" content="11.73.0">
 <title>TGV Dashboard v11.72.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12785,7 +12785,7 @@ function spToggleEdit(key) {
 // v11.50: Drive-Pfad konstruieren aus doc-Feldern (US12 Vollausbau)
 function _spDrivePathHtml(doc) {
   if (!doc.drive_file_id) {
-    return `<div style="padding:12px;background:var(--bg1);border-radius:4px;font-size:11px;color:var(--tx2);">
+    return `<div id="sp-drivepath-card" style="padding:12px;background:var(--bg1);border-radius:4px;font-size:11px;color:var(--tx2);">
       ⚠️ Kein drive_file_id — Doc ist nicht in Drive gespeichert.<br>
       <span style="font-size:10px;">Routing-Reason: ${_spEsc(doc.routing_reason || '—')}</span>
     </div>`;
@@ -12807,17 +12807,34 @@ function _spDrivePathHtml(doc) {
   const docTypeFolder = doc.doc_type === 'Vertrag' ? 'CONTRACTS' : 'DOCUMENTS';
   const constructedPath = `/TGV-CORE/${docTypeFolder}/${entFolder}/${year}/${monthFolder}/${doc.drive_file_name || '<filename>'}`;
 
-  return `<div style="background:var(--bg1);border-radius:4px;padding:10px 12px;">
-    <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Konstruierter Pfad (laut Routing-Regel)</div>
+  // Iter 38.A1 — Entity↔Drive-Pfad-Drift: liegt die Datei im Ordner der
+  // aktuellen Entität? Der Skill-Ordnername.toLowerCase() entspricht dem entity-Key.
+  const istPath = doc.final_path || '';
+  const pathEntityOk = istPath && doc.entity
+    && istPath.toLowerCase().includes(String(doc.entity).toLowerCase());
+  const drift = !!(istPath && !pathEntityOk);
+  const istBlock = istPath
+    ? `<div style="margin-top:8px;font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;">Aktueller Pfad (DB final_path)</div>
+       <div style="font-family:monospace;font-size:11px;color:${drift ? 'var(--orng)' : 'var(--tx)'};word-break:break-all;line-height:1.5;">${_spEsc(istPath)} ${drift ? '⚠️' : '✓'}</div>`
+    : `<div style="margin-top:8px;font-size:10px;color:var(--tx2);font-style:italic;">final_path in DB nicht gesetzt — Datei wurde noch nicht regulär abgelegt.</div>`;
+  const driftNote = drift
+    ? `<div style="margin-bottom:8px;padding:6px 10px;background:rgba(245,158,11,0.10);border-left:2px solid var(--orng);font-size:10.5px;color:var(--tx);border-radius:3px;">⚠️ <strong>Pfad-Drift:</strong> Die Datei liegt nicht im Ordner der Entität „${_spEsc(doc.entity || '?')}". „Datei verschieben" korrigiert das.</div>`
+    : '';
+
+  return `<div id="sp-drivepath-card" style="background:var(--bg1);border-radius:4px;padding:10px 12px;">
+    <div style="font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Konstruierter Soll-Pfad (laut Routing-Regel)</div>
     <div style="font-family:monospace;font-size:11px;color:var(--tx);word-break:break-all;line-height:1.5;">${_spEsc(constructedPath)}</div>
+    ${istBlock}
     <div style="margin-top:8px;font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;">Drive-Links</div>
     <div style="font-size:11px;margin-top:4px;">
       <a href="https://drive.google.com/file/d/${encodeURIComponent(doc.drive_file_id)}/view" target="_blank" rel="noopener" style="color:var(--blu);">📄 Datei öffnen ↗</a>
     </div>
     <div style="margin-top:8px;font-size:9px;color:var(--tx2);text-transform:uppercase;letter-spacing:0.5px;">file_id (DB)</div>
     <div style="font-family:monospace;font-size:10px;color:var(--tx2);word-break:break-all;">${_spEsc(doc.drive_file_id)}</div>
-    <div style="margin-top:10px;padding:6px 10px;background:rgba(245,158,11,0.08);border-left:2px solid var(--orng);font-size:10px;color:var(--tx2);border-radius:3px;">
-      💡 Pfad-Move (move_document_in_drive MCP-Tool) folgt in Welle (c) — heute nur read-only.
+    <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--bdr);">
+      ${driftNote}
+      <button onclick="sidePanelRefile()" style="background:${drift ? 'var(--orng)' : 'transparent'};color:${drift ? '#fff' : 'var(--blu)'};border:1px solid ${drift ? 'var(--orng)' : 'var(--blu)'};padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;" title="Verschiebt die Drive-Datei in den Ordner der aktuellen Entität (tgv-store-file-to-drive, refile-Modus). drive_file_id bleibt unverändert.">⤳ Datei auf Soll-Pfad verschieben</button>
+      <div id="sp-refile-status" style="display:none;margin-top:8px;font-size:10.5px;color:var(--tx2);"></div>
     </div>
   </div>`;
 }
@@ -13101,6 +13118,76 @@ async function sidePanelRerunCascade() {
     if (status) status.textContent = '✅ Skills gestartet — Cascade läuft im Backend. Refresh in 30s.';
   } catch (e) {
     if (status) status.textContent = '❌ Fehler: ' + e.message;
+  }
+}
+
+// ── Iter 38.A1 — F7 Re-Filing: verschiebt die Drive-Datei in den Ordner der
+//    (ggf. korrigierten) Entität via tgv-store-file-to-drive v0.4 (refile:true).
+const STORE_TO_DRIVE_WEBHOOK = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-store-file-to-drive';
+
+async function sidePanelRefile(opts) {
+  opts = opts || {};
+  const doc = _sidePanelCurrentDoc;
+  if (!doc) return;
+  if (!doc.drive_file_id) {
+    const m = `Doc #${doc.id} hat keine Datei in Drive (drive_file_id fehlt) — nichts zu verschieben.`;
+    if (typeof showToast === 'function') showToast('error', m); else alert(m);
+    return;
+  }
+  if (!opts.skipConfirm && !confirm(`Datei von Doc #${doc.id} in den Drive-Ordner der Entität „${doc.entity || '?'}" verschieben?\n\nVerschiebt die Datei physisch in Google Drive — drive_file_id bleibt gleich, final_path wird aktualisiert.`)) return;
+  const statusEl = document.getElementById('sp-refile-status');
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.innerHTML = '⤳ Re-Filing läuft… Drive-Move kann ~20 s dauern.'; }
+  const targetRoot = (doc.doc_type === 'Vertrag') ? 'contracts' : 'documents';
+  try {
+    const res = await fetch(STORE_TO_DRIVE_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doc_id: doc.id, refile: true, target_root: targetRoot, _trigger: 'side-panel-refile' }),
+    });
+    if (!res.ok && res.status !== 500) throw new Error('HTTP ' + res.status);
+    // store-to-drive patcht documents.final_path/drive_folder_id selbst — Ist-Stand nachladen.
+    await new Promise(r => setTimeout(r, 1200));
+    await _spReloadDocPath(doc.id);
+    try {
+      const aHeaders = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' });
+      await fetch(`${SUPABASE_URL}/rest/v1/agent_events`, {
+        method: 'POST', headers: aHeaders,
+        body: JSON.stringify({
+          tool_name: 'ui.refile_document', event_type: 'user_action', document_id: doc.id,
+          metadata: { entity: doc.entity, target_root: targetRoot, new_final_path: doc.final_path || null },
+          created_at: new Date().toISOString(),
+        }),
+      });
+    } catch (e) { console.warn('[refile] audit insert failed (non-fatal)', e); }
+  } catch (e) {
+    const s = document.getElementById('sp-refile-status');
+    if (s) { s.style.display = 'block'; s.innerHTML = `<span style="color:var(--red);">❌ Re-Filing fehlgeschlagen: ${escHtml(e.message)}</span>`; }
+  }
+}
+
+// Lädt final_path/drive_folder_id des Docs neu (Skill patcht beides selbst)
+// und rendert die Drive-Pfad-Karte mit dem Ist-Stand neu.
+async function _spReloadDocPath(docId) {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc || doc.id !== docId) return;
+  const beforePath = doc.final_path || '';
+  let row = null;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/documents?id=eq.${docId}&select=final_path,drive_folder_id,entity`;
+    const headers = await _supaAuthHeaders();
+    const res = await fetch(url, { headers });
+    if (res.ok) { const rows = await res.json(); row = rows && rows[0]; }
+  } catch (e) { /* fall through to status below */ }
+  if (row) { doc.final_path = row.final_path; doc.drive_folder_id = row.drive_folder_id; }
+  const moved = !!(row && row.final_path && row.final_path !== beforePath);
+  const card = document.getElementById('sp-drivepath-card');
+  if (card) card.outerHTML = _spDrivePathHtml(doc);
+  const statusEl = document.getElementById('sp-refile-status');
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.innerHTML = moved
+      ? `<span style="color:var(--grn);">✅ Datei verschoben. Neuer Pfad: <code style="font-size:10px;">${escHtml(doc.final_path || '—')}</code></span>`
+      : `<span style="color:var(--orng);">⏳ Re-Filing angestoßen — final_path in der DB noch unverändert. Der Skill läuft ggf. noch; Side-Panel in ~30 s erneut öffnen.</span>`;
   }
 }
 
@@ -13618,6 +13705,11 @@ async function sidePanelSaveEdit() {
     status.innerHTML = `✅ gespeichert (${Object.keys(changes).length} Feld${Object.keys(changes).length===1?'':'er'}). System lernt aus dieser Korrektur.`;
     // Update local doc reference
     Object.assign(doc, changes);
+    // Iter 38.A1 — Entity-Korrektur zieht das Drive-Re-Filing nach (F7).
+    if (changes.entity && doc.drive_file_id) {
+      status.innerHTML += ' <span style="color:var(--blu);">Entität geändert → Re-Filing (siehe „Drive-Pfad").</span>';
+      setTimeout(() => sidePanelRefile(), 400);
+    }
     // Refresh Triage in background
     if (typeof loadTriage === 'function') setTimeout(loadTriage, 800);
   } catch (e) {
