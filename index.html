@@ -1,12 +1,13 @@
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
+<!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.71.0">
-<title>TGV Dashboard v11.71.0 — Financial OS</title>
+<meta name="version" content="11.72.0">
+<title>TGV Dashboard v11.72.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -5698,12 +5699,12 @@ async function loadAbgleich() {
     gAbgleichDocs = (docData || []).filter(r => !isTestData(r));
 
     // KPI: verlinkte Paare (Txns mit document_id != null im selben Zeitraum)
-    let linkedFilter = 'document_id=is.not.null&order=booking_date.desc&limit=1';
+    let linkedFilter = 'document_id=not.is.null&order=booking_date.desc&limit=1';
     if (entity !== 'all') {
       const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
-      linkedFilter = `document_id=is.not.null&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}&order=booking_date.desc&limit=1`;
+      linkedFilter = `document_id=not.is.null&entity=eq.${encodeURIComponent(entityMap[entity] || entity)}&order=booking_date.desc&limit=1`;
     }
-    const linkedCount = await supaCount('txn_master', 'document_id=is.not.null' + (entity !== 'all' ? `&entity=eq.${encodeURIComponent({ priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' }[entity] || entity)}` : ''));
+    const linkedCount = await supaCount('txn_master', 'document_id=not.is.null' + (entity !== 'all' ? `&entity=eq.${encodeURIComponent({ priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' }[entity] || entity)}` : ''));
 
     // Update KPIs
     const txnCountEl = document.getElementById('ak-txn-count');
@@ -9412,6 +9413,21 @@ let gTriageSkills = [];
 let gTriageSkillStats = {};                  // skill_name -> { correct, incorrect, total }
 let gTriageDebounce = null;
 
+// Iter 36 C2 (F19): aktive Skills live aus skill_definitions — Triage-Karten
+// dürfen Verfügbarkeit nicht hardcoden (analog Iter-34-U9-Chatbot-Fix).
+let gTriageActiveSkills = new Set();
+let _triageSkillRegistryLoaded = false;
+async function ensureTriageSkillRegistry() {
+  if (_triageSkillRegistryLoaded) return;
+  try {
+    const rows = await supa('skill_definitions?select=name&active=eq.true');
+    gTriageActiveSkills = new Set((rows || []).map(r => r.name));
+    _triageSkillRegistryLoaded = true;
+  } catch (e) {
+    console.warn('[triage] skill_definitions nicht ladbar — Verfügbarkeit unbekannt:', e);
+  }
+}
+
 function triageDebounceLoad() {
   clearTimeout(gTriageDebounce);
   gTriageDebounce = setTimeout(loadTriage, 250);
@@ -9632,15 +9648,23 @@ function triageSuggestSkills(doc) {
   if (stream.includes('STEUER') || stream.includes('TAX')) {
     add('tgv-skill-tax-extract', 'Steuer-Beleg extrahieren', 'Klassifikation als Steuer-relevant', 82, true);
   }
-  // Always-show option
+  // Always-show option — Iter 36 A3 (F12c): bei unbekanntem Doc-Type die
+  // Inhalts-Extraktion VORauswählen, sonst würde das Doc ungelesen abgelegt.
   if (out.length === 0) {
-    add('tgv-pdf-invoice-extract', 'Rechnung extrahieren', 'Standard-Vorschlag bei unbekanntem Doc-Type', 50, false);
+    add('tgv-pdf-invoice-extract', 'Rechnung extrahieren', 'Standard-Vorschlag bei unbekanntem Doc-Type — liest den Inhalt vor der Ablage', 50, true);
   }
   add('tgv-store-file-to-drive', 'In Drive ablegen', 'Routing nach DOCUMENTS/{entity}/{type}/{year}/', 99, true);
 
-  // Roadmap-Slots (Iter 15.2 Workshop-Output)
-  add('tgv-skill-classify-project', 'Projekt zuordnen ⏳ @Iter 16', 'Erkennt project_code, taggt Doc — Skill in der Mache', 0, false);
-  add('tgv-skill-detect-duplicate', 'Duplikat-Detection ⏳ @Iter 16', 'Findet ähnliche Docs (Provider+Betrag+Datum)', 0, false);
+  // Roadmap-Slots — Iter 36 C2 (F19): Verfügbarkeit live aus skill_definitions
+  // statt hardcodet „@Iter 16". Aktiver Skill → echte Karte, sonst Future-Slot.
+  // Iter 36 D1/F20: detect-duplicate ist KEIN Checkbox-Skill mehr — der
+  // Duplikat-Check läuft serverseitig garantiert (Router v0.6, Iter 35.A2).
+  // Eine Garantie ist keine User-Wahl.
+  function addRegistrySlot(name, label, desc, liveConf) {
+    if (gTriageActiveSkills.has(name)) add(name, label, desc, liveConf, false);
+    else add(name, label + ' ⏳ noch nicht verfügbar', desc + ' — Skill in der Mache', 0, false);
+  }
+  addRegistrySlot('tgv-skill-classify-project', 'Projekt zuordnen', 'Erkennt project_code, taggt Doc', 60);
 
   return out;
 }
@@ -9758,28 +9782,31 @@ function triageDocCard(doc) {
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <!-- Iter 20.1 Side-Panel-Trigger (Workshop Q1 C→A Pfad) -->
-          <button onclick="openSidePanelForDocId(${doc.id})"
-                  title="Side-Panel öffnen: PDF inline + Felder editieren + Skill-History (Iter 20.1)"
-                  style="background:var(--bg1);border:1px solid var(--bdr);color:var(--tx);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;">
-            📋 Detail
-          </button>
           <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
                  onchange="triageToggleBulk(${doc.id})"
                  title="Bulk-Auswahl"
                  style="width:18px;height:18px;accent-color:var(--blu);cursor:pointer;">
         </div>
       </div>
-      <div style="font-size:12px;color:var(--tx2);margin-bottom:8px;background:var(--bg1);padding:8px 10px;border-radius:4px;border-left:3px solid var(--blu);" title="✓ Häkchen = beim Klick auf 'Zuweisen + ausführen' wird dieser Skill ausgeführt. Vorausgewählt sind Skills die das System für relevant hält. Stat 'X/Y richtig' = wie oft dieser Skill historisch korrekt war (NICHT nur für dieses Doc). 'schon gelaufen' = bereits einmal ausgeführt, kann re-run.">
-        <strong style="color:var(--tx);">Was soll mit diesem Doc passieren?</strong><br>
-        <span style="font-size:11px;">✓ vorgewählt = relevant laut KI · klick „Zuweisen + ausführen" startet alle markierten · ↻ schon gelaufen = re-run möglich</span>
-      </div>
-      <div>${skillsHtml}</div>
-      <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);align-items:center;flex-wrap:wrap;">
-        <button class="btn-sm" onclick="triageApplyDoc(${doc.id})" style="background:var(--blu);color:white;padding:6px 14px;font-weight:500;">Zuweisen + ausführen</button>
+      <!-- Iter 36 D2 (Option A, F21-Workshop): Review-Inbox — der Skill-
+           Maschinenraum ist eingeklappt. Standard-Aktion ist die fachliche
+           Prüfung im Detail-Panel; der Orchestrator führt die Skills
+           serverseitig selbst aus (Orchestrator-Vision). -->
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-sm" onclick="openSidePanelForDocId(${doc.id})" title="Detail-Panel: Vorschau + extrahierte Felder prüfen/korrigieren" style="background:var(--blu);color:white;padding:6px 16px;font-weight:600;">📋 Prüfen — Vorschau &amp; Felder</button>
         ${doc.drive_file_id ? `<a class="btn-sm" href="https://drive.google.com/file/d/${doc.drive_file_id}/view" target="_blank" style="background:transparent;color:var(--tx);border:1px solid var(--bdr);padding:6px 14px;text-decoration:none;">Doc öffnen ↗</a>` : ''}
-        <button class="btn-sm" onclick="triageSuggestSkillGap(${doc.id})" title="Workshop 15.8 — neuer Skill nominieren" style="background:transparent;color:var(--orng);border:1px dashed var(--orng);padding:6px 12px;font-size:12px;margin-left:auto;">💡 Diesen Skill bräuchte ich…</button>
       </div>
+      <details class="triage-maschinenraum" style="margin-top:10px;">
+        <summary style="cursor:pointer;font-size:12px;color:var(--tx2);padding:4px 0;">🔧 Skill-Details &amp; manueller Eingriff — der Agent erledigt das normalerweise selbst</summary>
+        <div style="font-size:11px;color:var(--tx2);margin:6px 0 8px;background:var(--bg1);padding:8px 10px;border-radius:4px;border-left:3px solid var(--blu);">
+          Nur für Spezialfälle: einzelne Skills gezielt (re-)starten. ✓ vorgewählt = relevant laut KI · ↻ = schon gelaufen.
+        </div>
+        <div>${skillsHtml}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn-sm" onclick="triageApplyDoc(${doc.id})" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 14px;">Markierte Skills ausführen</button>
+          <button class="btn-sm" onclick="triageSuggestSkillGap(${doc.id})" title="Workshop 15.8 — neuer Skill nominieren" style="background:transparent;color:var(--orng);border:1px dashed var(--orng);padding:6px 12px;font-size:12px;">💡 Diesen Skill bräuchte ich…</button>
+        </div>
+      </details>
     </div>`;
 }
 
@@ -10133,6 +10160,8 @@ async function loadTriage() {
 
   // Iter 15.3 — Lazy-Load skill-stats (parallel zur doc-fetch)
   triageFetchSkillStats();  // fire & forget, render-cycle picks it up
+  // Iter 36 C2 (F19): aktive Skills laden, bevor die Karten gerendert werden
+  await ensureTriageSkillRegistry();
 
   try {
     const status = document.getElementById('triage-status-filter').value;
@@ -10140,7 +10169,7 @@ async function loadTriage() {
     const search = (document.getElementById('triage-search').value || '').trim();
 
     // Build PostgREST query
-    const fields = 'id,doc_type,target_stream,provider,entity,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,skills_done_versions,subject,mail_subject';
+    const fields = 'id,doc_type,target_stream,provider,entity,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject';
     const filters = [];
     if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review)');
     else if (status === 'inbox') filters.push('processing_state=eq.inbox');
@@ -13092,12 +13121,16 @@ function openSidePanel(doc) {
   // === Datei-Vorschau Section (Iter 33 S10/S11: typ-abhängig statt hartkodiert "PDF") ===
   const fileKind = _spFileKind(doc.drive_file_name);
   const pdfUrl = _spDriveEmbedUrl(doc.drive_file_id);
+  // Iter 36 F18: bei vorhandenem drive_file_id auch unbekannte Extension ('?')
+  // inline rendern — der Drive-/preview-iframe erkennt den Typ selbst. Nur
+  // bekannte, nicht-inline-fähige Typen (AVIF/CSV/Tabelle) bleiben Fallback.
+  const renderInline = fileKind.inline || fileKind.ext === '?';
   let pdfHtml;
   if (!pdfUrl) {
     pdfHtml = `<div style="padding:24px 14px;text-align:center;color:var(--tx2);font-size:12px;background:var(--bg1);border-radius:4px;">
          ⚠️ Keine Datei — Doc hat kein drive_file_id (z.B. duplicate-stub oder WG/Fwd-Verlust).
        </div>`;
-  } else if (fileKind.inline) {
+  } else if (renderInline) {
     pdfHtml = `<iframe id="side-panel-pdf-frame" src="${pdfUrl}" title="${fileKind.label}" loading="lazy"></iframe>
        <div style="margin-top:6px;font-size:10px;color:var(--tx2);">
          📎 ${_spEsc(doc.drive_file_name || 'unbenannt')} ·
