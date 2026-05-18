@@ -6,7 +6,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.73.0">
+<meta name="version" content="11.74.0">
 <title>TGV Dashboard v11.72.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12039,7 +12039,7 @@ function renderAlleDocs(forceShowAll) {
   let html = `
     <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;display:flex;justify-content:space-between;">
       <span>${shown} von ${total} geladene Docs · max 200 pro Query</span>
-      <span>Klick auf Zeile = Drive-PDF (neuer Tab) · 🎯 = Triage öffnen</span>
+      <span>Klick auf Zeile = Drive-PDF (neuer Tab) · 📋 = Seitenpanel · 🎯 = Triage öffnen</span>
     </div>
     <div class="card"><div class="inbox-table-wrap">
     <table class="inbox-table">
@@ -12063,6 +12063,7 @@ function renderAlleDocs(forceShowAll) {
       ? `onclick="window.open('https://drive.google.com/file/d/${r.drive_file_id}/view','_blank')" style="cursor:pointer;"`
       : `style="cursor:default;"`;
     const triageBtn = `<button class="btn-sm" onclick="event.stopPropagation();showPage('triage',document.querySelector('[onclick*=triage]'));setTimeout(()=>{const f=document.getElementById('triage-search');if(f){f.value='${r.id}';f.dispatchEvent(new Event('input'));}},300);" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:2px 8px;">🎯</button>`;
+    const panelBtn = `<button class="btn-sm" onclick="event.stopPropagation();openSidePanelForDocId(${r.id});" title="Seitenpanel öffnen — Vorschau, Felder korrigieren, Re-Filing (Drive-Move)" style="font-size:10px;padding:2px 8px;">📋</button>`;
     const partyBadge = r.party_role
       ? `<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:${r.party_role==='kreditor'?'#FEE2E2':r.party_role==='debitor'?'#DCFCE7':'#E0E7FF'};color:${r.party_role==='kreditor'?'#991B1B':r.party_role==='debitor'?'#166534':'#3730A3'};">${r.party_role}</span>`
       : `<span style="font-size:10px;color:var(--tx2);">—</span>`;
@@ -12075,7 +12076,7 @@ function renderAlleDocs(forceShowAll) {
       <td><span style="font-size:11px;">${escHtml(r.entity || '—')}</span></td>
       <td>${partyBadge}</td>
       <td style="text-align:right;font-size:11px;">${fmtAmt(r.amount, r.currency)}</td>
-      <td>${triageBtn}</td>
+      <td style="white-space:nowrap;">${panelBtn} ${triageBtn}</td>
     </tr>`;
   }
 
@@ -13644,15 +13645,25 @@ function _spResizeEnd() {
   _spResizeStart = null;
 }
 
-// Bridge: Triage-Card-Button → Side-Panel mit Doc aus gTriageDocs
-function openSidePanelForDocId(docId) {
-  const doc = (typeof gTriageDocs !== 'undefined' && gTriageDocs)
+// Bridge: Doc-ID → Side-Panel. Iter 38.A2: faellt auf Direkt-Fetch zurueck,
+// wenn das Doc nicht in gTriageDocs ist (z.B. aus „Alle Docs" oder Status
+// duplicate/done, die der Triage-Filter gar nicht laedt).
+async function openSidePanelForDocId(docId) {
+  let doc = (typeof gTriageDocs !== 'undefined' && gTriageDocs)
     ? gTriageDocs.find(d => d.id === docId)
     : null;
+  if (!doc) {
+    try {
+      const rows = await supa(`documents?id=eq.${docId}&select=*`);
+      doc = rows && rows[0];
+    } catch (e) {
+      console.warn('[side-panel] direct fetch failed for id', docId, e);
+    }
+  }
   if (doc) {
     openSidePanel(doc);
-  } else {
-    console.warn('[side-panel] doc not found in gTriageDocs for id', docId);
+  } else if (typeof toast === 'function') {
+    toast('Doc #' + docId + ' nicht gefunden', 'err');
   }
 }
 
