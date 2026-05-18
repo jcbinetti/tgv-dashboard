@@ -6,7 +6,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.75.0">
+<meta name="version" content="11.76.0">
 <title>TGV Dashboard v11.72.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13104,6 +13104,11 @@ async function _spKbRefreshList() {
   if (cont) cont.innerHTML = _spKbRenderListHtml(rows, doc);
 }
 
+// Iter 38.B1 — Live-Cascade-Feedback: Poll-State.
+let _spCascadePollToken = 0;
+let _spSkillHints = null;
+let _spSkillEcon = null;
+
 async function sidePanelRerunCascade() {
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
@@ -13117,10 +13122,50 @@ async function sidePanelRerunCascade() {
       body: JSON.stringify({ doc_id: doc.id, _trigger: 'side-panel-rerun' }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    if (status) status.textContent = '✅ Skills gestartet — Cascade läuft im Backend. Refresh in 30s.';
+    // Iter 38.B1: Live-Feedback statt „Refresh in 30s" — agent_events pollen.
+    _spPollCascade(doc.id);
   } catch (e) {
     if (status) status.textContent = '❌ Fehler: ' + e.message;
   }
+}
+
+// Iter 38.B1 — pollt agent_events waehrend der laufenden Cascade und rendert
+// die Skill-Aktivitaet progressiv neu. Stoppt bei Inaktivitaet (4 Ticks ohne
+// neues Event, ~14 s) oder nach ~90 s. Minimal: Poll + Nachladen, kein Redesign.
+function _spPollCascade(docId) {
+  const myToken = ++_spCascadePollToken;
+  const status0 = document.getElementById('sp-skills-loading');
+  if (status0) {
+    status0.style.display = 'block';
+    status0.innerHTML = '<span style="color:var(--blu);">⏳ Cascade gestartet — warte auf erste Skill-Events…</span>';
+  }
+  let lastCount = -1, staleTicks = 0, totalTicks = 0;
+  const tick = async () => {
+    if (myToken !== _spCascadePollToken) return;                            // durch neuen Poll abgeloest
+    if (!_sidePanelCurrentDoc || _sidePanelCurrentDoc.id !== docId) return;  // Panel gewechselt/zu
+    totalTicks++;
+    const events = await _spFetchSkillHistory(docId);
+    if (myToken !== _spCascadePollToken) return;
+    const list = document.getElementById('sp-skills-list');
+    if (list) {
+      list.innerHTML = _spRenderSkillHistoryFull(events, _spSkillHints, _spSkillEcon);
+      list.style.display = 'block';
+    }
+    const n = events.length;
+    const last = n ? events[n - 1] : null;
+    const lastName = last ? (last.tool_name || last.event_type || '?') : '—';
+    if (n === lastCount) staleTicks++; else { staleTicks = 0; lastCount = n; }
+    const done = staleTicks >= 4 || totalTicks >= 26;
+    const statusEl = document.getElementById('sp-skills-loading');
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = done
+        ? `<span style="color:var(--grn);">✅ Cascade fertig — ${n} Skill-Event${n === 1 ? '' : 's'} (zuletzt: ${escHtml(lastName)})</span>`
+        : `<span style="color:var(--blu);">⏳ Cascade läuft… ${n} Event${n === 1 ? '' : 's'} · zuletzt: ${escHtml(lastName)}</span>`;
+    }
+    if (!done) setTimeout(tick, 3500);
+  };
+  setTimeout(tick, 2500);
 }
 
 // ── Iter 38.A1 — F7 Re-Filing: verschiebt die Drive-Datei in den Ordner der
@@ -13350,6 +13395,7 @@ function openSidePanel(doc) {
     _spFetchLearningHints(doc.doc_type),
     _spFetchSkillEconomics(),
   ]).then(([events, hints, econ]) => {
+    _spSkillHints = hints; _spSkillEcon = econ;  // Iter 38.B1: Cache fuer Live-Poll
     const list = document.getElementById('sp-skills-list');
     const loading = document.getElementById('sp-skills-loading');
     if (!list || !loading) return;
