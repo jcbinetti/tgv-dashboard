@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.77.0 — 2026-05-20 — Iter 43/44/45 Visibility-Update: Recipient in Triage sichtbar, party_role + Gegenpartei/Aliases sichtbar, Bestand-Heal-Filter, source_lost als eigener Live-Slice, PARKING-Hinweis-Banner, Skill-Versionen live aus skill_definitions / n8n_workflows. -->
+<!-- TGV Dashboard v11.78.0 — 2026-05-21 — UX Polish Pack: semantische Action-Buttons, bessere Fokus-/Hover-Zustände, konsistentere Primary/Secondary/Danger-Hierarchie, mobile Card-Ansicht für Inbox + Alle Docs, klarere benannte Aktionen statt Icon-only Buttons. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.77.0">
-<title>TGV Dashboard v11.77.0 — Financial OS</title>
+<meta name="version" content="11.78.0">
+<title>TGV Dashboard v11.78.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -44,6 +44,7 @@
   --blu: #1D4ED8;
   --blu-bg: #EFF6FF;
   --blu-bd: #BFDBFE;
+  --focus-ring: 0 0 0 3px rgba(29, 78, 216, 0.18);
   --sidebar-w: 240px;
   --sidebar-w-col: 56px;
   --topbar-h: 56px;
@@ -778,15 +779,20 @@ tbody tr:last-child td { border-bottom: none; }
 .inbox-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .btn-sm {
   padding: 5px 11px;
-  border-radius: 4px;
-  border: none;
+  border-radius: 6px;
+  border: 1px solid transparent;
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  line-height: 1.15;
 }
 .btn-approve { background: var(--grn-bg); color: var(--grn); border: 1px solid var(--grn-bd); }
 .btn-approve:hover { background: var(--grn); color: #fff; }
@@ -794,6 +800,38 @@ tbody tr:last-child td { border-bottom: none; }
 .btn-open:hover { background: var(--blu); color: #fff; }
 .btn-reject { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
 .btn-reject:hover { background: var(--red); color: #fff; }
+.btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+.btn-primary:hover { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn-secondary { background: var(--blu-bg); color: var(--blu); border-color: var(--blu-bd); }
+.btn-secondary:hover { background: var(--blu); border-color: var(--blu); color: #fff; }
+.btn-neutral { background: var(--s0); color: var(--tx0); border-color: var(--s3); }
+.btn-neutral:hover { background: var(--s1); border-color: var(--tx2); color: var(--tx0); }
+.btn-danger { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
+.btn-danger:hover { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-attention { background: var(--amb-bg); color: var(--amb); border-color: var(--amb-bd); }
+.btn-attention:hover { background: var(--amb); border-color: var(--amb); color: #fff; }
+.btn-icon { min-width: 32px; padding-left: 9px; padding-right: 9px; }
+.btn-row-actions { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.btn-sm:hover { transform: translateY(-1px); }
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+.nav-item:focus-visible,
+.filter-btn:focus-visible,
+.inbox-chip:focus-visible,
+.inbox-tab:focus-visible,
+.fin-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.filter-btn.active,
+.inbox-chip.active {
+  box-shadow: 0 2px 8px rgba(0, 31, 63, 0.12);
+}
 
 /* ─── AMOUNT ─── */
 .amt-in  { color: var(--grn); font-weight: 600; }
@@ -812,6 +850,13 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ─── TOOLTIP ─── */
 [title] { cursor: help; }
+button[title],
+a[title],
+.nav-item[title],
+.inbox-chip[title],
+.inbox-tab[title],
+.filter-btn[title],
+.fin-tab[title] { cursor: pointer; }
 
 /* ─── INBOX TABLE ─── */
 .inbox-table-wrap {
@@ -1511,6 +1556,63 @@ body.sp-resizing { cursor: ew-resize !important; user-select: none; }
   }
   #side-panel.open { transform: translateY(0); }
   #side-panel-pdf-frame { height: 240px; }
+  .page { padding: 16px; }
+  .page-header { margin-bottom: 16px; }
+  .page-header h1 { font-size: 20px; }
+  .page-header p { font-size: 12px; }
+  .inbox-tabs { overflow-x: auto; }
+  .inbox-tab { padding: 10px 14px; font-size: 12px; }
+  .inbox-filter-bar { padding: 10px; gap: 8px; }
+  .btn-sm { min-height: 34px; }
+  .mobile-table-cards {
+    max-height: none;
+    overflow: visible;
+    border-radius: 0;
+  }
+  .mobile-table-cards .inbox-table,
+  .mobile-table-cards .inbox-table tbody,
+  .mobile-table-cards .inbox-table tr,
+  .mobile-table-cards .inbox-table td {
+    display: block;
+    width: 100%;
+  }
+  .mobile-table-cards .inbox-table thead { display: none; }
+  .mobile-table-cards .inbox-table tbody {
+    display: grid;
+    gap: 12px;
+    padding: 8px;
+    background: var(--s1);
+  }
+  .mobile-table-cards .inbox-table tr {
+    background: var(--s0);
+    border: 1px solid var(--s3);
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .mobile-table-cards .inbox-table tbody td {
+    padding: 6px 0;
+    border-bottom: none;
+    white-space: normal !important;
+    text-align: left !important;
+  }
+  .mobile-table-cards .inbox-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--tx2);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .mobile-table-cards .inbox-table tbody td[data-label="Aktionen"]::before,
+  .mobile-table-cards .inbox-table tbody td[data-label="Aktion"]::before {
+    margin-bottom: 6px;
+  }
+  .mobile-table-cards .btn-row-actions {
+    justify-content: flex-start;
+  }
 }
 
 /* ─── CHAT PANEL ─── */
@@ -5436,7 +5538,7 @@ function renderInbox() {
     (<code>routing_reason ILIKE '%storage_guard_bestand_heal%'</code>) und sind hier als eigener Sichtbarkeits-Filter lesbar.
   </div>` : ''}
   <div class="card">
-    <div class="inbox-table-wrap">
+    <div class="inbox-table-wrap mobile-table-cards">
     <table class="inbox-table">
       <thead><tr>
         <th>Datum</th>
@@ -5499,25 +5601,25 @@ function renderInbox() {
     const rowBg = isDup ? ' style="background:rgba(251,191,36,0.07)"' : '';
 
     html += `<tr id="inbox-row-${r.id}"${rowBg}>
-      <td style="white-space:nowrap">
+      <td data-label="Datum" style="white-space:nowrap">
         ${fmtDate(displayDate)}
         ${isVorschuss ? '<br><span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;font-size:9px">Vorschuss</span>' : ''}
         ${isSent ? '<br><span class="pill pill-approved" style="font-size:9px">&#x1F4E7; Buchhalter</span>' : ''}
       </td>
-      <td style="max-width:220px"${nameTitle}>
+      <td data-label="Datei / Anbieter" style="max-width:220px"${nameTitle}>
         <span style="font-weight:600">${fileName}</span>${driveLink}${providerLabel}${dupBadge}${healBadge}
       </td>
-      <td style="white-space:nowrap;color:var(--tx2)">${dateCell}</td>
-      <td class="num" style="white-space:nowrap">${amtCell}</td>
-      <td>${entitySel}</td>
-      <td>${docTypeSel}</td>
-      <td>${statusPill(r.status)}</td>
-      <td style="font-size:11px;white-space:nowrap">${r.target_stream ? escHtml(r.target_stream) : '—'}</td>
-      <td>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          <button class="btn-sm btn-approve" onclick="approveDoc('${r.id}')" title="Freigeben: speichert Entität+Typ → Skill Router startet automatisch (RECHNUNG/STEUER → Invoice-Extraktion + Reconcile | VERTRAG → Vertrags-Extraktion → prf_contracts | TIMETRACK → Import)">&#x2705; OK</button>
-          ${!isSent ? `<button class="btn-sm btn-open" onclick="confirmSendBuchhalter('${r.id}',this)" title="ACHTUNG: Sendet sofort eine E-Mail an den Buchhalter!" style="background:#f59e0b;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;font-size:12px">&#x1F4E7;</button>` : ''}
-          <button class="btn-sm btn-reject" onclick="rejectDoc('${r.id}')" title="Ablehnen: setzt Status auf rejected — kein Skill, kein Versand, bleibt in DB">&#x274C;</button>
+      <td data-label="Rechnungsdatum" style="white-space:nowrap;color:var(--tx2)">${dateCell}</td>
+      <td data-label="Betrag" class="num" style="white-space:nowrap">${amtCell}</td>
+      <td data-label="Entität">${entitySel}</td>
+      <td data-label="Typ">${docTypeSel}</td>
+      <td data-label="Status">${statusPill(r.status)}</td>
+      <td data-label="Routing" style="font-size:11px;white-space:nowrap">${r.target_stream ? escHtml(r.target_stream) : '—'}</td>
+      <td data-label="Aktionen">
+        <div class="btn-row-actions">
+          <button class="btn-sm btn-primary" onclick="approveDoc('${r.id}')" title="Freigeben: speichert Entität+Typ → Skill Router startet automatisch (RECHNUNG/STEUER → Invoice-Extraktion + Reconcile | VERTRAG → Vertrags-Extraktion → prf_contracts | TIMETRACK → Import)">✅ Freigeben</button>
+          ${!isSent ? `<button class="btn-sm btn-attention" onclick="confirmSendBuchhalter('${r.id}',this)" title="ACHTUNG: Sendet sofort eine E-Mail an den Buchhalter!">📨 Senden</button>` : ''}
+          <button class="btn-sm btn-danger" onclick="rejectDoc('${r.id}')" title="Ablehnen: setzt Status auf rejected — kein Skill, kein Versand, bleibt in DB">❌ Ablehnen</button>
         </div>
       </td>
     </tr>`;
@@ -9931,8 +10033,8 @@ function triageDocCard(doc) {
            Prüfung im Detail-Panel; der Orchestrator führt die Skills
            serverseitig selbst aus (Orchestrator-Vision). -->
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
-        <button class="btn-sm" onclick="openSidePanelForDocId(${doc.id})" title="Detail-Panel: Vorschau + extrahierte Felder prüfen/korrigieren" style="background:var(--blu);color:white;padding:6px 16px;font-weight:600;">📋 Prüfen — Vorschau &amp; Felder</button>
-        ${doc.drive_file_id ? `<a class="btn-sm" href="https://drive.google.com/file/d/${doc.drive_file_id}/view" target="_blank" style="background:transparent;color:var(--tx);border:1px solid var(--bdr);padding:6px 14px;text-decoration:none;">Doc öffnen ↗</a>` : ''}
+        <button class="btn-sm btn-primary" onclick="openSidePanelForDocId(${doc.id})" title="Detail-Panel: Vorschau + extrahierte Felder prüfen/korrigieren" style="padding:6px 16px;font-weight:700;">📋 Prüfen — Vorschau &amp; Felder</button>
+        ${doc.drive_file_id ? `<a class="btn-sm btn-neutral" href="https://drive.google.com/file/d/${doc.drive_file_id}/view" target="_blank" style="padding:6px 14px;text-decoration:none;">↗ Doc öffnen</a>` : ''}
       </div>
       <details class="triage-maschinenraum" style="margin-top:10px;">
         <summary style="cursor:pointer;font-size:12px;color:var(--tx2);padding:4px 0;">🔧 Skill-Details &amp; manueller Eingriff — der Agent erledigt das normalerweise selbst</summary>
@@ -9941,7 +10043,7 @@ function triageDocCard(doc) {
         </div>
         <div>${skillsHtml}</div>
         <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
-          <button class="btn-sm" onclick="triageApplyDoc(${doc.id})" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 14px;">Markierte Skills ausführen</button>
+          <button class="btn-sm btn-secondary" onclick="triageApplyDoc(${doc.id})" style="padding:6px 14px;">▶ Markierte Skills ausführen</button>
           <button class="btn-sm" onclick="triageSuggestSkillGap(${doc.id})" title="Workshop 15.8 — neuer Skill nominieren" style="background:transparent;color:var(--orng);border:1px dashed var(--orng);padding:6px 12px;font-size:12px;">💡 Diesen Skill bräuchte ich…</button>
         </div>
       </details>
@@ -12183,7 +12285,7 @@ function renderAlleDocs(forceShowAll) {
       <span>${shown} von ${total} geladene Docs · max 200 pro Query</span>
       <span>Klick auf Zeile = Drive-PDF (neuer Tab) · 📋 = Seitenpanel · 🎯 = Triage öffnen</span>
     </div>
-    <div class="card"><div class="inbox-table-wrap">
+    <div class="card"><div class="inbox-table-wrap mobile-table-cards">
     <table class="inbox-table">
       <thead><tr>
         <th style="width:50px;">ID</th>
@@ -12205,22 +12307,22 @@ function renderAlleDocs(forceShowAll) {
     const driveOpen = r.drive_file_id
       ? `onclick="window.open('https://drive.google.com/file/d/${r.drive_file_id}/view','_blank')" style="cursor:pointer;"`
       : `style="cursor:default;"`;
-    const triageBtn = `<button class="btn-sm" onclick="event.stopPropagation();showPage('triage',document.querySelector('[onclick*=triage]'));setTimeout(()=>{const f=document.getElementById('triage-search');if(f){f.value='${r.id}';f.dispatchEvent(new Event('input'));}},300);" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:2px 8px;">🎯</button>`;
-    const panelBtn = `<button class="btn-sm" onclick="event.stopPropagation();openSidePanelForDocId(${r.id});" title="Seitenpanel öffnen — Vorschau, Felder korrigieren, Re-Filing (Drive-Move)" style="font-size:10px;padding:2px 8px;">📋</button>`;
+    const triageBtn = `<button class="btn-sm btn-secondary" onclick="event.stopPropagation();showPage('triage',document.querySelector('[onclick*=triage]'));setTimeout(()=>{const f=document.getElementById('triage-search');if(f){f.value='${r.id}';f.dispatchEvent(new Event('input'));}},300);" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:4px 8px;">🎯 Triage</button>`;
+    const panelBtn = `<button class="btn-sm btn-neutral" onclick="event.stopPropagation();openSidePanelForDocId(${r.id});" title="Seitenpanel öffnen — Vorschau, Felder korrigieren, Re-Filing (Drive-Move)" style="font-size:10px;padding:4px 8px;">📋 Details</button>`;
     const partyBadge = partyRoleBadge(r.party_role);
     const stateHint = r.processing_state ? `<div style="font-size:10px;color:var(--tx2);margin-top:3px;">state=${escHtml(r.processing_state)}</div>` : '';
     const healHint = isBestandHealDoc(r) ? `<div style="font-size:10px;color:#b45309;margin-top:3px;">Bestand-Heal</div>` : '';
     html += `<tr ${driveOpen} title="${r.drive_file_id ? 'Drive-PDF öffnen' : 'Kein drive_file_id verknüpft'}">
-      <td style="font-weight:600;color:var(--blu);">${r.id}</td>
-      <td style="font-size:11px;">${fmtDate(displayDate)}</td>
-      <td>${fileName}${r.provider && r.provider !== r.drive_file_name ? `<br><span style="font-size:10px;color:var(--tx2);">${escHtml(r.provider)}</span>` : ''}</td>
-      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(r.recipient || '')}">${escHtml(r.recipient || '—')}</td>
-      <td><span style="font-size:11px;">${escHtml(r.doc_type || '—')}</span></td>
-      <td><span style="font-size:10px;color:var(--tx2);">${escHtml(r.status || '—')}</span>${stateHint}${healHint}</td>
-      <td><span style="font-size:11px;">${escHtml(r.entity || '—')}</span></td>
-      <td>${partyBadge}</td>
-      <td style="text-align:right;font-size:11px;">${fmtAmt(r.amount, r.currency)}</td>
-      <td style="white-space:nowrap;">${panelBtn} ${triageBtn}</td>
+      <td data-label="ID" style="font-weight:600;color:var(--blu);">${r.id}</td>
+      <td data-label="Datum" style="font-size:11px;">${fmtDate(displayDate)}</td>
+      <td data-label="Provider / Datei">${fileName}${r.provider && r.provider !== r.drive_file_name ? `<br><span style="font-size:10px;color:var(--tx2);">${escHtml(r.provider)}</span>` : ''}</td>
+      <td data-label="Recipient" style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(r.recipient || '')}">${escHtml(r.recipient || '—')}</td>
+      <td data-label="Typ"><span style="font-size:11px;">${escHtml(r.doc_type || '—')}</span></td>
+      <td data-label="Status"><span style="font-size:10px;color:var(--tx2);">${escHtml(r.status || '—')}</span>${stateHint}${healHint}</td>
+      <td data-label="Entity"><span style="font-size:11px;">${escHtml(r.entity || '—')}</span></td>
+      <td data-label="Party-Role">${partyBadge}</td>
+      <td data-label="Betrag" style="text-align:right;font-size:11px;">${fmtAmt(r.amount, r.currency)}</td>
+      <td data-label="Aktion"><div class="btn-row-actions">${panelBtn} ${triageBtn}</div></td>
     </tr>`;
   }
 
