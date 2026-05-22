@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.81.0 — 2026-05-22 — Frontend Polish Pack: Triage-Zähler wieder sichtbar im Header, Filter-Modal scrollbar und sofort filternd, Supplier-Edit-Modal sauber über dem Sidepanel, Monatsabschluss erklärt leeres Konto klar bei fehlender Verknüpfung. -->
+<!-- TGV Dashboard v11.82.0 — 2026-05-23 — Supplier Override UI: doc-lokale Supplier-Overrides im Sidepanel via Supabase RPC, klare Trennung zu globalem kb_suppliers-Deactivate, Override-Banner + Clear-Aktion. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.81.0">
-<title>TGV Dashboard v11.81.0 — Financial OS</title>
+<meta name="version" content="11.82.0">
+<title>TGV Dashboard v11.82.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13848,12 +13848,114 @@ async function _spFetchAllSupplierNames() {
 async function _spFetchSupplier(provider) {
   if (!provider) return [];
   try {
-    const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?pattern=ilike.*${encodeURIComponent(provider)}*&select=id,pattern,name_normalized,entity,category_l1,category_l2,category_l3,recurring,avg_amount,currency,verification_count,conflict_count,last_seen,active&order=verification_count.desc.nullslast&limit=5`;
+    const url = `${SUPABASE_URL}/rest/v1/kb_suppliers?pattern=ilike.*${encodeURIComponent(provider)}*&select=id,pattern,name_normalized,entity,category_l1,category_l2,category_l3,recurring,avg_amount,currency,verification_count,conflict_count,last_seen,active&order=verification_count.desc.nullslast&limit=10`;
     const headers = await _supaAuthHeaders();
     const res = await fetch(url, { headers });
     if (!res.ok) return [];
     return await res.json();
   } catch (e) { console.warn('[side-panel] kb_suppliers fetch failed', e); return []; }
+}
+
+function _spNormalizeSupplierOverrides(payload) {
+  const raw = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.overrides)
+      ? payload.overrides
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.result)
+          ? payload.result
+          : [];
+  return raw.filter(Boolean).filter(row => row.active !== false && !row.cleared_at);
+}
+
+async function _spFetchSupplierOverrides(docId) {
+  if (!docId) return [];
+  try {
+    const data = await supaRpc('get_document_supplier_override', { p_doc_id: docId });
+    return _spNormalizeSupplierOverrides(data);
+  } catch (e) {
+    console.warn('[side-panel] supplier override fetch failed', e);
+    return [];
+  }
+}
+
+function _spOverrideMode(row) {
+  return row?.mode || row?.override_mode || row?.p_mode || '';
+}
+
+function _spOverrideKbId(row) {
+  const raw = row?.kb_supplier_id ?? row?.kb_id ?? row?.target_kb_supplier_id ?? null;
+  return raw == null ? null : Number(raw);
+}
+
+function _spOverrideSupplierName(row) {
+  return row?.supplier_name || row?.forced_supplier_name || row?.name_normalized || row?.provider_name || '';
+}
+
+function _spOverrideNotes(row) {
+  return row?.notes || row?.note || row?.reason || '';
+}
+
+function _spOverrideCreatedAt(row) {
+  return row?.created_at || row?.inserted_at || row?.applied_at || '';
+}
+
+function _spFindDocOverrideState(s, overrides) {
+  const kbId = Number(s?.id);
+  const aliases = [s?.name_normalized, s?.pattern].filter(Boolean).map(v => String(v).trim().toLowerCase());
+  const ignored = overrides.find(o => _spOverrideMode(o) === 'ignore_match' && _spOverrideKbId(o) === kbId) || null;
+  const forced = overrides.find(o => {
+    if (_spOverrideMode(o) !== 'force_supplier') return false;
+    if (_spOverrideKbId(o) === kbId) return true;
+    const name = _spOverrideSupplierName(o).trim().toLowerCase();
+    return !!name && aliases.includes(name);
+  }) || null;
+  return { ignored, forced };
+}
+
+function _spRenderOverrideSummary(rows, overrides, doc) {
+  const provider = _spEsc(doc?.provider || '—');
+  const resolverNote = `<div style="font-size:10px;color:#b45309;margin-top:6px;">Hinweis: Override wird jetzt doc-lokal gespeichert und auditiert. Die eigentliche Resolver-Anwendung wird backend-seitig separat zugeschaltet.</div>`;
+  if (!overrides.length) {
+    return `<div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.18);border-radius:6px;padding:9px 10px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--tx);font-weight:600;">Kein doc-lokaler Supplier-Override aktiv</div>
+      <div style="font-size:10.5px;color:var(--tx2);margin-top:3px;">„Ignorieren“ und „Erzwingen“ gelten nur für dieses Dokument. Globales Deactivate bleibt global für alle künftigen Matches auf „${provider}“.</div>
+      ${resolverNote}
+    </div>`;
+  }
+  const byId = new Map((rows || []).map(row => [Number(row.id), row]));
+  const items = overrides.map(o => {
+    const mode = _spOverrideMode(o);
+    const modeLabel = mode === 'ignore_match' ? 'Ignoriert für dieses Doc' : mode === 'force_supplier' ? 'Erzwungen für dieses Doc' : _spEsc(mode || 'Override');
+    const tone = mode === 'ignore_match'
+      ? { bg: 'rgba(245,158,11,0.10)', bd: 'rgba(245,158,11,0.28)', fg: '#b45309' }
+      : { bg: 'rgba(16,185,129,0.10)', bd: 'rgba(16,185,129,0.28)', fg: '#047857' };
+    const ref = byId.get(_spOverrideKbId(o));
+    const target = _spOverrideSupplierName(o) || ref?.name_normalized || ref?.pattern || (_spOverrideKbId(o) ? `kb_suppliers #${_spOverrideKbId(o)}` : 'freier Suppliername');
+    const when = _spOverrideCreatedAt(o) ? String(_spOverrideCreatedAt(o)).replace('T',' ').slice(0,16) : '—';
+    const notes = _spOverrideNotes(o);
+    return `<div style="background:${tone.bg};border:1px solid ${tone.bd};border-radius:6px;padding:8px 10px;margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:${tone.fg};">${modeLabel}</div>
+          <div style="font-size:10.5px;color:var(--tx2);margin-top:2px;"><strong>Ziel:</strong> ${_spEsc(target)} · <strong>seit:</strong> ${_spEsc(when)}</div>
+          ${notes ? `<div style="font-size:10.5px;color:var(--tx2);margin-top:2px;"><strong>Notiz:</strong> ${_spEsc(notes)}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:6px;padding:10px 10px 8px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#047857;">Doc-Override aktiv (${overrides.length})</div>
+        <div style="font-size:10.5px;color:var(--tx2);margin-top:2px;">Diese Entscheidung gilt nur für Doc #${_spEsc(doc?.id)}. Globale Supplier-Patterns bleiben unverändert.</div>
+      </div>
+      <button onclick="_spClearDocSupplierOverrides()" style="background:transparent;border:1px solid #10b981;color:#047857;padding:4px 10px;border-radius:4px;font-size:10.5px;cursor:pointer;font-weight:700;">Override löschen</button>
+    </div>
+    ${items}
+    ${resolverNote}
+  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -13864,21 +13966,25 @@ async function _spFetchSupplier(provider) {
 // ═══════════════════════════════════════════════════════
 let _spKbModalState = { mode: null, kbId: null, before: null };
 
-function _spKbRenderListHtml(rows, doc) {
+function _spKbRenderListHtml(rows, doc, overrides = []) {
   const headerHtml = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:10.5px;color:var(--tx2);font-style:italic;">${rows.length ? `${rows.length} Pattern${rows.length===1?'':'s'} matchen „${_spEsc(doc.provider||'?')}"` : `keine Patterns matchen „${_spEsc(doc.provider||'?')}"`}</span>
       <button onclick="_spKbAddOpen()" title="Neues kb_suppliers-Pattern für dieses Doc anlegen. Entity-Default = aktuelle Doc-Entity (${_spEsc(doc.entity||'—')}). Pattern wird mit dem aktuellen Provider-String vorbelegt." style="background:transparent;border:1px solid var(--blu);color:var(--blu);padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600;">+ Neues Pattern</button>
-    </div>`;
+    </div>
+    ${_spRenderOverrideSummary(rows, overrides, doc)}`;
   const cardsHtml = rows.length
-    ? rows.map(s => _spKbRenderCard(s, doc)).join('')
+    ? rows.map(s => _spKbRenderCard(s, doc, overrides)).join('')
     : `<div style="font-size:11px;color:var(--tx2);font-style:italic;padding:8px 0;">— Noch kein Pattern für „${_spEsc(doc.provider || '?')}". Wird automatisch nach 1. Approve angelegt (B10 Auto-Learning) oder direkt manuell via „+ Neues Pattern".</div>`;
   return headerHtml + cardsHtml;
 }
 
-function _spKbRenderCard(s, doc) {
+function _spKbRenderCard(s, doc, overrides = []) {
   const isMatched = doc.entity && s.entity === doc.entity && s.active !== false;
   const isInactive = s.active === false;
+  const ov = _spFindDocOverrideState(s, overrides);
+  const isDocIgnored = !!ov.ignored;
+  const isDocForced = !!ov.forced;
   const cat = [s.category_l1, s.category_l2, s.category_l3].filter(Boolean).join(' / ') || '—';
   const lastSeen = s.last_seen ? String(s.last_seen).slice(0,10) : '—';
   const recurr = s.recurring ? '🔁 recurring' : '';
@@ -13886,15 +13992,24 @@ function _spKbRenderCard(s, doc) {
     ? `<span style="background:rgba(16,185,129,0.15);color:#10b981;padding:1px 6px;border-radius:8px;font-size:10px;">✓ ${+s.verification_count}× verified</span>` : '';
   const conflictBadge = s.conflict_count > 0
     ? `<span style="background:rgba(239,68,68,0.15);color:#ef4444;padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;">⚠ ${+s.conflict_count} conflict</span>` : '';
+  const overrideBadges = `${isDocForced ? `<span style="background:rgba(16,185,129,0.15);color:#047857;padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;">Doc-lokal erzwungen</span>` : ''}${isDocIgnored ? `<span style="background:rgba(245,158,11,0.15);color:#b45309;padding:1px 6px;border-radius:8px;font-size:10px;margin-left:4px;">Doc-lokal ignoriert</span>` : ''}`;
 
   const cardStyle = isInactive
     ? 'border:1px dashed var(--s3);opacity:0.6;'
-    : isMatched
+    : isDocIgnored
+      ? 'border:2px solid #f59e0b;background:linear-gradient(180deg, rgba(245,158,11,0.08), var(--bg1));'
+      : isDocForced
+        ? 'border:2px solid #10b981;background:linear-gradient(180deg, rgba(16,185,129,0.09), var(--bg1));'
+        : isMatched
       ? 'border:2px solid #10b981;background:linear-gradient(180deg, rgba(16,185,129,0.07), var(--bg1));'
       : 'border:1px solid var(--s3);opacity:0.78;';
 
   const matchHeader = isInactive
     ? `<div style="font-size:10px;color:#f59e0b;margin-bottom:6px;font-weight:600;">🔒 INAKTIV — nicht im Resolver-Match-Pool</div>`
+    : isDocIgnored
+      ? `<div style="font-size:10px;color:#b45309;margin-bottom:6px;font-weight:700;letter-spacing:0.3px;">↯ FÜR DIESES DOC IGNORIERT</div>`
+      : isDocForced
+        ? `<div style="font-size:10px;color:#047857;margin-bottom:6px;font-weight:700;letter-spacing:0.3px;">★ FÜR DIESES DOC ERZWUNGEN</div>`
     : isMatched
       ? `<div style="font-size:10px;color:#10b981;margin-bottom:6px;font-weight:700;letter-spacing:0.3px;">✓ MATCHED FÜR DIESES DOC</div>`
       : `<div style="font-size:10px;color:var(--tx2);margin-bottom:6px;font-style:italic;">↪ andere Entity — dieses Doc ist „${_spEsc(doc.entity||'—')}", dieses Pattern ist „${_spEsc(s.entity||'—')}"</div>`;
@@ -13911,14 +14026,70 @@ function _spKbRenderCard(s, doc) {
           <strong>Avg-Betrag:</strong> ${s.avg_amount != null ? Number(s.avg_amount).toFixed(2) + ' ' + _spEsc(s.currency||'EUR') : '—'} ${recurr}<br>
           <strong>Last seen:</strong> ${_spEsc(lastSeen)}
         </div>
-        <div style="margin-top:6px;">${verifBadge}${conflictBadge}</div>
+        <div style="margin-top:6px;">${verifBadge}${conflictBadge}${overrideBadges}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+        <button class="sp-kb-btn" onclick='_spApplyDocSupplierOverride("force_supplier", ${+s.id}, ${JSON.stringify(String(s.name_normalized || s.pattern || ''))})' title="Doc-lokal erzwingen: dieses Pattern gilt nur für dieses Dokument. Globales kb_suppliers bleibt unverändert." style="font-size:10.5px;padding:3px 8px;background:${isDocForced ? 'rgba(16,185,129,0.10)' : 'var(--bg2)'};color:${isDocForced ? '#047857' : 'var(--tx)'};border:1px solid ${isDocForced ? 'rgba(16,185,129,0.35)' : 'var(--s3)'};border-radius:3px;cursor:${isDocForced ? 'default' : 'pointer'};white-space:nowrap;" ${isDocForced ? 'disabled' : ''}>${isDocForced ? '★ Doc-Force aktiv' : '★ Für dieses Doc nutzen'}</button>
+        <button class="sp-kb-btn" onclick='_spApplyDocSupplierOverride("ignore_match", ${+s.id}, ${JSON.stringify(String(s.name_normalized || s.pattern || ''))})' title="Doc-lokal ignorieren: dieses Pattern wird nur für dieses Dokument ausgeschlossen. Globales kb_suppliers bleibt unverändert." style="font-size:10.5px;padding:3px 8px;background:${isDocIgnored ? 'rgba(245,158,11,0.10)' : 'var(--bg2)'};color:${isDocIgnored ? '#b45309' : 'var(--tx)'};border:1px solid ${isDocIgnored ? 'rgba(245,158,11,0.35)' : 'var(--s3)'};border-radius:3px;cursor:${isDocIgnored ? 'default' : 'pointer'};white-space:nowrap;" ${isDocIgnored ? 'disabled' : ''}>${isDocIgnored ? '↯ Ignoriert für Doc' : '↯ Für dieses Doc ignorieren'}</button>
         <button class="sp-kb-btn" onclick="_spKbEditOpen(${+s.id})" title="Pattern bearbeiten — Entity, Kategorie, recurring, active. Änderungen werden in agent_events protokolliert." style="font-size:10.5px;padding:3px 8px;background:var(--bg2);color:var(--tx);border:1px solid var(--s3);border-radius:3px;cursor:pointer;white-space:nowrap;">✏️ Edit</button>
-        <button class="sp-kb-btn" onclick="_spKbToggleActive(${+s.id}, ${isInactive})" title="${isInactive ? 'Wieder aktivieren — Pattern kommt zurück in den Resolver-Match-Pool.' : 'Soft-Delete — Pattern bleibt in DB (verification_count erhalten), wird aber nicht mehr für Resolver-Matches herangezogen.'}" style="font-size:10.5px;padding:3px 8px;background:var(--bg2);color:${isInactive ? '#10b981' : '#f59e0b'};border:1px solid var(--s3);border-radius:3px;cursor:pointer;white-space:nowrap;">${isInactive ? '🔓 Activate' : '🔒 Deactivate'}</button>
+        <button class="sp-kb-btn" onclick="_spKbToggleActive(${+s.id}, ${isInactive})" title="${isInactive ? 'Global wieder aktivieren — Pattern kommt zurück in den Resolver-Match-Pool für alle künftigen Docs.' : 'Global deaktivieren — Pattern bleibt in DB (verification_count erhalten), wird aber nicht mehr für künftige Resolver-Matches herangezogen.'}" style="font-size:10.5px;padding:3px 8px;background:var(--bg2);color:${isInactive ? '#10b981' : '#f59e0b'};border:1px solid var(--s3);border-radius:3px;cursor:pointer;white-space:nowrap;">${isInactive ? '🌐 Activate global' : '🌐 Deactivate global'}</button>
       </div>
     </div>
   </div>`;
+}
+
+async function _spApplyDocSupplierOverride(mode, kbSupplierId, supplierName) {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc?.id) return;
+  const isIgnore = mode === 'ignore_match';
+  const targetLabel = supplierName || `kb_suppliers #${kbSupplierId}`;
+  const confirmText = isIgnore
+    ? `Dieses Pattern nur für Doc #${doc.id} ignorieren?\n\n${targetLabel}\n\nGlobale kb_suppliers bleiben unverändert.`
+    : `Dieses Pattern nur für Doc #${doc.id} erzwingen?\n\n${targetLabel}\n\nGlobale kb_suppliers bleiben unverändert.`;
+  if (!confirm(confirmText)) return;
+  const notes = prompt(
+    isIgnore
+      ? 'Optionaler Grund für dieses doc-lokale Ignorieren:'
+      : 'Optionaler Grund für dieses doc-lokale Erzwingen:',
+    ''
+  );
+  if (notes === null) return;
+  try {
+    await supaRpc('apply_document_supplier_override', {
+      p_doc_id: doc.id,
+      p_mode: mode,
+      p_kb_supplier_id: kbSupplierId ?? null,
+      p_supplier_name: supplierName || null,
+      p_notes: notes || null,
+    });
+    if (typeof showToast === 'function') {
+      showToast('success', isIgnore ? 'Doc-Override gespeichert: Pattern ignoriert.' : 'Doc-Override gespeichert: Supplier erzwungen.');
+    }
+    await _spKbRefreshList();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('error', `Override fehlgeschlagen: ${e.message}`);
+    else alert(`Override fehlgeschlagen: ${e.message}`);
+  }
+}
+
+async function _spClearDocSupplierOverrides() {
+  const doc = _sidePanelCurrentDoc;
+  if (!doc?.id) return;
+  if (!confirm(`Alle aktiven doc-lokalen Supplier-Overrides für Doc #${doc.id} löschen?`)) return;
+  try {
+    await supaRpc('apply_document_supplier_override', {
+      p_doc_id: doc.id,
+      p_mode: 'clear_override',
+      p_kb_supplier_id: null,
+      p_supplier_name: null,
+      p_notes: null,
+    });
+    if (typeof showToast === 'function') showToast('success', 'Doc-Override gelöscht.');
+    await _spKbRefreshList();
+  } catch (e) {
+    if (typeof showToast === 'function') showToast('error', `Override-Löschung fehlgeschlagen: ${e.message}`);
+    else alert(`Override-Löschung fehlgeschlagen: ${e.message}`);
+  }
 }
 
 async function _spFetchKbById(kbId) {
@@ -14086,9 +14257,12 @@ async function _spKbAuditLog(action, kbId, before, after, docId) {
 async function _spKbRefreshList() {
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
-  const rows = await _spFetchSupplier(doc.provider);
+  const [rows, overrides] = await Promise.all([
+    _spFetchSupplier(doc.provider),
+    _spFetchSupplierOverrides(doc.id),
+  ]);
   const cont = document.getElementById('sp-supplier-content');
-  if (cont) cont.innerHTML = _spKbRenderListHtml(rows, doc);
+  if (cont) cont.innerHTML = _spKbRenderListHtml(rows, doc, overrides);
 }
 
 // Iter 38.B1 — Live-Cascade-Feedback: Poll-State.
@@ -14472,12 +14646,15 @@ function openSidePanel(doc) {
     providerComboboxRender(document.getElementById('sp-edit-provider')?.value || '');
   });
 
-  // kb_suppliers async (v11.60 CO1: Match-Indicator + Edit/Add/Deactivate)
-  _spFetchSupplier(doc.provider).then(rows => {
+  // kb_suppliers async (v11.82: Match-Indicator + Edit/Add/Deactivate + doc-lokale Overrides)
+  Promise.all([
+    _spFetchSupplier(doc.provider),
+    _spFetchSupplierOverrides(doc.id),
+  ]).then(([rows, overrides]) => {
     const cont = document.getElementById('sp-supplier-content');
     const loading = document.getElementById('sp-supplier-loading');
     if (!cont || !loading) return;
-    cont.innerHTML = _spKbRenderListHtml(rows, doc);
+    cont.innerHTML = _spKbRenderListHtml(rows, doc, overrides);
     cont.style.display = 'block';
     loading.style.display = 'none';
   });
