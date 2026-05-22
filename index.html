@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.80.0 — 2026-05-22 — Übersicht/Inbox/Triage UX Repair: Übersicht wieder als Lagebild geschärft (Letzte Eingänge vor System-Status, getrennte Datei/Anbieter-Spalten, klarer nächster Schritt), Inbox von Review/Deep-Check entwirrt (Drive-Intake klar benannt, Triage-Aktion sichtbar, Buchhalter-Senden raus, editierbare Entity/Typ-Pills), Triage-Karten mit echter Dokument-Identität (Dateiname, Anbieter, Entity, Typ, Status, Kontext und Routing-Hinweis). -->
+<!-- TGV Dashboard v11.80.1 — 2026-05-22 — Cascade Feedback Repair: Side-Panel zeigt bei „Skills neu starten (Cascade)“ jetzt ein sichtbares Status-Modul mit Poll-Feedback, Countdown/Progress-Bar, neuer Event-Differenz und klaren Zuständen für gestartet/läuft/fertig/ohne neue Events. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.80.0">
-<title>TGV Dashboard v11.80.0 — Financial OS</title>
+<meta name="version" content="11.80.1">
+<title>TGV Dashboard v11.80.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14014,14 +14014,78 @@ async function _spKbRefreshList() {
 let _spCascadePollToken = 0;
 let _spSkillHints = null;
 let _spSkillEcon = null;
+let _spCascadeTickTimer = null;
+let _spCascadeProgressTimer = null;
+
+function _spClearCascadeTimers() {
+  if (_spCascadeTickTimer) { clearTimeout(_spCascadeTickTimer); _spCascadeTickTimer = null; }
+  if (_spCascadeProgressTimer) { clearInterval(_spCascadeProgressTimer); _spCascadeProgressTimer = null; }
+}
+
+function _spSetCascadeButtonState(running) {
+  const btn = document.getElementById('sp-cascade-rerun-btn');
+  if (!btn) return;
+  btn.disabled = !!running;
+  btn.style.opacity = running ? '0.65' : '1';
+  btn.style.cursor = running ? 'wait' : 'pointer';
+  btn.textContent = running ? '⏳ Cascade läuft…' : '↻ Skills neu starten (Cascade)';
+}
+
+function _spSetCascadeStatus(tone, title, detail, progressPct) {
+  const box = document.getElementById('sp-cascade-status');
+  if (!box) return;
+  const palette = tone === 'error'
+    ? { bg: 'rgba(239,68,68,0.10)', bd: 'rgba(239,68,68,0.35)', fg: 'var(--red)', fill: '#ef4444' }
+    : tone === 'warn'
+      ? { bg: 'rgba(245,158,11,0.10)', bd: 'rgba(245,158,11,0.35)', fg: 'var(--orng)', fill: '#f59e0b' }
+      : tone === 'success'
+        ? { bg: 'rgba(16,185,129,0.10)', bd: 'rgba(16,185,129,0.35)', fg: 'var(--grn)', fill: '#10b981' }
+        : { bg: 'rgba(59,130,246,0.10)', bd: 'rgba(59,130,246,0.35)', fg: 'var(--blu)', fill: '#3b82f6' };
+  const pct = Math.max(0, Math.min(100, Number(progressPct) || 0));
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="background:${palette.bg};border:1px solid ${palette.bd};border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+        <strong style="font-size:12px;color:${palette.fg};">${escHtml(title)}</strong>
+        <span style="font-size:10px;color:var(--tx2);">${pct > 0 && pct < 100 ? `${Math.round(pct)}% bis zum nächsten Poll` : ''}</span>
+      </div>
+      <div style="font-size:11px;color:var(--tx);line-height:1.45;margin-top:4px;">${escHtml(detail || '')}</div>
+      <div style="height:5px;background:rgba(148,163,184,0.18);border-radius:999px;overflow:hidden;margin-top:8px;">
+        <div id="sp-cascade-progress-fill" style="height:100%;width:${pct}%;background:${palette.fill};transition:width 0.25s linear;"></div>
+      </div>
+    </div>`;
+}
+
+function _spAnimateCascadeProgress(durationMs) {
+  _spClearCascadeTimers();
+  const fill = document.getElementById('sp-cascade-progress-fill');
+  if (!fill || !durationMs) return;
+  const startedAt = Date.now();
+  fill.style.width = '0%';
+  _spCascadeProgressTimer = setInterval(() => {
+    const elapsed = Date.now() - startedAt;
+    const pct = Math.max(0, Math.min(100, (elapsed / durationMs) * 100));
+    const liveFill = document.getElementById('sp-cascade-progress-fill');
+    if (!liveFill) { _spClearCascadeTimers(); return; }
+    liveFill.style.width = pct + '%';
+    if (pct >= 100) {
+      clearInterval(_spCascadeProgressTimer);
+      _spCascadeProgressTimer = null;
+    }
+  }, 180);
+}
 
 async function sidePanelRerunCascade() {
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
   if (!confirm(`Skills für Doc #${doc.id} (${doc.provider}) neu starten?\nKostet ~5-9 n8n-Execs (Cascade-chain).`)) return;
-  const status = document.getElementById('sp-skills-loading');
-  if (status) { status.textContent = '↻ trigger_skill_router läuft…'; status.style.display = 'block'; }
+  _spClearCascadeTimers();
+  _spSetCascadeButtonState(true);
+  _spSetCascadeStatus('info', 'Cascade wird gestartet', 'Webhook wird ausgelöst und danach auf neue Skill-Events gewartet.', 8);
+  let baselineCount = 0;
   try {
+    const baselineEvents = await _spFetchSkillHistory(doc.id).catch(() => []);
+    baselineCount = Array.isArray(baselineEvents) ? baselineEvents.length : 0;
     const res = await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -14029,22 +14093,22 @@ async function sidePanelRerunCascade() {
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     // Iter 38.B1: Live-Feedback statt „Refresh in 30s" — agent_events pollen.
-    _spPollCascade(doc.id);
+    _spSetCascadeStatus('info', 'Cascade gestartet', `Trigger akzeptiert. Bisher ${baselineCount} bekannte Skill-Events auf diesem Doc — jetzt warte ich auf neue.`, 0);
+    _spPollCascade(doc.id, { baselineCount, startedAt: Date.now() });
   } catch (e) {
-    if (status) status.textContent = '❌ Fehler: ' + e.message;
+    _spSetCascadeStatus('error', 'Cascade konnte nicht gestartet werden', e.message || 'Unbekannter Fehler beim Triggern des Skill-Routers.', 100);
+    _spSetCascadeButtonState(false);
   }
 }
 
 // Iter 38.B1 — pollt agent_events waehrend der laufenden Cascade und rendert
 // die Skill-Aktivitaet progressiv neu. Stoppt bei Inaktivitaet (4 Ticks ohne
 // neues Event, ~14 s) oder nach ~90 s. Minimal: Poll + Nachladen, kein Redesign.
-function _spPollCascade(docId) {
+function _spPollCascade(docId, opts) {
+  opts = opts || {};
+  const baselineCount = Number(opts.baselineCount) || 0;
   const myToken = ++_spCascadePollToken;
-  const status0 = document.getElementById('sp-skills-loading');
-  if (status0) {
-    status0.style.display = 'block';
-    status0.innerHTML = '<span style="color:var(--blu);">⏳ Cascade gestartet — warte auf erste Skill-Events…</span>';
-  }
+  _spSetCascadeStatus('info', 'Cascade gestartet', 'Warte auf erste neue Skill-Events im Audit-Log…', 0);
   let lastCount = -1, staleTicks = 0, totalTicks = 0;
   const tick = async () => {
     if (myToken !== _spCascadePollToken) return;                            // durch neuen Poll abgeloest
@@ -14058,20 +14122,30 @@ function _spPollCascade(docId) {
       list.style.display = 'block';
     }
     const n = events.length;
+    const delta = Math.max(0, n - baselineCount);
     const last = n ? events[n - 1] : null;
     const lastName = last ? (last.tool_name || last.event_type || '?') : '—';
     if (n === lastCount) staleTicks++; else { staleTicks = 0; lastCount = n; }
     const done = staleTicks >= 4 || totalTicks >= 26;
-    const statusEl = document.getElementById('sp-skills-loading');
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.innerHTML = done
-        ? `<span style="color:var(--grn);">✅ Cascade fertig — ${n} Skill-Event${n === 1 ? '' : 's'} (zuletzt: ${escHtml(lastName)})</span>`
-        : `<span style="color:var(--blu);">⏳ Cascade läuft… ${n} Event${n === 1 ? '' : 's'} · zuletzt: ${escHtml(lastName)}</span>`;
+    if (done) {
+      _spClearCascadeTimers();
+      if (delta > 0) {
+        _spSetCascadeStatus('success', 'Cascade fertig', `${delta} neues Skill-Event${delta === 1 ? '' : 's'} erkannt. Zuletzt: ${lastName}.`, 100);
+      } else {
+        _spSetCascadeStatus('warn', 'Keine neuen Skill-Events sichtbar', 'Der Trigger wurde gesendet, aber im Poll-Fenster sind keine neuen Events aufgetaucht. Möglich: Queue hängt, gleicher Skill wurde nicht erneut geloggt oder der Run ist noch verspätet.', 100);
+      }
+      _spSetCascadeButtonState(false);
+    } else {
+      const detail = delta > 0
+        ? `${delta} neues Event seit Start erkannt. Zuletzt: ${lastName}. Nächster Poll läuft gleich.`
+        : `Noch keine neuen Events seit Start. Letzter bekannter Skill: ${lastName}.`;
+      _spSetCascadeStatus(delta > 0 ? 'info' : 'warn', delta > 0 ? 'Cascade läuft' : 'Cascade wartet auf sichtbare Events', detail, 0);
+      _spAnimateCascadeProgress(3500);
+      _spCascadeTickTimer = setTimeout(tick, 3500);
     }
-    if (!done) setTimeout(tick, 3500);
   };
-  setTimeout(tick, 2500);
+  _spAnimateCascadeProgress(2500);
+  _spCascadeTickTimer = setTimeout(tick, 2500);
 }
 
 // ── Iter 38.A1 — F7 Re-Filing: verschiebt die Drive-Datei in den Ordner der
@@ -14238,10 +14312,11 @@ function openSidePanel(doc) {
 
   // === Skill-History Section + Re-Run ===
   const skillsHtml = `
+    <div id="sp-cascade-status" style="display:none;"></div>
     <div id="sp-skills-loading" style="font-size:11px;color:var(--tx2);">…lade Skill-History (agent_events)</div>
     <div id="sp-skills-list" style="display:none;"></div>
     <div style="margin-top:10px;display:flex;gap:8px;">
-      <button onclick="sidePanelRerunCascade()" title="trigger_skill_router auf doc_id — startet Cascade neu (kostet ~5-9 n8n-Execs)" style="background:transparent;border:1px solid var(--blu);color:var(--blu);padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;">↻ Skills neu starten (Cascade)</button>
+      <button id="sp-cascade-rerun-btn" onclick="sidePanelRerunCascade()" title="trigger_skill_router auf doc_id — startet Cascade neu (kostet ~5-9 n8n-Execs)" style="background:transparent;border:1px solid var(--blu);color:var(--blu);padding:6px 12px;border-radius:4px;font-size:11px;cursor:pointer;">↻ Skills neu starten (Cascade)</button>
     </div>`;
 
   // === Supplier Section ===
@@ -14328,6 +14403,8 @@ function openSidePanel(doc) {
 }
 
 function closeSidePanel() {
+  _spClearCascadeTimers();
+  _spSetCascadeButtonState(false);
   const panel = document.getElementById('side-panel');
   const backdrop = document.getElementById('side-panel-backdrop');
   if (panel) {
