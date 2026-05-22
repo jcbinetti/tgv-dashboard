@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.78.1 — 2026-05-22 — Route-State-Hotfix: Hash (#triage etc.) und sichtbare .page.active werden im file://-Modus wieder hart synchronisiert; Fallback für replaceState, Re-Sync auf pageshow/visibilitychange. -->
+<!-- TGV Dashboard v11.79.0 — 2026-05-22 — UX Consistency Pass: globaler Kontextbalken (Bereich/Screen/Untertab/Filter), klarerer Nutzerfokus pro Seite, aufgeräumtere Topbar/Filterbar-Konsistenz und mobile Rahmenschärfung für Gesamtorientierung im Dashboard. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.78.1">
-<title>TGV Dashboard v11.78.1 — Financial OS</title>
+<meta name="version" content="11.79.0">
+<title>TGV Dashboard v11.79.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -192,6 +192,21 @@ body {
   background: rgba(255,255,255,0.15);
   color: #fff;
 }
+.topbar-ghost-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.82);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.topbar-ghost-btn:hover {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+}
 
 /* ─── LAYOUT ─── */
 #layout {
@@ -308,6 +323,95 @@ body {
   display: flex;
   align-items: center;
   gap: 0;
+}
+#contextbar {
+  position: sticky;
+  top: calc(var(--topbar-h) + var(--filterbar-h));
+  z-index: 89;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid var(--s3);
+  padding: 10px 24px 12px;
+}
+.contextbar-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.context-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 260px;
+}
+.context-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tx2);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+}
+.context-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.context-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.context-subtab {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blu);
+  background: var(--blu-bg);
+  border: 1px solid var(--blu-bd);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.context-purpose {
+  font-size: 12px;
+  color: var(--tx1);
+  line-height: 1.5;
+  max-width: 780px;
+}
+.context-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--s3);
+  background: var(--s0);
+  color: var(--tx1);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.context-chip strong {
+  color: var(--navy);
+  font-weight: 700;
+}
+.context-focus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10px;
+  background: var(--blu-bg);
+  border: 1px solid var(--blu-bd);
+  color: var(--blu);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 520px;
 }
 
 .filter-group {
@@ -1543,6 +1647,32 @@ body.sp-resizing { cursor: ew-resize !important; user-select: none; }
 .sp-skill-row .sp-skill-meta { color: var(--tx2); font-size: 10px; }
 
 @media (max-width: 768px) {
+  #filterbar {
+    height: auto;
+    min-height: var(--filterbar-h);
+    padding: 10px 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .filter-group {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  #contextbar {
+    top: auto;
+    padding: 10px 16px 12px;
+  }
+  .contextbar-inner {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .context-title { font-size: 14px; }
+  .context-purpose,
+  .context-focus { font-size: 11px; }
   #side-panel {
     width: 100vw;
     max-width: 100vw;
@@ -1996,7 +2126,7 @@ body.chat-open #main-content {
     <span class="topbar-version" id="topbar-version" title="Versionsstand des Dashboards. Steigt mit jedem Deploy — hilft beim Abgleich, ob du die aktuelle Version siehst.">v?</span>
     <button id="chat-btn" onclick="toggleChat()" title="TGV Chat (Claude + MCP-Tools) — Ad-hoc-Anfragen, Korrekturen, Tool-Calls in natürlicher Sprache. 22 Tools verfügbar (Liste folgt im Hub-Tab Iter 20 P1 Welle c).">💬 Chat</button>
     <button id="health-btn" onclick="runHealthCheck()" title="Health Check — prüft mit einem Klick, ob das Dashboard die Datenbank erreicht (Dokumente, Transaktionen, Verträge, Projekte, Lieferanten). Zeigt pro Tabelle ✅ + Anzahl oder ❌. Ändert nichts.">⚡ Health Check</button>
-    <button id="auth-logout-btn" onclick="authLogout()" title="Abmelden" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.8);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:6px">🔒 Abmelden</button>
+    <button id="auth-logout-btn" class="topbar-ghost-btn" onclick="authLogout()" title="Abmelden" style="margin-left:6px">🔒 Abmelden</button>
   </div>
 </div>
 
@@ -2367,6 +2497,26 @@ body.chat-open #main-content {
         <button class="filter-btn" data-period="2026-03" onclick="setPeriod('2026-03', this)">Mär 26</button>
         <button class="filter-btn" data-period="2026-02" onclick="setPeriod('2026-02', this)">Feb 26</button>
         <button class="filter-btn" data-period="2026-01" onclick="setPeriod('2026-01', this)">Jan 26</button>
+      </div>
+    </div>
+    <div id="contextbar">
+      <div class="contextbar-inner">
+        <div class="context-meta">
+          <div class="context-kicker" id="context-kicker">CORE · Operations</div>
+          <div class="context-title-row">
+            <div class="context-title" id="context-title">Übersicht</div>
+            <span class="context-subtab" id="context-subtab" style="display:none">—</span>
+          </div>
+          <div class="context-purpose" id="context-purpose">Gesamtlage prüfen: offene Mengen, Health-Signale und Arbeitsstau schnell erfassen.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:100%;">
+          <div class="context-chips">
+            <div class="context-chip" id="context-chip-entity"><span>Entität</span><strong>Alle</strong></div>
+            <div class="context-chip" id="context-chip-period"><span>Zeitraum</span><strong>Alles</strong></div>
+            <div class="context-chip" id="context-chip-scope"><span>Bereich</span><strong>Operations</strong></div>
+          </div>
+          <div class="context-focus" id="context-focus">Primär hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.</div>
+        </div>
       </div>
     </div>
 
@@ -4219,6 +4369,9 @@ let gDocs = [];
 let gFinLoaded = false;
 let gInboxFilter = 'all'; // 'all' | 'inbox' | 'pending_review' | 'haengend' | 'bestand_heal'
 let gInboxRows = [];   // gecachte Inbox-Daten für client-seitigen Filter
+let currentFinTab = 'drilldown';
+let currentSysTab = 'main';
+let currentLernenTab = 'docs';
 
 // Sort state for tables
 let txnSort = { col: 'booking_date', dir: 'desc' };
@@ -4298,6 +4451,66 @@ const counterpartyPill = raw => {
   return `<span style="display:inline-flex;align-items:center;background:#F8FAFC;color:#334155;padding:2px 8px;border-radius:10px;font-size:11px;" title="Gegenpartei / Gegenentität: ${escHtml(txt)}">↔ ${escHtml(textPreview(txt, 28))}</span>`;
 };
 const isBestandHealDoc = doc => /storage_guard_bestand_heal/i.test(String(doc?.routing_reason || ''));
+const ENTITY_CONTEXT_LABELS = { all: 'Alle', priv: 'PRIV', c3: 'C3', c4: 'C4' };
+const PERIOD_CONTEXT_LABELS = { all: 'Alles', '2026-04': 'Apr 26', '2026-03': 'Mär 26', '2026-02': 'Feb 26', '2026-01': 'Jan 26' };
+const DASHBOARD_PAGE_META = {
+  uebersicht: { section: 'Operations', title: 'Übersicht', purpose: 'Gesamtlage prüfen: offene Mengen, Health-Signale und Arbeitsstau schnell erfassen.', focus: 'Primär hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.' },
+  inbox: { section: 'Operations', title: 'Inbox', purpose: 'Neu eingegangene oder prüfpflichtige Dokumente freigeben, ablehnen oder an den Buchhalter senden.', focus: 'Primär hier: offene Freigaben abarbeiten und hängende Fälle identifizieren.' },
+  triage: { section: 'Operations', title: 'Triage', purpose: 'Dokumente fachlich prüfen, Skills nachschärfen und Grenzfälle mit maximalem Kontext behandeln.', focus: 'Primär hier: unklare oder wertvolle Dokumente sauber einordnen, nicht Masse klicken.' },
+  finanzen: { section: 'Analyse', title: 'Finanzen', purpose: 'Transaktionen, Dokumente und Abgleich zusammen lesen, statt einzelne Belege isoliert zu betrachten.', focus: 'Primär hier: Geldfluss, Kategorien und Lücken im Reconcile analysieren.' },
+  vertraege: { section: 'Analyse', title: 'Verträge', purpose: 'Aktive Verträge, Deadlines und Verlängerungsrisiken verfolgen.', focus: 'Primär hier: Fristen und teure Renewal-Risiken früh erkennen.' },
+  projekte: { section: 'Analyse', title: 'Projekte', purpose: 'Projektkontext, Aktivitäten und spätere Projekt-Domain vorbereiten.', focus: 'Primär hier: Projektlage lesen; operative Finanzarbeit passiert meist woanders.' },
+  monatsabschluss: { section: 'Operations', title: 'Monatsabschluss', purpose: 'Buchhalter-Versand je Entity und Monat prüfen und sicher auslösen.', focus: 'Primär hier: Vollständigkeit prüfen, dann Versand bestätigen.' },
+  mailrules: { section: 'System', title: 'Mail Rules', purpose: 'Mail-Routing-Regeln pflegen, testen und Fehlklassifikationen präventiv entschärfen.', focus: 'Primär hier: wiederkehrende Muster in Regeln statt in Einzelfällen heilen.' },
+  linkrate: { section: 'Analyse', title: 'Linkrate', purpose: 'Verknüpfungsquote zwischen Dokumenten und Transaktionen über Zeit beobachten.', focus: 'Primär hier: strukturelle Schwächen erkennen, nicht einzelne Fälle bearbeiten.' },
+  'alle-docs': { section: 'Analyse', title: 'Alle Docs', purpose: 'Universelle Such- und Referenzsicht über alle Dokumente, wenn kein anderer Tab passt.', focus: 'Primär hier: Dokumente finden, dann für Bearbeitung in Triage oder Side-Panel springen.' },
+  actions: { section: 'System', title: 'Aktionen', purpose: 'Tool-Hub für gezielte Eingriffe, Suchen und Schreiboperationen ohne Chat-Prompt.', focus: 'Primär hier: nur bewusst auslösen; viele Karten ändern echte Daten oder triggern Workflows.' },
+  lernen: { section: 'System', title: 'Lernen', purpose: 'Systemlogik, Pipeline-Dokus und Topology als Single Source of Truth nachlesen.', focus: 'Primär hier: Begriffe, Flüsse und Architektur klären, bevor du Regeln oder Daten änderst.' },
+  system: { section: 'System', title: 'System', purpose: 'Health, Kosten, Pattern-Health und technische Betriebsübersicht im Blick behalten.', focus: 'Primär hier: Betriebszustand lesen und technische Risiken früh erkennen.' },
+  entitaeten: { section: 'System', title: 'Entitäten', purpose: 'Juristische Stammdaten, Signaturen und Aliases je Entity pflegen.', focus: 'Primär hier: Stammdaten sauber halten; alles andere hängt daran.' },
+  mailoutbox: { section: 'System', title: 'Mail-Outbox', purpose: 'Ausgehende Mails, Fehlerzustände und Retries nachvollziehen.', focus: 'Primär hier: Versandprobleme verifizieren und bei Bedarf gezielt retryn.' },
+  architektur: { section: 'System', title: 'Architektur', purpose: 'TGV als Layer-/Graph-Modell verstehen und Abhängigkeiten nachvollziehen.', focus: 'Primär hier: Strukturen verstehen, nicht operative Arbeit erledigen.' },
+};
+const DASHBOARD_SUBTAB_META = {
+  inbox: { docs: 'Dokumente', txn: 'Transaktionen', routed: 'Routed History' },
+  finanzen: { drilldown: 'Kategorien', cashflow: 'Cashflow', transaktionen: 'Transaktionen', 'dokumente-fin': 'Dokumente', abgleich: 'Abgleich' },
+  system: { main: 'System', costs: 'Costs', patterns: 'Pattern Health' },
+  lernen: { docs: 'Pipeline-Dokus', topology: 'System-Karte' },
+};
+function updateContextBar() {
+  const pageId = getActivePageId() || 'uebersicht';
+  const meta = DASHBOARD_PAGE_META[pageId] || DASHBOARD_PAGE_META.uebersicht;
+  const subtabLabel = pageId === 'inbox' ? DASHBOARD_SUBTAB_META.inbox[currentInboxTab]
+    : pageId === 'finanzen' ? DASHBOARD_SUBTAB_META.finanzen[currentFinTab]
+    : pageId === 'system' ? DASHBOARD_SUBTAB_META.system[currentSysTab]
+    : pageId === 'lernen' ? DASHBOARD_SUBTAB_META.lernen[currentLernenTab]
+    : '';
+  const entityLabel = ENTITY_CONTEXT_LABELS[gEntity] || String(gEntity || 'Alle').toUpperCase();
+  const periodLabel = PERIOD_CONTEXT_LABELS[gPeriod] || gPeriod || 'Alles';
+  const kicker = document.getElementById('context-kicker');
+  const title = document.getElementById('context-title');
+  const purpose = document.getElementById('context-purpose');
+  const focus = document.getElementById('context-focus');
+  const subtab = document.getElementById('context-subtab');
+  const chipEntity = document.getElementById('context-chip-entity');
+  const chipPeriod = document.getElementById('context-chip-period');
+  const chipScope = document.getElementById('context-chip-scope');
+  if (kicker) kicker.textContent = `TGV · ${meta.section}`;
+  if (title) title.textContent = meta.title;
+  if (purpose) purpose.textContent = meta.purpose;
+  if (focus) focus.textContent = meta.focus;
+  if (subtab) {
+    if (subtabLabel) {
+      subtab.textContent = subtabLabel;
+      subtab.style.display = 'inline-flex';
+    } else {
+      subtab.style.display = 'none';
+    }
+  }
+  if (chipEntity) chipEntity.innerHTML = `<span>Entität</span><strong>${entityLabel}</strong>`;
+  if (chipPeriod) chipPeriod.innerHTML = `<span>Zeitraum</span><strong>${periodLabel}</strong>`;
+  if (chipScope) chipScope.innerHTML = `<span>Bereich</span><strong>${meta.section}</strong>`;
+}
 
 const STATUS_LABELS = {
   'inbox':          '📥 Eingang',
@@ -4658,6 +4871,7 @@ function showPage(pageId, btn) {
      wenn topology zuletzt sichtbar war, dann blieb Spinner stuck).
      _lernenDocsInited verhindert Doppel-Init. */
   if (pageId === 'lernen') initLernenDocs();
+  updateContextBar();
 }
 
 // Lazy-load Architektur-iframe nur beim ersten Anzeigen (CDN-Last vermeiden bis benötigt)
@@ -5174,9 +5388,15 @@ function getActivePageId() {
 // Deep-link via hash: #system, #inbox, #finanzen, etc.
 function applyHashRoute(forceSync = false) {
   const h = (window.location.hash || '').replace(/^#/, '');
-  if (!h) return;
+  if (!h) {
+    updateContextBar();
+    return;
+  }
   const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen','entitaeten','mailoutbox'];
-  if (!valid.includes(h)) return;
+  if (!valid.includes(h)) {
+    updateContextBar();
+    return;
+  }
   if (forceSync || getActivePageId() !== h) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
@@ -5193,6 +5413,7 @@ function setEntity(val, btn) {
   gEntity = val;
   document.querySelectorAll('[data-entity]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  updateContextBar();
   refreshCurrentPage();
 }
 
@@ -5200,6 +5421,7 @@ function setPeriod(val, btn) {
   gPeriod = val;
   document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  updateContextBar();
   refreshCurrentPage();
 }
 
@@ -5224,6 +5446,7 @@ function refreshCurrentPage() {
 //  FIN TABS
 // ═══════════════════════════════════════════════════════
 function showFinTab(tabId, btn) {
+  currentFinTab = tabId;
   document.querySelectorAll('.fin-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
@@ -5233,6 +5456,7 @@ function showFinTab(tabId, btn) {
   if (tabId === 'drilldown') renderDrilldown();
   if (tabId === 'cashflow') renderCashflow();
   if (tabId === 'abgleich') loadAbgleich();
+  updateContextBar();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7148,6 +7372,7 @@ function loadSystem() {
 //  SYSTEM SUB-TABS (Iter 9.7)
 // ═══════════════════════════════════════════════════════
 function showSysTab(tabId, btn) {
+  currentSysTab = tabId;
   document.querySelectorAll('#page-system > .inbox-tabs > .inbox-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('#page-system > .inbox-panel').forEach(p => p.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -7155,6 +7380,7 @@ function showSysTab(tabId, btn) {
   if (panel) panel.classList.add('active');
   if (tabId === 'costs')    loadCostsView();
   if (tabId === 'patterns') { loadPatternHealthView(); loadPatternRulesLifecycle(); }
+  updateContextBar();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7178,6 +7404,7 @@ const LERNEN_BASE_PATH = 'USER_DOCS/';  // relativ neben index.html (mirror Pfli
 const LERNEN_SOURCE_REPO = 'https://github.com/jcbinetti/TGV/blob/master/00_LEITDOKUMENT/USER_DOCS/';
 
 function showLernenTab(tabId, btn) {
+  currentLernenTab = tabId;
   document.querySelectorAll('#page-lernen > .inbox-tabs > .inbox-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('#page-lernen > .inbox-panel').forEach(p => p.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -7185,6 +7412,7 @@ function showLernenTab(tabId, btn) {
   if (panel) panel.classList.add('active');
   if (tabId === 'docs')     initLernenDocs();
   if (tabId === 'topology') loadTopologyGraph();
+  updateContextBar();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8311,6 +8539,7 @@ function showInboxTab(tab, btn) {
   document.getElementById('inbox-panel-' + tab).classList.add('active');
   if (tab === 'txn') loadReview();
   if (tab === 'routed') loadRouted();
+  updateContextBar();
 }
 
 // ═══════════════════════════════════════════════════════
