@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.79.2 — 2026-05-22 — UX Header Simplify: doppelten Kontextblock entfernt, Orientierung direkt in die Seitentitel verlagert (CORE · FINANZEN/System über dem Titel, Untertab am Titel, ein einheitlicher Erklärungssatz darunter). -->
+<!-- TGV Dashboard v11.80.0 — 2026-05-22 — Übersicht/Inbox/Triage UX Repair: Übersicht wieder als Lagebild geschärft (Letzte Eingänge vor System-Status, getrennte Datei/Anbieter-Spalten, klarer nächster Schritt), Inbox von Review/Deep-Check entwirrt (Drive-Intake klar benannt, Triage-Aktion sichtbar, Buchhalter-Senden raus, editierbare Entity/Typ-Pills), Triage-Karten mit echter Dokument-Identität (Dateiname, Anbieter, Entity, Typ, Status, Kontext und Routing-Hinweis). -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.79.2">
-<title>TGV Dashboard v11.79.2 — Financial OS</title>
+<meta name="version" content="11.80.0">
+<title>TGV Dashboard v11.80.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -619,8 +619,10 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--blu-bg); color: var(--blu); border-color: var(--blu-bd);
 }
 .pill-approved { background: var(--grn-bg); color: var(--grn); border-color: var(--grn-bd); }
+.pill-done { background: var(--grn-bg); color: var(--grn); border-color: var(--grn-bd); }
 .pill-archived { background: var(--s2); color: var(--tx2); border-color: var(--s3); }
 .pill-rejected, .pill-error { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
+.pill-source_lost { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
 .pill-unknown { background: var(--amb-bg); color: var(--amb); border-color: var(--amb-bd); }
 .pill-todo_manual { background: #FFF3E0; color: #E65100; border-color: #FFCC80; }
 .row-todo-manual { background: #FFF8F0 !important; border-left: 3px solid #FF9800; }
@@ -675,6 +677,83 @@ tbody tr:last-child td { border-bottom: none; }
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
+}
+.wf-status-sections {
+  display: grid;
+  gap: 16px;
+}
+.wf-status-section {
+  border: 1px solid var(--s3);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96));
+  overflow: hidden;
+}
+.wf-status-section summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--s1);
+}
+.wf-status-section summary::-webkit-details-marker { display: none; }
+.wf-status-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.wf-status-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tx0);
+  letter-spacing: 0.3px;
+}
+.wf-status-count {
+  font-size: 10px;
+  color: var(--tx2);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.wf-status-desc {
+  font-size: 11px;
+  color: var(--tx2);
+}
+.wf-status-body {
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+}
+.wf-subsection {
+  display: grid;
+  gap: 10px;
+}
+.wf-subsection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.wf-subsection-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.wf-subsection-count {
+  font-size: 10px;
+  color: var(--tx2);
+}
+.overview-note {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--tx2);
+  line-height: 1.55;
 }
 .wf-card {
   border: 1px solid var(--s3);
@@ -1066,6 +1145,43 @@ a[title],
 }
 .inbox-edit-sel:focus { border-color: var(--teal); outline: none; }
 #page-inbox select[id^="sel-doctype-"] { text-transform: uppercase; }
+.inbox-edit-sel.select-pill {
+  border-radius: 9999px;
+  padding: 4px 28px 4px 10px;
+  font-weight: 700;
+  border-width: 1px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) calc(50% - 2px),
+    calc(100% - 9px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.inbox-doc-meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.inbox-routing-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--tx2);
+  line-height: 1.35;
+}
+.inbox-action-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--tx2);
+  line-height: 1.35;
+}
 .inbox-filter-bar {
   display: flex;
   gap: 6px;
@@ -1091,6 +1207,49 @@ a[title],
 }
 .inbox-chip:hover { border-color: var(--teal); color: var(--teal); }
 .inbox-chip.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.triage-doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg1);
+  border: 1px solid var(--bdr);
+  border-radius: 8px;
+}
+.triage-doc-field {
+  display: grid;
+  gap: 3px;
+}
+.triage-doc-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tx2);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.triage-doc-value {
+  font-size: 12px;
+  color: var(--tx);
+  line-height: 1.45;
+}
+.triage-doc-value.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+.triage-context-row {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.triage-next-step {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--tx2);
+  line-height: 1.45;
+}
 
 /* ─── INBOX TABS ─── */
 .inbox-tabs {
@@ -2602,10 +2761,30 @@ body.chat-open #main-content {
         </div>
       </div>
 
+      <!-- LETZTE EINGÄNGE -->
+      <div class="card">
+        <div class="card-head"><h2>📨 Letzte Eingänge</h2></div>
+        <div class="card-body">
+          <div class="overview-note">
+            Die Liste zeigt die letzten Intake-Fälle als Lagebild, nicht die komplette Arbeitsliste.
+            Hier siehst du bereits vor-sortierte Dokumente und den voraussichtlichen nächsten Schritt:
+            schnelle Freigabe in <strong>Inbox</strong> oder tiefe Prüfung in <strong>Triage</strong>.
+          </div>
+          <div id="letzte-eingang-wrap">
+            <div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>
+          </div>
+        </div>
+      </div>
+
       <!-- SYSTEM STATUS -->
       <div class="card">
-        <div class="card-head"><h2>🔧 System Status — n8n Workflows</h2></div>
+        <div class="card-head"><h2>🧭 Unser System — Workflows &amp; Skills</h2></div>
         <div class="card-body">
+          <div class="overview-note" style="margin-top:0;margin-bottom:12px;">
+            Zuerst aktiv, dann teilweise, danach Entwicklung und Archiv. Innerhalb jeder Gruppe sind
+            operative <strong>Workflows</strong> und fachliche <strong>Skills</strong> getrennt, damit schneller klar ist,
+            ob ein Problem im Ablauf oder in einem einzelnen Skill liegt.
+          </div>
           <div class="wf-status-grid" id="ueb-wf-grid">
             <div class="spinner-wrap"><div class="spinner"></div> Lade Workflows…</div>
           </div>
@@ -2711,14 +2890,6 @@ body.chat-open #main-content {
           <!-- /legacy -->
         </div>
       </div>
-
-      <!-- LETZTE EINGÄNGE -->
-      <div class="card">
-        <div class="card-head"><h2>📨 Letzte Eingänge</h2></div>
-        <div id="letzte-eingang-wrap">
-          <div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>
-        </div>
-      </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════
@@ -2727,7 +2898,7 @@ body.chat-open #main-content {
     <div class="page" id="page-inbox">
       <div class="page-header">
         <h1>📥 Inbox — Freigabe-Warteschlange <button class="help-icon" onclick="showHelp('term_inbox')" aria-label="Was bedeutet Inbox?">ⓘ</button></h1>
-        <p>Deine To-Do-Liste: Dokumente und Transaktionen, die TGV verarbeitet hat und die jetzt deine Freigabe brauchen. „Inbox" hat im System 3 Bedeutungen — ⓘ erklärt sie.</p>
+        <p>Deine schnelle Review-Schlange: hier bestätigst oder korrigierst du Entität und Typ. Wenn ein Fall unklar ist oder tieferen Kontext braucht, öffnest du ihn aus der Inbox direkt in Triage.</p>
       </div>
 
       <!-- INBOX TABS -->
@@ -2756,8 +2927,8 @@ body.chat-open #main-content {
           </a>
           <button class="btn-sm btn-approve" id="btn-trigger-wfb"
                   style="padding:7px 16px;display:inline-flex;align-items:center;gap:6px;background:#0EA5A4"
-                  onclick="triggerWFB()" title="WF B sofort starten — INBOX wird verarbeitet">
-            ⚡ INBOX jetzt verarbeiten
+                  onclick="triggerWFB()" title="Startet Workflow B für den Drive-Intake sofort neu und springt danach auf „Zuletzt einsortiert“.">
+            ⚡ Drive-Intake starten
           </button>
         </div>
         <div id="inbox-content">
@@ -4505,8 +4676,8 @@ const isBestandHealDoc = doc => /storage_guard_bestand_heal/i.test(String(doc?.r
 const ENTITY_CONTEXT_LABELS = { all: 'Alle', priv: 'PRIV', c3: 'C3', c4: 'C4' };
 const PERIOD_CONTEXT_LABELS = { all: 'Alles', '2026-04': 'Apr 26', '2026-03': 'Mär 26', '2026-02': 'Feb 26', '2026-01': 'Jan 26' };
 const DASHBOARD_PAGE_META = {
-  uebersicht: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Übersicht', purpose: 'Gesamtlage prüfen: offene Mengen, Health-Signale und Arbeitsstau schnell erfassen.', focus: 'Wichtig hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.' },
-  inbox: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Inbox', purpose: 'Neu eingegangene oder prüfpflichtige Dokumente freigeben, ablehnen oder an den Buchhalter senden.', focus: 'Wichtig hier: offene Freigaben abarbeiten und hängende Fälle identifizieren.' },
+  uebersicht: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Übersicht', purpose: 'Gesamtlage prüfen: offene Mengen, letzte Intake-Fälle und Health-Signale schnell erfassen.', focus: 'Wichtig hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.' },
+  inbox: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Inbox', purpose: 'Neu eingegangene oder prüfpflichtige Dokumente schnell freigeben, korrigieren oder bewusst in Triage öffnen.', focus: 'Wichtig hier: offene Freigaben abarbeiten und unklare Fälle sauber nach Triage weiterreichen.' },
   triage: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Triage', purpose: 'Dokumente fachlich prüfen, Skills nachschärfen und Grenzfälle mit maximalem Kontext behandeln.', focus: 'Wichtig hier: unklare oder wertvolle Dokumente sauber einordnen, nicht Masse klicken.' },
   finanzen: { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Finanzen', purpose: 'Transaktionen, Dokumente und Abgleich zusammen lesen, statt einzelne Belege isoliert zu betrachten.', focus: 'Wichtig hier: Geldfluss, Kategorien und Lücken im Reconcile analysieren.' },
   vertraege: { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Verträge', purpose: 'Aktive Verträge, Deadlines und Verlängerungsrisiken verfolgen.', focus: 'Wichtig hier: Fristen und teure Renewal-Risiken früh erkennen.' },
@@ -4577,8 +4748,10 @@ const STATUS_LABELS = {
   'pending_review': '⚠️ Prüfen',
   'in_progress':    '⚙️ In Verarbeitung',
   'approved':       '✅ Freigegeben',
+  'done':           '✅ Fertig',
   'rejected':       '❌ Abgelehnt',
   'archived':       '🗂 Archiviert',
+  'source_lost':    '🚫 Source Lost',
   'error':          '🔴 Fehler',
   'todo_manual':    '✍️ Manuell',
 };
@@ -4609,6 +4782,43 @@ const periodMatchesFilter = dateStr => {
 const escHtml = s => {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+};
+
+const workflowKind = row => {
+  const hay = `${row?.category || ''} ${row?.name || ''}`.toLowerCase();
+  if (/\bskill\b/.test(hay)) return 'skill';
+  if (/\bwf\b|\bworkflow\b/.test(hay)) return 'workflow';
+  return 'workflow';
+};
+
+const workflowStatusMeta = st => ({
+  active:   { icon: '✅', title: 'Aktiv', desc: 'Läuft produktiv und ist im Alltag relevant.', cls: 'wf-status-ok', open: true },
+  partial:  { icon: '🟡', title: 'Teilweise aktiv', desc: 'Produktiv sichtbar, aber noch mit Lücken oder Restarbeit.', cls: 'wf-status-warn', open: true },
+  dev:      { icon: '🔵', title: 'In Entwicklung', desc: 'Noch nicht regulär im Live-Betrieb.', cls: 'wf-status-blu', open: false },
+  archived: { icon: '📦', title: 'Archiviert', desc: 'Nur zur Referenz; nicht mehr operativ aktiv.', cls: 'wf-status-warn', open: false },
+  inactive: { icon: '⚪', title: 'Inaktiv', desc: 'Ohne aktiven Live-Einsatz.', cls: 'wf-status-warn', open: false },
+}[st || 'inactive'] || { icon: '⚪', title: 'Inaktiv', desc: 'Ohne aktiven Live-Einsatz.', cls: 'wf-status-warn', open: false });
+
+const overviewNextStepMeta = row => {
+  const st = String(row?.processing_state || row?.status || '').toLowerCase();
+  if (st === 'pending_review' || st === 'needs_review' || st === 'source_lost') {
+    return { label: 'Triage prüfen', hint: 'Tiefe Prüfung mit Vorschau und Feldkontext.' };
+  }
+  if (st === 'inbox') {
+    return { label: 'Inbox freigeben', hint: 'Schnellprüfung: Entität/Typ bestätigen oder korrigieren.' };
+  }
+  if (st === 'approved' || st === 'done') {
+    return { label: 'Bereits freigegeben', hint: 'Nur Monitoring, keine Aktion nötig.' };
+  }
+  if (st === 'rejected' || st === 'archived') {
+    return { label: 'Kein Review offen', hint: 'Fall ist bereits abgeschlossen.' };
+  }
+  return { label: 'Status prüfen', hint: 'Details bei Bedarf in Inbox oder Triage öffnen.' };
+};
+
+const triageStatePill = doc => {
+  if (String(doc?.processing_state || '').toLowerCase() === 'source_lost') return statusPill('source_lost');
+  return statusPill(doc?.status || doc?.processing_state || '');
 };
 
 // ═══════════════════════════════════════════════════════
@@ -5617,22 +5827,72 @@ async function loadWfStatusGrid() {
       grid.innerHTML = '<p style="color:var(--tx2);font-size:13px">Keine Workflows registriert. Backfill via Migration 042.</p>';
       return;
     }
-    const iconFor = st => st === 'active' ? '✅' : st === 'partial' ? '🟡' : st === 'dev' ? '🔵' : st === 'archived' ? '📦' : '⚪';
-    const labelFor = st => st === 'active' ? 'AKTIV' : st === 'partial' ? 'TEILWEISE' : st === 'dev' ? 'IN ENTWICKLUNG' : st === 'archived' ? 'ARCHIVIERT' : 'INAKTIV';
-    const clsFor   = st => st === 'active' ? 'wf-status-ok' : st === 'partial' ? 'wf-status-warn' : st === 'dev' ? 'wf-status-blu' : 'wf-status-warn';
-    let html = '';
-    for (const r of rows) {
+    const statuses = ['active', 'partial', 'dev', 'archived', 'inactive'];
+    const makeCard = r => {
+      const meta = workflowStatusMeta(r.status);
       const detail = [r.version, r.trigger_type, r.notes].filter(Boolean).join(' · ');
-      html += `<div class="wf-card">
-        <div class="wf-icon">${iconFor(r.status)}</div>
+      return `<div class="wf-card">
+        <div class="wf-icon">${meta.icon}</div>
         <div class="wf-info">
           <div class="wf-name">${escHtml(r.name)}</div>
           <div class="wf-detail">${escHtml(detail) || '—'}</div>
-          <div class="wf-status ${clsFor(r.status)}">${labelFor(r.status)}</div>
+          <div class="wf-status ${meta.cls}">${meta.title.toUpperCase()}</div>
         </div>
       </div>`;
-    }
-    grid.innerHTML = html;
+    };
+
+    const grouped = statuses.map(status => {
+      const subset = rows.filter(r => String(r.status || 'inactive').toLowerCase() === status);
+      return {
+        status,
+        workflows: subset.filter(r => workflowKind(r) === 'workflow'),
+        skills: subset.filter(r => workflowKind(r) === 'skill'),
+      };
+    }).filter(group => group.workflows.length || group.skills.length);
+
+    grid.classList.remove('wf-status-grid');
+    grid.classList.add('wf-status-sections');
+    grid.innerHTML = grouped.map(group => {
+      const meta = workflowStatusMeta(group.status);
+      const count = group.workflows.length + group.skills.length;
+      const sectionBody = [];
+      if (group.workflows.length) {
+        sectionBody.push(`
+          <div class="wf-subsection">
+            <div class="wf-subsection-head">
+              <div class="wf-subsection-title">Workflows A–E &amp; Helfer</div>
+              <div class="wf-subsection-count">${group.workflows.length} Eintrag${group.workflows.length === 1 ? '' : 'e'}</div>
+            </div>
+            <div class="wf-status-grid">${group.workflows.map(makeCard).join('')}</div>
+          </div>
+        `);
+      }
+      if (group.skills.length) {
+        sectionBody.push(`
+          <div class="wf-subsection">
+            <div class="wf-subsection-head">
+              <div class="wf-subsection-title">Skills</div>
+              <div class="wf-subsection-count">${group.skills.length} Eintrag${group.skills.length === 1 ? '' : 'e'}</div>
+            </div>
+            <div class="wf-status-grid">${group.skills.map(makeCard).join('')}</div>
+          </div>
+        `);
+      }
+      const openAttr = meta.open ? ' open' : '';
+      return `<details class="wf-status-section"${openAttr}>
+        <summary>
+          <div class="wf-status-head">
+            <span class="wf-icon">${meta.icon}</span>
+            <div>
+              <div class="wf-status-title">${meta.title}</div>
+              <div class="wf-status-desc">${meta.desc}</div>
+            </div>
+          </div>
+          <div class="wf-status-count">${count} Element${count === 1 ? '' : 'e'}</div>
+        </summary>
+        <div class="wf-status-body">${sectionBody.join('')}</div>
+      </details>`;
+    }).join('');
   } catch(e) {
     grid.innerHTML = `<p style="color:#ef4444;font-size:13px">Fehler: ${e.message}</p>`;
   }
@@ -5707,7 +5967,7 @@ async function loadKPIs() {
 async function loadLetzteEingaenge() {
   const wrap = document.getElementById('letzte-eingang-wrap');
   try {
-    let q = `documents?select=date_received,date_scanned,provider,subject,entity,status,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
+    let q = `documents?select=id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
     const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
 
@@ -5718,17 +5978,24 @@ async function loadLetzteEingaenge() {
 
     let html = `<div class="tbl-wrap"><table>
       <thead><tr>
-        <th>Datum</th><th>Anbieter / Dateiname</th><th>Entität</th><th>Typ</th><th>Status</th>
+        <th>Datum</th><th>Dateiname</th><th>Anbieter</th><th>Entität</th><th>Typ</th><th>Status</th><th>Nächster Schritt</th>
       </tr></thead><tbody>`;
     for (const r of rows) {
-      const name = escHtml(r.provider || r.subject || r.drive_file_name || '—');
+      const fileName = escHtml(r.drive_file_name || r.subject || '—');
+      const provider = escHtml(r.provider || '—');
       const displayDate = r.date_scanned || r.date_received;
+      const step = overviewNextStepMeta(r);
       html += `<tr>
         <td>${fmtDate(displayDate)}</td>
-        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</td>
+        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${fileName}">${fileName}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${provider}">${provider}</td>
         <td>${entityBadge(r.entity)}</td>
-        <td>${escHtml(r.doc_type || '—')}</td>
-        <td>${statusPill(r.status)}</td>
+        <td>${docTypeBadge(r.doc_type)}</td>
+        <td>${triageStatePill(r)}</td>
+        <td>
+          <div style="font-weight:600;color:var(--navy);">${escHtml(step.label)}</div>
+          <div style="font-size:10px;color:var(--tx2);line-height:1.35;margin-top:2px;">${escHtml(step.hint)}</div>
+        </td>
       </tr>`;
     }
     html += '</tbody></table></div>';
@@ -5821,11 +6088,14 @@ function renderInbox() {
   let html = `
   <div class="inbox-filter-bar">
     <span style="font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:1px">Filter</span>
-    <button class="inbox-chip ${gInboxFilter==='all'?'active':''}" onclick="setInboxFilter('all',this)" title="Alle Dokumente die noch deinen OK-Klick oder eine Prüfung brauchen">Alle (${total})</button>
-    <button class="inbox-chip ${gInboxFilter==='inbox'?'active':''}" onclick="setInboxFilter('inbox',this)" title="Neu von n8n importiert — Triage-Agent hat Entität+Typ gesetzt. Prüfe und klicke OK: startet automatisch den passenden Skill (RECHNUNG/STEUER → Invoice-Extraktion, VERTRAG → Vertrags-Extraktion, danach Reconcile)">📥 Eingang (${inboxCount})</button>
-    <button class="inbox-chip ${gInboxFilter==='pending_review'?'active':''}" onclick="setInboxFilter('pending_review',this)" title="Triage-Agent war unsicher (Confidence gering) — bitte Entität und Typ manuell prüfen und bestätigen, dann OK klicken">⚠️ Prüfen (${reviewCount})</button>
+    <button class="inbox-chip ${gInboxFilter==='all'?'active':''}" onclick="setInboxFilter('all',this)" title="Alle Dokumente, die noch deinen OK-Klick oder eine tiefere Prüfung brauchen.">Alle (${total})</button>
+    <button class="inbox-chip ${gInboxFilter==='inbox'?'active':''}" onclick="setInboxFilter('inbox',this)" title="Neu importiert und grob vorsortiert. Hier machst du die schnelle Freigabe: Entität/Typ bestätigen oder korrigieren.">📥 Eingang (${inboxCount})</button>
+    <button class="inbox-chip ${gInboxFilter==='pending_review'?'active':''}" onclick="setInboxFilter('pending_review',this)" title="Unsicher, wertvoll oder hängend. Diese Fälle lieber in Triage mit Vorschau und vollem Kontext öffnen.">⚠️ Prüfen (${reviewCount})</button>
     <button class="inbox-chip ${gInboxFilter==='haengend'?'active':''}" onclick="setInboxFilter('haengend',this)" title="Hängend (T8 v11.53): Docs > 24h ohne Approval ODER ohne provider/entity. Skill-Gap-Indikator.">🪤 Hängend (${haengendCount})</button>
     <button class="inbox-chip ${gInboxFilter==='bestand_heal'?'active':''}" onclick="setInboxFilter('bestand_heal',this)" title="routing_reason enthält storage_guard_bestand_heal — Bestand-Heal-Fälle aus dem Storage-Guard.">🧰 Bestand-Heal (${bestandHealCount})</button>
+  </div>
+  <div class="alert alert-info" style="margin-bottom:10px;">
+    <span><strong>Inbox = schnelle Freigabe.</strong> <code>📥 Eingang</code> heißt: neu importiert und noch nicht von dir final bestätigt. <strong>Triage = tiefe Prüfung.</strong> Wenn ein Fall unklar ist, öffne ihn von hier in Triage statt in der Tabelle zu rätseln.</span>
   </div>
   ${gInboxFilter==='haengend' ? `<div style="background:rgba(245,158,11,0.08);border-left:3px solid var(--orng);padding:10px 14px;border-radius:6px;margin-bottom:10px;font-size:12px;color:var(--tx);">
     <strong>🪤 Hängend = Skill-Gap-Indikator.</strong> ${haengendCount} Doc${haengendCount===1?'':'s'} > 24h ohne Approval ODER ohne provider/entity.
@@ -5840,13 +6110,13 @@ function renderInbox() {
     <table class="inbox-table">
       <thead><tr>
         <th>Datum</th>
-        <th>Dateiname / Anbieter</th>
+        <th>Dateiname</th>
+        <th>Anbieter</th>
         <th>Rechnungsdatum</th>
         <th>Betrag</th>
         <th>Entität</th>
         <th>Typ</th>
         <th>Status</th>
-        <th>Routing</th>
         <th>Aktionen</th>
       </tr></thead>
       <tbody>`;
@@ -5854,10 +6124,10 @@ function renderInbox() {
   for (const r of rows) {
     const displayDate = r.date_scanned || r.date_received;
     const isRechnung = r.target_stream === 'RECHNUNG' || r.target_stream === 'STEUER';
-    const isSent = r.accounting_status === 'sent';
     const isDup = isDuplicate(r);
     const tags = Array.isArray(r.tags) ? r.tags : (typeof r.tags === 'string' ? (() => { try { return JSON.parse(r.tags); } catch(e) { return []; } })() : []);
     const isVorschuss = tags.some(t => t.toLowerCase() === 'vorschuss');
+    const nextStep = overviewNextStepMeta(r);
 
     const driveLink = r.drive_file_id
       ? ` <a href="https://drive.google.com/file/d/${r.drive_file_id}/view" target="_blank" title="PDF in Google Drive öffnen" style="text-decoration:none">&#x1F4C4;</a>`
@@ -5865,8 +6135,9 @@ function renderInbox() {
 
     const rawName = r.drive_file_name || r.subject || r.provider || '—';
     const fileName = escHtml(rawName);
-    const providerLabel = r.provider && r.provider !== r.drive_file_name
-      ? `<br><span style="font-size:10px;color:var(--tx2)">${escHtml(r.provider)}</span>` : '';
+    const providerLabel = r.provider
+      ? `<span style="font-size:11px;color:var(--tx0);font-weight:600;">${escHtml(r.provider)}</span>`
+      : `<span style="color:var(--tx2)">—</span>`;
     const dupBadge = isDup
       ? `<br><span style="font-size:9px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;padding:1px 5px;border-radius:3px">&#x26A0;&#xFE0F; Duplikat — bitte eines löschen</span>` : '';
     const healBadge = isBestandHealDoc(r)
@@ -5893,8 +6164,11 @@ function renderInbox() {
         ? `<span style="color:#f59e0b;font-size:11px" title="Wird durch Invoice-Skill extrahiert">&#x23F3;</span>`
         : `<span style="color:var(--tx2)">—</span>`;
 
-    const entitySel = `<select class="inbox-edit-sel" id="sel-entity-${r.id}">${DOC_ENTITY_OPTS.map(o=>`<option value="${o}"${mapEntity(o)===mapEntity(r.entity)?' selected':''}>${o}</option>`).join('')}</select>`;
-    const docTypeSel = `<select class="inbox-edit-sel" id="sel-doctype-${r.id}">${DOC_TYPES.map(o=>`<option value="${o}"${o===r.doc_type?' selected':''}>${o}</option>`).join('')}</select>`;
+    const entitySel = `<select class="inbox-edit-sel select-pill" style="${inboxEntitySelectStyle(r.entity)}" onchange="refreshInboxEditableSelect(this,'entity')" id="sel-entity-${r.id}">${DOC_ENTITY_OPTS.map(o => {
+      const label = mapEntity(o) === 'priv' ? 'PRIV' : mapEntity(o) === 'c3' ? 'C3' : mapEntity(o) === 'c4' ? 'C4' : o;
+      return `<option value="${o}"${mapEntity(o)===mapEntity(r.entity)?' selected':''}>${label}</option>`;
+    }).join('')}</select>`;
+    const docTypeSel = `<select class="inbox-edit-sel select-pill" style="${inboxDocTypeSelectStyle(r.doc_type)}" onchange="refreshInboxEditableSelect(this,'doctype')" id="sel-doctype-${r.id}">${DOC_TYPES.map(o=>`<option value="${o}"${o===r.doc_type?' selected':''}>${o}</option>`).join('')}</select>`;
 
     const rowBg = isDup ? ' style="background:rgba(251,191,36,0.07)"' : '';
 
@@ -5902,22 +6176,34 @@ function renderInbox() {
       <td data-label="Datum" style="white-space:nowrap">
         ${fmtDate(displayDate)}
         ${isVorschuss ? '<br><span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;font-size:9px">Vorschuss</span>' : ''}
-        ${isSent ? '<br><span class="pill pill-approved" style="font-size:9px">&#x1F4E7; Buchhalter</span>' : ''}
       </td>
-      <td data-label="Datei / Anbieter" style="max-width:220px"${nameTitle}>
-        <span style="font-weight:600">${fileName}</span>${driveLink}${providerLabel}${dupBadge}${healBadge}
+      <td data-label="Dateiname" style="max-width:220px"${nameTitle}>
+        <span style="font-weight:600">${fileName}</span>${driveLink}${dupBadge}${healBadge}
+      </td>
+      <td data-label="Anbieter" style="max-width:180px">
+        ${providerLabel}
+        ${r.recipient ? `<div class="inbox-doc-meta">${recipientPill(r.recipient)}</div>` : ''}
       </td>
       <td data-label="Rechnungsdatum" style="white-space:nowrap;color:var(--tx2)">${dateCell}</td>
       <td data-label="Betrag" class="num" style="white-space:nowrap">${amtCell}</td>
       <td data-label="Entität">${entitySel}</td>
-      <td data-label="Typ">${docTypeSel}</td>
-      <td data-label="Status">${statusPill(r.status)}</td>
-      <td data-label="Routing" style="font-size:11px;white-space:nowrap">${r.target_stream ? escHtml(r.target_stream) : '—'}</td>
+      <td data-label="Typ">
+        ${docTypeSel}
+        <div class="inbox-doc-meta">
+          ${partyRoleBadge(r.party_role)}
+          ${r.counterparty_entity ? counterpartyPill(r.counterparty_entity) : ''}
+        </div>
+        <span class="inbox-routing-note">${r.target_stream ? `Routing: ${escHtml(r.target_stream)}` : 'Routing wird nach Freigabe bestimmt.'}</span>
+      </td>
+      <td data-label="Status">
+        ${statusPill(r.status)}
+        <span class="inbox-action-note"><strong>${escHtml(nextStep.label)}</strong> — ${escHtml(nextStep.hint)}</span>
+      </td>
       <td data-label="Aktionen">
         <div class="btn-row-actions">
-          <button class="btn-sm btn-primary" onclick="approveDoc('${r.id}')" title="Freigeben: speichert Entität+Typ → Skill Router startet automatisch (RECHNUNG/STEUER → Invoice-Extraktion + Reconcile | VERTRAG → Vertrags-Extraktion → prf_contracts | TIMETRACK → Import)">✅ Freigeben</button>
-          ${!isSent ? `<button class="btn-sm btn-attention" onclick="confirmSendBuchhalter('${r.id}',this)" title="ACHTUNG: Sendet sofort eine E-Mail an den Buchhalter!">📨 Senden</button>` : ''}
-          <button class="btn-sm btn-danger" onclick="rejectDoc('${r.id}')" title="Ablehnen: setzt Status auf rejected — kein Skill, kein Versand, bleibt in DB">❌ Ablehnen</button>
+          <button class="btn-sm btn-primary" onclick="approveDoc('${r.id}')" title="Freigeben: speichert Entität+Typ und startet bei Rechnung/Steuer/Vertrag automatisch den passenden Skill.">✅ Freigeben</button>
+          <button class="btn-sm btn-neutral" onclick="gotoTriageDoc(${r.id})" title="Öffnet dieses Dokument in Triage mit Vorschau, Skill-Kontext und allen Detailfeldern.">🔎 Triage</button>
+          <button class="btn-sm btn-danger" onclick="rejectDoc('${r.id}')" title="Ablehnen: verschwindet aus Inbox und Triage, bleibt aber als rejected im System protokolliert.">❌ Ablehnen</button>
         </div>
       </td>
     </tr>`;
@@ -5995,7 +6281,7 @@ async function approveDoc(id) {
 async function rejectDoc(id) {
   showConfirmModal(
     '⚠️ Dokument ablehnen',
-    'Dokument wirklich ablehnen?',
+    'Dokument wirklich ablehnen? Es verschwindet danach aus Inbox und Triage, bleibt aber als "rejected" im System protokolliert.',
     async () => {
       const row = document.getElementById('inbox-row-' + id);
       if (!row) return;
@@ -8672,14 +8958,14 @@ function fmtAmount(a, c) {
 }
 
 function statusBadge(d) {
-  if (d.txn_id) return '<span style="color:var(--grn);font-weight:600">✅ Verbucht</span>';
-  if (d.status === 'approved') return '<span style="color:var(--teal)">✓ Freigegeben</span>';
+  if (d.txn_id) return '<span class="pill pill-approved">✅ Verbucht</span>';
+  if (d.status === 'approved') return statusPill('approved');
   if (d.status === 'needs_review' || d.status === 'pending_review') {
-    return `<span style="color:var(--amb);font-weight:600">⚠️ Prüfen</span>`
+    return `${statusPill(d.status)}`
       + ` <button class="btn-sm" onclick="event.stopPropagation();gotoTriageDoc(${d.id})" title="Dieses Dokument im Triage-Tab öffnen und bearbeiten" style="font-size:10px;padding:2px 8px;margin-left:4px;">→ bearbeiten</button>`;
   }
-  if (d.status === 'inbox' || !d.status) return '<span style="color:#6B7280">📦 Abgelegt</span>';
-  return `<span style="color:#6B7280">${escapeHtml(d.status)}</span>`;
+  if (d.status === 'inbox' || !d.status) return statusPill('inbox');
+  return statusPill(d.status);
 }
 
 function folderLinkFromPath(d) {
@@ -8810,6 +9096,32 @@ const ENTITIES = ['privat','c3-convis-gmbh','c4-convis-sarl','unbekannt'];
 // Anzeige wird via CSS text-transform: uppercase visuell uppercased.
 const DOC_TYPES = ['Rechnung','Vertrag','Banking-CSV','Steuer','Zahlungsbeleg','Sonstiges'];
 const DOC_ENTITY_OPTS = ['privat','c3-convis-gmbh','c4-convis-sarl'];
+
+function inboxEntitySelectStyle(value) {
+  const e = mapEntity(value);
+  if (e === 'priv') return 'background:var(--teal);color:#fff;border-color:var(--teal);';
+  if (e === 'c3') return 'background:var(--navy);color:#fff;border-color:var(--navy);';
+  if (e === 'c4') return 'background:var(--forest);color:#fff;border-color:var(--forest);';
+  return 'background:var(--s1);color:var(--tx0);border-color:var(--s3);';
+}
+
+function inboxDocTypeSelectStyle(value) {
+  const v = String(value || '').toLowerCase();
+  if (v === 'rechnung') return 'background:#DBEAFE;color:#1D4ED8;border-color:#93C5FD;';
+  if (v === 'vertrag') return 'background:#EDE9FE;color:#6D28D9;border-color:#C4B5FD;';
+  if (v === 'banking-csv') return 'background:#CCFBF1;color:#0F766E;border-color:#5EEAD4;';
+  if (v === 'steuer') return 'background:#FEE2E2;color:#B91C1C;border-color:#FCA5A5;';
+  if (v === 'zahlungsbeleg') return 'background:#DCFCE7;color:#166534;border-color:#86EFAC;';
+  return 'background:var(--s1);color:var(--tx0);border-color:var(--s3);';
+}
+
+function refreshInboxEditableSelect(selectEl, kind) {
+  if (!selectEl) return;
+  const style = kind === 'entity'
+    ? inboxEntitySelectStyle(selectEl.value)
+    : inboxDocTypeSelectStyle(selectEl.value);
+  selectEl.style.cssText = style;
+}
 
 function sel(opts, val, cls, extra) {
   return `<select class="${cls||'cat-sel'}" ${extra||''}>${opts.map(o=>`<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
@@ -10270,14 +10582,19 @@ function triageDocCard(doc) {
   }).join('');
 
   const amount = doc.amount != null ? Number(doc.amount).toLocaleString('de-DE',{style:'currency',currency:doc.currency||'EUR',maximumFractionDigits:2}) : '';
-  // v11.51 T2 — processing_state „inbox" → „neu" (DB-Status, NICHT Drive-Ordner)
-  const psRaw = doc.processing_state || 'pending';
-  const psDisplay = psRaw === 'inbox' ? 'neu' : psRaw;
-  const stateColor = psRaw === 'inbox' ? 'var(--blu)' : psRaw === 'needs_review' ? 'var(--orng)' : psRaw === 'source_lost' ? 'var(--red)' : 'var(--tx2)';
-  const stateBg = psRaw === 'source_lost' ? 'rgba(239,68,68,0.10)' : 'var(--bg1)';
-  const psTitle = psRaw === 'inbox'
-    ? 'DB-Status „inbox" = neu, noch nicht durchgelaufen. NICHT der Drive-Ordner!'
-    : `DB-Status processing_state = ${psRaw}`;
+  const psRaw = String(doc.processing_state || 'pending').toLowerCase();
+  const statusHint = overviewNextStepMeta(doc);
+  const displayName = escHtml(doc.drive_file_name || doc.subject || '— ohne Dateiname —');
+  const providerName = escHtml(doc.provider || '— kein Provider —');
+  const routingReasonPreview = escHtml(textPreview(doc.routing_reason || '', 72)) || '—';
+  const receivedDate = fmtDate(doc.date_received);
+  const invoiceDate = fmtDate(doc.invoice_date);
+  const docTypeHtml = docTypeBadge(doc.doc_type);
+  const entityHtml = entityBadge(doc.entity);
+  const triageStatusHtml = triageStatePill(doc);
+  const nextStepText = psRaw === 'source_lost'
+    ? 'Quelle fehlt oder ist nicht mehr lesbar. Hier prüfen, ob Original wiederbeschafft oder der Fall bewusst verworfen werden soll.'
+    : `${statusHint.label}: ${statusHint.hint}`;
 
   // v11.51 T1 — Doc-Felder-Sicherheit prominent (aus documents.confidence_score)
   const docConf = doc.confidence_score != null ? Number(doc.confidence_score) : null;
@@ -10312,17 +10629,57 @@ function triageDocCard(doc) {
       ${healBannerHtml}
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px;">
         <div style="flex:1;">
-          <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · <span title="Klassifikation des Dokuments">${doc.doc_type || '?'}</span>${helpIcon('doc_type')} · ${doc.invoice_date || doc.date_received?.slice(0,10) || ''}</div>
-          <div style="font-size:14px;font-weight:600;margin-top:2px;">${(doc.provider || '— kein Provider —').replace(/&/g,'&amp;').replace(/</g,'&lt;')} <span style="font-weight:400;color:var(--tx2);">${amount}</span></div>
-          <div style="font-size:12px;color:var(--tx2);margin-top:3px;">
-            <span style="background:var(--bg1);padding:1px 8px;border-radius:10px;">${doc.entity || '?'}</span>
-            <span style="background:${stateBg};padding:1px 8px;border-radius:10px;margin-left:4px;color:${stateColor};" title="${psTitle}">${psDisplay}</span>${helpIcon('processing_state')}
-            <span style="margin-left:4px;">${partyHtml}</span>
-            ${counterpartyHtml ? `<span style="margin-left:4px;">${counterpartyHtml}</span>` : ''}
-            ${docConfHtml}
-            ${doc.drive_file_id ? '<span style="margin-left:6px;color:var(--tx2);">📎 PDF</span>' : ''}
+          <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · ${receivedDate !== '—' ? `Eingang ${receivedDate}` : 'ohne Eingangsdatum'}</div>
+          <div style="font-size:15px;font-weight:700;margin-top:3px;line-height:1.35;" title="${displayName}">${displayName}</div>
+          <div style="font-size:13px;color:var(--tx);margin-top:4px;">
+            <strong>${providerName}</strong>
+            ${amount ? `<span style="font-weight:400;color:var(--tx2);margin-left:6px;">${amount}</span>` : ''}
           </div>
-          ${recipientHtml ? `<div style="font-size:12px;color:var(--tx2);margin-top:6px;">${recipientHtml}</div>` : ''}
+          <div class="triage-context-row">
+            ${entityHtml}
+            ${docTypeHtml}
+            ${triageStatusHtml}${helpIcon('processing_state')}
+            ${partyHtml}
+            ${counterpartyHtml ? counterpartyHtml : ''}
+            ${docConfHtml}
+            ${doc.drive_file_id ? '<span style="margin-left:2px;color:var(--tx2);font-size:11px;">📎 PDF</span>' : ''}
+          </div>
+          ${recipientHtml ? `<div class="triage-context-row">${recipientHtml}</div>` : ''}
+          <div class="triage-doc-grid">
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Datei</div>
+              <div class="triage-doc-value mono" title="${displayName}">${displayName}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Anbieter</div>
+              <div class="triage-doc-value">${providerName}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Entität</div>
+              <div class="triage-doc-value">${entityHtml}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Typ</div>
+              <div class="triage-doc-value">${docTypeHtml}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Status</div>
+              <div class="triage-doc-value">${triageStatusHtml}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Belegdatum</div>
+              <div class="triage-doc-value">${invoiceDate}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Routing-Grund</div>
+              <div class="triage-doc-value" title="${escHtml(doc.routing_reason || '—')}">${routingReasonPreview}</div>
+            </div>
+            <div class="triage-doc-field">
+              <div class="triage-doc-label">Nächster Schritt</div>
+              <div class="triage-doc-value">${escHtml(statusHint.label)}</div>
+            </div>
+          </div>
+          <div class="triage-next-step"><strong>Hier prüfen:</strong> ${escHtml(nextStepText)}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
