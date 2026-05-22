@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.78.0 — 2026-05-21 — UX Polish Pack: semantische Action-Buttons, bessere Fokus-/Hover-Zustände, konsistentere Primary/Secondary/Danger-Hierarchie, mobile Card-Ansicht für Inbox + Alle Docs, klarere benannte Aktionen statt Icon-only Buttons. -->
+<!-- TGV Dashboard v11.78.1 — 2026-05-22 — Route-State-Hotfix: Hash (#triage etc.) und sichtbare .page.active werden im file://-Modus wieder hart synchronisiert; Fallback für replaceState, Re-Sync auf pageshow/visibilitychange. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.78.0">
-<title>TGV Dashboard v11.78.0 — Financial OS</title>
+<meta name="version" content="11.78.1">
+<title>TGV Dashboard v11.78.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4630,7 +4630,12 @@ function showPage(pageId, btn) {
     if (window.location.hash !== '#' + pageId) {
       history.replaceState(null, '', '#' + pageId);
     }
-  } catch (_) { /* file:// schema kann replaceState blockieren — silent fail */ }
+  } catch (_) {
+    // file:// kann replaceState blockieren; Fallback hält URL und sichtbare Seite zusammen.
+    try {
+      if (window.location.hash !== '#' + pageId) window.location.hash = pageId;
+    } catch (_) {}
+  }
 
   // Lazy load
   if (pageId === 'uebersicht') loadUebersicht();
@@ -5161,15 +5166,25 @@ async function entSendTestMail(id, btn) {
   }
 }
 
+function getActivePageId() {
+  const active = document.querySelector('.page.active');
+  return active ? active.id.replace('page-', '') : '';
+}
+
 // Deep-link via hash: #system, #inbox, #finanzen, etc.
-function applyHashRoute() {
+function applyHashRoute(forceSync = false) {
   const h = (window.location.hash || '').replace(/^#/, '');
   if (!h) return;
   const valid = ['uebersicht','inbox','triage','finanzen','vertraege','projekte','monatsabschluss','mailrules','linkrate','system','architektur','actions','alle-docs','lernen','entitaeten','mailoutbox'];
-  if (valid.includes(h)) showPage(h, null);
+  if (!valid.includes(h)) return;
+  if (forceSync || getActivePageId() !== h) showPage(h, null);
 }
 window.addEventListener('hashchange', applyHashRoute);
 window.addEventListener('DOMContentLoaded', applyHashRoute);
+window.addEventListener('pageshow', () => applyHashRoute(true));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') applyHashRoute(true);
+});
 
 // ═══════════════════════════════════════════════════════
 //  ENTITY + PERIOD FILTER
