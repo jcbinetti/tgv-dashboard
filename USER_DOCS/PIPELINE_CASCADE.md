@@ -1,7 +1,7 @@
 # Pipeline Cascade — Inbox-Cascade bis Drive + Reconcile
 
 > **Was passiert nach WF A2, wenn ein Doc mit `status='inbox'` in der DB liegt?**
-> Schritt-für-Schritt für Nicht-Coder. Stand: 2026-05-13.
+> Schritt-für-Schritt für Nicht-Coder. Stand: 2026-05-20 (Iter 42.X live).
 
 ---
 
@@ -11,8 +11,8 @@
 |---|---|
 | Workflow | **TGV Cascade Trigger** + **TGV Skill Router** + N Skills |
 | Cascade-Trigger-Version | **v01.00** (Iter 15.1.c) |
-| Skill-Router-Version | **v0.6** (versions-aware, Iter 13) |
-| Datei | `07_TESTS/iter15_t1/deploy_cascade_trigger_v0100.py` + `TGV -App files/deploy_skill_router_v0500_iter12.py` + 13 Skill-Files |
+| Skill-Router-Version | **v0.7.1** (Code-Node-60s-Split + LEGACY_MAP-Reorder; Iter 37+42) |
+| Datei | `07_TESTS/iter15_t1/deploy_cascade_trigger_v0100.py` + `07_TESTS/iter42/x1_deploy_router_v0701.py` + 13 Skill-Files |
 | Aktiv | ✅ Cascade-Trigger (Webhook) · ✅ Skill-Router · 13 Skills aktiv |
 | **Trigger (echt)** | **2 Pfade:** (a) Webhook `POST /webhook/tgv-cascade-trigger` (via Chatbot/MCP `run_inbox_cascade`) · (b) Schedule Daily 03:00 UTC — **derzeit DISABLED** als Safety-Net |
 | n8n-Executions / Cascade-Run | **1 Exec für Cascade-Trigger** + **1 Exec pro Doc für Skill-Router** + **1 Exec pro Skill-Call**. → Bei 50 Inbox-Docs × 3 Skills = **~150 Execs**. ⚠️ **Quota-Hauptverbraucher.** |
@@ -52,11 +52,19 @@
 
 ### Phase 3: Skills (1 Exec pro Skill-Call)
 
+> **Pre-Cascade-Skill `parse-docling`:** Office-Dokumente (DOCX/XLSX/PPTX/HTML)
+> durchlaufen **vor** dem Orchestrator den Skill `tgv-parse-docling` — aufgerufen
+> vom **WF B parse_docling-Branch** (siehe [Pipeline B](PIPELINE_B_DRIVE_DROP.md)),
+> **nicht** vom Skill-Router. Er extrahiert den Text nach
+> `documents.extracted_markdown`; danach läuft das Doc wie ein PDF durch
+> Orchestrator + Router (Re-Triage, Iter 46.C2).
+
 | Skill | Webhook | Was er tut | Token? | DB-Schreibt | Drive? |
 |---|---|---|---|---|---|
-| **store-file-to-drive** v0.3 | `/webhook/tgv-skill-store-file-to-drive` | Lädt PDF aus DB (`documents.id` → holt Binär aus Mail-Cache oder vorhandenem Drive-Speicher) hoch nach `DOCUMENTS/{ENTITY}/{YEAR}/{MONTH}/`. Setzt `drive_file_id`, `drive_file_name`, `final_path` | nein | `documents` | ✅ |
+| **parse-docling** v0.1 (Iter 46 · WF-B-invoked, *nicht* Router-dispatched) | `/webhook/tgv-skill-parse-docling` | DOCX/XLSX/PPTX/HTML → Markdown via self-hosted **docling-serve** (Railway EU). Setzt `extracted_markdown` + `extracted_text_snippet`. **Verändert `processing_state` NICHT** (Iter 46.C2) — die Re-Triage übernimmt der Orchestrator | nein (docling-serve, kein Claude) | `documents.extracted_markdown` + `agent_events` | nein |
+| **store-file-to-drive** v0.7.1 (Iter 45.A1+B3+B4a, P2 Pattern Iter 43.D2) | `/webhook/tgv-skill-store-file-to-drive` | Lädt PDF aus DB (`documents.id` → holt Binär aus Mail-Cache oder vorhandenem Drive-Speicher) hoch nach `DOCUMENTS/{ENTITY}/{YEAR}/{MONTH}/`. Setzt `drive_file_id`, `drive_file_name`, `final_path`. **v0.6 (Iter 45.A1):** Build Supabase Patch Gate verschärft (final_path Pflicht, STORAGE_FAIL_STATES blocken), Merge Move/Upload best-effort `move_verified` Flag, `processing_state='done'` explicit (Mig-085-Race-Schutz), idempotent skip += `dbDoc.drive_file_id` (Phantom-Skip-Schutz). **v0.7 (Iter 45.B3):** `routing_target` Payload-Field unterstützt `'documents'` (default), `'parking_unsupported'`, `'parking_low_conf'`, `'parking_extraction_failed'` — bei PARKING-Routes wird der documents-Branch automatisch nach `DOCUMENTS/_PARKING/<sub>/` umgelenkt. **v0.7.1 (Iter 45.B4a):** processing_state per routing_target gemappt (documents→done, parking_unsupported→unsupported_format, parking_low_conf→needs_review, parking_extraction_failed→source_lost). Iter-44.B1 `target_subfolder` (Kreditor/Debitor/Transfer) bleibt für Subordner-Routing (Iter 46 Block C). **D2-Pattern P2:** emittiert `agent_event` pro Item | nein | `documents` + `agent_events` | ✅ |
 | **resolve-supplier** v0.1 | `/webhook/tgv-skill-resolve-supplier` | Sucht in `kb_suppliers` per ILIKE + token-overlap fuzzy. Findet z.B. "IONOS SE" → supplier_id=564, category_l1=Betrieb | nein | `documents.supplier_id` | nein |
-| **pdf-invoice-extract** v0.2 | `/webhook/tgv-skill-pdf-invoice-extract` | Lädt PDF → Claude-API mit Vision/Document-API → extrahiert Betrag, Rechnungsdatum, Lieferant, Positionen | ✅ **1500-3000 Tok** | `documents` (Felder) + `ai_suggestion` | nein |
+| **pdf-invoice-extract** v0.3 (Iter 43.A2 Recipient-Foundation) | `/webhook/tgv-skill-pdf-invoice-extract` | Lädt PDF → Claude-API mit Vision/Document-API → extrahiert Betrag, Rechnungsdatum, Lieferant, Positionen + **Recipient (Rechnungsempfänger)** | ✅ **1500-3000 Tok** | `documents` (Felder inkl. `recipient`) + `ai_suggestion` | nein |
 | **reconcile-payment** v0.1 | `/webhook/tgv-skill-reconcile-payment` | Sucht in `txn_master` Match auf entity + ABS(amount) ±€0.50 + Datum ±90d + `document_id IS NULL`. Confidence-Score (entity+30, amount+15-30, date+5-25, provider+10-15). ≥60 → auto-reconcile | nein | `txn_master.document_id`, `documents.txn_id`, `documents.status='auto_reconciled'` | nein |
 | **contract-summary** v0.1 | `/webhook/tgv-skill-contract-summary` | Lädt PDF → Claude → extrahiert Vertragspartner, Laufzeit, Kündigungsfrist, monatl. Betrag. Schreibt in `prf_contracts` | ✅ 2000-4000 Tok | `prf_contracts` + `documents.contract_id` | nein |
 | **detect-duplicate** v0.1 | `/webhook/tgv-skill-detect-duplicate` | Sucht in `documents` nach Hash/Provider+Amount+Date-Match. Markiert Duplikate mit `status='duplicate'` | nein | `documents.status` | nein |
@@ -66,6 +74,7 @@
 | **kb-learn** v0.3.1 | `/webhook/tgv-skill-kb-learn` | Schreibt `new_pattern_suggestion` aus Triage → `mail_processing_patterns_candidates`. Promoter (Iter 17) entscheidet ob → aktive Pattern | nein | `mail_processing_patterns_candidates`, ggf. `mail_processing_patterns` | nein |
 | **monthly-closing-prep** v0.2 | `/webhook/tgv-skill-monthly-closing-prep` | Multi-Anker-Lücken-Detection: Vertrag, Letzter Monat, Vorjahr, User-Annotation, Chat. Iter 22 | nein | `monthly_gaps` | nein |
 | **send-to-accountant** | `/webhook/tgv-buchhalter-versand` | Versendet Monatsbündel an Steuerberater (WF E v1.7.2) | nein | `documents.sent_to_accountant_at` | ✅ (PDF-Bundle) |
+| **classify-party-role** v0.4 (Iter 44.A4 Aliases + Iter 43.D1 AL Pattern) | `/webhook/tgv-skill-classify-party-role` | DB-only: Klassifiziert `documents.party_role` (kreditor/debitor/transfer/intern). Provider+Recipient gegen `entity_signatures.tokens` (inkl. v0.4 `aliases TEXT[]`). Bank-Eigenbeleg-Priorität vor Recipient-Match. **AL-Pattern:** schreibt `agent_decisions` mit `decision_type='party_role_classification'`. **Iter 44.F3 Router-Defensive:** wird jetzt auch bei Orchestrator-Low-Conf-Plan automatisch angehängt bei RECHNUNG-like Docs | nein | `documents.party_role` + `agent_decisions` + `agent_events` | nein |
 | **store-file-to-drive (contracts)** | gleicher Webhook, `target_root=contracts` | Verschiebt Vertrag nach `CONTRACTS/{ENTITY}/` | nein | `documents.final_path` | ✅ |
 
 ---
@@ -109,10 +118,20 @@ Plus n8n: 50 Docs × ~3 Skills + 1 Cascade-Trigger + 1 Skill-Router pro Doc = **
 → **Bedeutung:** Wenn WF A2 eine Information **nicht** in `documents` schreibt, ist sie für die Cascade verloren. Aktuell vermisst: `ai_request`-Full-Payload, `binary_keys`. (Verbesserungspunkt — siehe A2-Doc Sektion 8.)
 
 ### Multi-Skill pro Doc — wie geordnet?
-- Skill-Router nutzt `target_skill` aus A2 als **erstem Skill**.
-- Nach Erfolg liest er `skills_needed[]` und feuert sequenziell die restlichen.
-- **Reihenfolge ist deterministisch** (siehe FAQ 13a der A2-Doc): `unzip → csv_banking → pdf_invoice_extract → reconcile-payment → store-file-to-drive`.
-- **Parallel?** Nein — sequenziell, weil spätere Skills auf Output früherer angewiesen sind (z.B. reconcile braucht den Betrag aus pdf-invoice-extract).
+- Skill-Router nutzt `skills_needed[]` aus dem Orchestrator-Output, sonst fällt er auf `LEGACY_MAP[target_stream]` zurück.
+- **Reihenfolge LEGACY_MAP[RECHNUNG/STEUER] seit Iter 42.X (Router v0.7.1):**
+  1. `tgv-store-file-to-drive` — **MUSS ZUERST** (sonst hat `pdf-invoice-extract` kein `drive_file_id`)
+  2. `tgv-skill-detect-duplicate`
+  3. `tgv-resolve-supplier`
+  4. `tgv-pdf-invoice-extract` — braucht `drive_file_id` aus Schritt 1
+  5. `tgv-reconcile-payment` — braucht `amount`/`invoice_date` aus Schritt 4
+  6. `tgv-skill-upsert-contract-from-invoice`
+- **Reihenfolge LEGACY_MAP[VERTRAG]:** `tgv-extract-contract-pdf` → `tgv-store-file-to-drive`
+- **Reihenfolge LEGACY_MAP[BANKING]:** `tgv-classify-csv` → `tgv-import-banking-csv`
+- **Reihenfolge LEGACY_MAP[TIMETRACK]:** `tgv-import-timetrack-csv`
+- **Parallel?** Nein — sequenziell (SplitInBatches batch=1), weil spätere Skills auf Output früherer angewiesen sind.
+
+> **Hintergrund Iter 42.X:** Pre-Iter-42-Reihenfolge war `[pdf-invoice-extract, detect-duplicate, resolve-supplier, reconcile-payment, upsert-contract, store-to-drive]` — `pdf-invoice-extract` lief vor `store-to-drive` und scheiterte am Pre-Skill-Check `requires_inputs=[drive_file_id]` → 53 % aller Rechnungen ohne `amount`. Promote v0.7.1 hat den Reorder live behoben (2026-05-20, 18/19 with-drive-Bestands-Docs nachträglich geheilt).
 
 ---
 
@@ -179,4 +198,4 @@ Plus n8n: 50 Docs × ~3 Skills + 1 Cascade-Trigger + 1 Skill-Router pro Doc = **
 
 ---
 
-*Stand: 2026-05-13 · Quelle: `07_TESTS/iter15_t1/deploy_cascade_trigger_v0100.py` + `TGV -App files/deploy_skill_router_v0500_iter12.py` + 13 Skill-Deploy-Scripts · Iter 24*
+*Stand: 2026-05-22 · Quelle: `07_TESTS/iter15_t1/deploy_cascade_trigger_v0100.py` + `07_TESTS/iter42/x1_deploy_router_v0701.py` + Skill-Deploy-Scripts · Iter 46.C ergänzte `parse-docling` (Pre-Cascade-Skill)*
