@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.80.1 — 2026-05-22 — Cascade Feedback Repair: Side-Panel zeigt bei „Skills neu starten (Cascade)“ jetzt ein sichtbares Status-Modul mit Poll-Feedback, Countdown/Progress-Bar, neuer Event-Differenz und klaren Zuständen für gestartet/läuft/fertig/ohne neue Events. -->
+<!-- TGV Dashboard v11.81.0 — 2026-05-22 — Frontend Polish Pack: Triage-Zähler wieder sichtbar im Header, Filter-Modal scrollbar und sofort filternd, Supplier-Edit-Modal sauber über dem Sidepanel, Monatsabschluss erklärt leeres Konto klar bei fehlender Verknüpfung. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.80.1">
-<title>TGV Dashboard v11.80.1 — Financial OS</title>
+<meta name="version" content="11.81.0">
+<title>TGV Dashboard v11.81.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2476,7 +2476,7 @@ body.chat-open #main-content {
 
   /* v11.60 CO1 — kb_suppliers Editor-Modal (Side-Panel Pattern-CRUD) */
   #kb-supplier-modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 220; display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1200; display: none;
   }
   #kb-supplier-modal-backdrop.open { display: flex; align-items: center; justify-content: center; }
   #kb-supplier-modal {
@@ -2500,6 +2500,55 @@ body.chat-open #main-content {
   .sp-kb-card { transition: background 0.2s, border 0.2s; }
   .sp-kb-btn { transition: background 0.15s; }
   .sp-kb-btn:hover { background: var(--s3) !important; }
+  .triage-count-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--blu-bg);
+    border: 1px solid var(--blu-bd);
+    color: var(--blu);
+    font-size: 11px;
+    font-weight: 700;
+    vertical-align: middle;
+  }
+  .triage-modal-shell {
+    background: var(--bg);
+    border: 1px solid var(--bdr);
+    border-radius: 8px;
+    width: min(560px, 92vw);
+    height: min(80vh, 760px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  .triage-modal-options {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding: 6px 14px;
+    overscroll-behavior: contain;
+  }
+  .triage-modal-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    background: transparent;
+  }
+  .triage-modal-option:hover {
+    background: var(--bg1);
+  }
+  .triage-modal-option mark {
+    background: rgba(59,130,246,0.18);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+  }
 </style>
 
 <button id="stream-panel-toggle" onclick="toggleStreamPanel()" title="agent_events Live-Stream (Realtime-Channel auf Supabase). Klick auf Event = Detail-Modal mit Tool-Input/Output.">
@@ -3341,7 +3390,7 @@ body.chat-open #main-content {
     ════════════════════════════════════════════════ -->
     <div class="page" id="page-triage">
       <div class="page-header">
-        <h1>🎯 Triage <span style="font-size:13px;color:var(--tx2);font-weight:400;">— Dokumente bearbeiten</span></h1>
+        <h1>🎯 Triage <span style="font-size:13px;color:var(--tx2);font-weight:400;">— Dokumente bearbeiten</span><span id="triage-title-count" class="triage-count-pill">— Docs</span></h1>
         <p>Hier korrigierst du ein einzelnes Dokument (Typ, Entität, Anbieter) und lässt die passenden TGV-Skills laufen. Zeigt standardmäßig die Dokumente, bei denen TGV deine Hilfe braucht. <strong>Unterschied:</strong> „Inbox" = Überblick über alles Offene · „Triage" = die Bearbeitungs-Werkbank · „Alle Dokumente" = die vollständige Suchliste.</p>
       </div>
 
@@ -3374,7 +3423,7 @@ body.chat-open #main-content {
           </select>
           <input type="search" id="triage-search" placeholder="🔍 Suche  (Provider, Subject, oder #7322)" oninput="triageDebounceLoad()" style="flex:1;min-width:240px;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 11px;border-radius:4px;font-size:13px;">
           <button class="btn-sm" onclick="triageResetFilters()" style="padding:5px 11px;font-size:12px;background:transparent;border:1px solid var(--bdr);color:var(--tx2);">↺ Reset</button>
-          <span id="triage-counter" style="color:var(--tx2);font-size:12px;font-weight:500;">→ — Docs</span>
+          <span id="triage-counter" style="color:var(--tx2);font-size:12px;font-weight:700;">→ — Docs im aktuellen Filter</span>
         </div>
       </div>
 
@@ -9714,7 +9763,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
       const txnAcct = d.txn_id ? txnMap[d.txn_id] : null;
       const kontoCell = txnAcct?.account_name
         ? `<span style="font-size:11px;color:var(--tx1)" title="${escHtml(txnAcct.account_id||'')}"><strong>${escHtml(txnAcct.account_id||'')}</strong> ${escHtml(txnAcct.account_name)}</span>`
-        : `<span style="font-size:11px;color:var(--tx2)" title="Das Bankkonto wird erst sichtbar, sobald die Rechnung mit einer Bank-Transaktion verknüpft ist">—</span>`;
+        : `<span style="font-size:11px;color:var(--tx2)" title="Das Konto kommt aus der verknüpften Bank-Transaktion. Solange noch kein Reconcile / keine passende CSV-Buchung vorhanden ist, bleibt es leer.">—<br><span style="font-size:10px;color:var(--tx2);">erst nach Verknüpfung</span></span>`;
       const partyCell = partyRoleBadge(d.party_role);
       html += `<tr style="${rowStyle}">
         <td><strong>${escHtml(d.provider || d.drive_file_name || '—')}</strong></td>
@@ -10242,6 +10291,7 @@ const gTriageFilters = { entity: [], provider: [], doc_type: [], domain: [], spe
 const gTriageSelections = new Map();        // doc_id -> Set(skill_name) — current user choice
 const gTriageOriginalSuggested = new Map(); // doc_id -> Set(skill_name) — system suggestion (snapshot)
 const gTriageBulk = new Set();              // doc_ids in bulk-mode
+let _triageModalState = null;
 let gTriageDocs = [];
 let gTriageSkills = [];
 let gTriageSkillStats = {};                  // skill_name -> { correct, incorrect, total }
@@ -10323,26 +10373,18 @@ function triageOpenFilterModal(field) {
   }
 
   const current = new Set(gTriageFilters[field] || []);
+  _triageModalState = { field, title, options, current };
 
   // Build modal DOM
   let modal = document.getElementById('triage-modal');
   if (modal) modal.remove();
   modal = document.createElement('div');
   modal.id = 'triage-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
-  const optionsHtml = options.map(o => {
-    const safe = o.replace(/"/g, '&quot;');
-    const checked = current.has(o) ? 'checked' : '';
-    return `<label style="display:flex;align-items:center;padding:8px 12px;border-radius:5px;cursor:pointer;background:transparent;" onmouseover="this.style.background='var(--bg1)'" onmouseout="this.style.background='transparent'">
-      <input type="checkbox" value="${safe}" ${checked} class="triage-modal-cb" style="margin-right:10px;accent-color:var(--blu);">
-      <span style="font-size:13px;">${o.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
-    </label>`;
-  }).join('');
-
   modal.innerHTML = `
-    <div style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;width:480px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,0.4);">
+    <div class="triage-modal-shell">
       <div style="padding:14px 18px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;">
         <h3 style="margin:0;font-size:16px;">Filter: ${title}</h3>
         <span style="font-size:12px;color:var(--tx2);">${options.length} verfügbar</span>
@@ -10350,8 +10392,8 @@ function triageOpenFilterModal(field) {
       <div style="padding:8px 14px;border-bottom:1px solid var(--bdr);">
         <input id="triage-modal-search" type="search" placeholder="Filtern…" style="width:100%;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 10px;border-radius:4px;font-size:13px;">
       </div>
-      <div id="triage-modal-options" style="overflow-y:auto;flex:1;padding:6px 14px;">
-        ${optionsHtml || '<div style="text-align:center;padding:20px;color:var(--tx2);">Keine Optionen.</div>'}
+      <div id="triage-modal-options" class="triage-modal-options">
+        <div style="text-align:center;padding:20px;color:var(--tx2);">Lade Optionen…</div>
       </div>
       <div style="padding:12px 18px;border-top:1px solid var(--bdr);display:flex;gap:8px;justify-content:flex-end;background:var(--bg1);">
         <button class="btn-sm" onclick="triageModalSelectAll(true)" style="background:transparent;color:var(--tx2);border:1px solid var(--bdr);padding:5px 11px;font-size:12px;">Alle</button>
@@ -10363,18 +10405,13 @@ function triageOpenFilterModal(field) {
     </div>`;
 
   document.body.appendChild(modal);
+  triageModalRenderOptions('');
 
   // Search filter
   const search = modal.querySelector('#triage-modal-search');
   if (search) {
     search.focus();
-    search.oninput = () => {
-      const q = search.value.toLowerCase();
-      modal.querySelectorAll('.triage-modal-cb').forEach(cb => {
-        const lbl = cb.parentElement;
-        lbl.style.display = cb.value.toLowerCase().includes(q) ? 'flex' : 'none';
-      });
-    };
+    search.oninput = () => triageModalRenderOptions(search.value || '');
   }
 }
 
@@ -10390,6 +10427,48 @@ function triageModalApply(field) {
   document.getElementById('triage-modal').remove();
   triageRenderChips();
   loadTriage();
+}
+
+function triageModalRenderOptions(rawQuery) {
+  const modal = document.getElementById('triage-modal');
+  const wrap = document.getElementById('triage-modal-options');
+  if (!modal || !wrap || !_triageModalState) return;
+  const q = String(rawQuery || '').trim().toLowerCase();
+  const current = _triageModalState.current || new Set();
+  const rank = (val) => {
+    const v = String(val || '').toLowerCase();
+    if (!q) return 0;
+    if (v.startsWith(q)) return 0;
+    if (v.includes(q)) return 1;
+    return 99;
+  };
+  const visible = (_triageModalState.options || [])
+    .filter(o => !q || String(o).toLowerCase().includes(q))
+    .sort((a, b) => rank(a) - rank(b) || String(a).localeCompare(String(b), 'de', { sensitivity: 'base' }));
+
+  const highlight = (text) => {
+    const safe = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    if (!q) return safe;
+    const idx = safe.toLowerCase().indexOf(q);
+    if (idx < 0) return safe;
+    return safe.slice(0, idx) + '<mark>' + safe.slice(idx, idx + q.length) + '</mark>' + safe.slice(idx + q.length);
+  };
+
+  if (!visible.length) {
+    wrap.innerHTML = `<div style="text-align:center;padding:20px;color:var(--tx2);">Kein Treffer für „${escHtml(rawQuery || '')}“</div>`;
+  } else {
+    wrap.innerHTML = visible.map(o => {
+      const safe = String(o).replace(/"/g, '&quot;');
+      const checked = current.has(o) ? 'checked' : '';
+      return `<label class="triage-modal-option">
+        <input type="checkbox" value="${safe}" ${checked} class="triage-modal-cb" style="margin-right:10px;accent-color:var(--blu);">
+        <span style="font-size:13px;">${highlight(o)}</span>
+      </label>`;
+    }).join('');
+    if (q) {
+      wrap.innerHTML += `<div style="padding:8px 12px;font-size:11px;color:var(--tx2);">${visible.length} Treffer für „${escHtml(rawQuery)}“</div>`;
+    }
+  }
 }
 
 function triageBulkClear() {
@@ -11108,7 +11187,9 @@ async function loadTriage() {
 
     // Update counter + nav-badge
     const counterEl = document.getElementById('triage-counter');
-    if (counterEl) counterEl.textContent = `→ ${docs.length} Docs`;
+    if (counterEl) counterEl.textContent = `→ ${docs.length} Docs im aktuellen Filter`;
+    const titleCountEl = document.getElementById('triage-title-count');
+    if (titleCountEl) titleCountEl.textContent = `${docs.length} Docs`;
     const badge = document.getElementById('triage-badge');
     if (badge) {
       badge.textContent = docs.length;
