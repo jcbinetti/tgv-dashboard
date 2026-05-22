@@ -1,7 +1,13 @@
 # Pipeline B — Drive-Drop Intake
 
-> **Was passiert wenn der User eine Datei manuell in den Drive-Ordner `INBOX/` legt?**
-> Schritt-für-Schritt für Nicht-Coder. Stand: 2026-05-13.
+> **Was passiert, wenn der User eine Datei manuell in den Drive-Ordner `INBOX/` legt?**
+> Schritt-für-Schritt für Nicht-Coder. Stand: **2026-05-22** (Iter 46.C — Multi-Format-Parsing + Re-Triage live).
+
+> 📚 **Lern-Box — „MIME-Typ"**: Jede Datei hat einen technischen Typ-Stempel
+> (z.B. `application/pdf` für PDF, `…wordprocessingml.document` für DOCX). WF B
+> liest diesen Stempel, um zu entscheiden, welchen Weg die Datei nimmt. Wenn der
+> Stempel fehlt/unzuverlässig ist, schaut WF B ersatzweise auf die Datei-Endung
+> (`.pdf`, `.docx`, …).
 
 ---
 
@@ -9,138 +15,166 @@
 
 | Feld | Wert |
 |---|---|
-| Workflow | **TGV — B. Google Drive Scanner Intake** |
-| Version | **V3 Persistence Fixed** |
-| n8n-ID | `c7B4trQwfyRFVm8m` |
-| Datei | `TGV -App files/n8n_workflow_B_gdrive_scanner_intake_v3_persistence_fixed.json` |
-| Aktiv | ✅ ja (Iter 18: Auto-trigger 12:00 daily fixed) |
-| **Trigger (echt)** | **Cron `*/15 * * * *` = alle 15 Minuten** (`minutesInterval: 15`). Plus Webhook für Manual-Trigger |
-| Quelle | Google Drive Shared-Drive `0AK457tJJQWBsUk9PVA`, Ordner **`INBOX`** (`1wH4pl4uguwvIYbZrMU0QlJtjVpaaL7bF`) |
-| n8n-Executions / Tick | **1 Exec** pro Tick (alle inline). → 96 Execs/Tag = **2.880/Monat**. ⚠️ **Hauptquota-Fresser** wenn INBOX leer ist |
-| Token-Verbrauch / Tick | 0 wenn INBOX leer. Pro PDF: **1 Claude-Call** (~1500-3000 Tok). CSV: 0 (rule-based) |
+| Workflow | **TGV WF B v2 Drive Adapter (thin)** |
+| n8n-ID | `KRNRcSLSUiVC8nTW` |
+| Nodes | **17** (Iter 46.C: +3 parse_docling-Re-Triage-Nodes) |
+| Aktiv | ✅ ja |
+| **Trigger** | (a) **Schedule** — alle **24 Stunden** (Quota-Schonung, by-design seit Iter 43) · (b) **Webhook** `POST /webhook/tgv-wf-b-v2-trigger` für Ad-hoc-Pickup |
+| Quelle | Google Drive TGV-CORE Shared-Drive, Ordner **`INBOX`** (`1wH4pl4uguwvIYbZrMU0QlJtjVpaaL7bF`) |
+| Modell | **Thin Adapter** — WF B macht nur Intake + MIME-Routing; die eigentliche Klassifikation/Verarbeitung machen Orchestrator + Skill-Router (inline aufgerufen). |
+| n8n-Executions | 1 Exec pro Tick. Leerer INBOX = 1 Exec, 0 Folge-Calls. Pro Datei zusätzlich: Orchestrator-, Router- und Skill-Calls. |
+| Token-Verbrauch | 0 wenn INBOX leer. Pro Datei: 1 Orchestrator-Claude-Call (~1.000–2.000 Tok, Haiku) + ggf. Skill-Tokens. |
+
+> ℹ️ **Legacy-Hinweis:** Der frühere **WF B v3** (`c7B4trQwfyRFVm8m`, Cron alle 15 Min,
+> eigene CSV/PDF-Parser) ist seit Iter 25+ **gelöscht**. Falls in älteren Dokumenten
+> noch von „v3", „15-Min-Cron" oder `c7B4trQwfyRFVm8m` die Rede ist — das ist
+> historisch. Aktiv ist ausschließlich das hier beschriebene v2-thin-Modell.
 
 ---
 
 ## 2. Die Schritte — präzise Tabelle
 
-| # | Akteur (n8n-Node) | Was passiert | Eingang | Ausgang | API? | n8n-Exec? | Token? | Speichert wo? | Sichtbar in Dashboard | Stop/Weiter |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | **⏰ Alle 15 Minuten** | Schedule-Trigger weckt den WF | — | Tick | nein | startet 1 Exec | nein | — | Tab **System → Workflows** | Weiter |
-| 2 | **⚙️ Filter-Query bauen** | Baut Drive-API-Query: `'INBOX_FOLDER_ID' in parents and trashed=false` | — | Query-String | nein | nein | nein | — | — | Weiter |
-| 3 | **📁 Google Drive — Neue Dateien** | `GET drive/v3/files?q=...` listet **ALLE** Dateien in INBOX (nicht nur neue! V3 hat keine modifiedTime-Cutoff) | Query | Array Files | Google-Drive-API | nein | nein | — | — | Weiter (auch wenn leer) |
-| 4 | **🔀 Dateien aufteilen** | 1 Drive-Response mit N Files → N Items | Array | N Items | nein | nein | nein | — | — | Weiter, oder STOP wenn 0 Files |
-| 5 | **🧭 Supported File Triage V2** | Pro Item: Filtert Google-Doc/Sheet (`vnd.google-apps.*`) und Ordner raus. Behält nur PDF/Image und CSV. Setzt `file_kind='csv'` oder `'pdf'` | Item | Item + file_kind | nein | nein | nein | — | — | Weiter wenn supported |
-| 6 | **🧭 Supported File Route V2** | Switch: `file_kind='csv'` → 7a; `'pdf'` → 7b | Item | 1 von 2 | nein | nein | nein | — | — | Weiter |
-| 7a | **📊 GDrive CSV Parsen** | Lädt CSV-Inhalt aus Drive, parst Header+Rows | Item | Rows-Array | Drive-API | nein | nein | — | — | Weiter |
-| 7b | **⚙️ PDF für Claude vorbereiten** | Lädt PDF-Bytes, base64-encodet für Claude-Document-API | Item | Item + b64-PDF | Drive-API | nein | nein | — | — | Weiter |
-| 8a | **🏷️ GDrive CSV Klassifizieren** | Rule-based: Filename + Header → BV_DE / BNP_FR / timetrack / unknown (siehe `feedback_banking_csv_routing`) | Rows | csv_format + entity | nein | nein | nein | — | — | Weiter |
-| 8b | **🤖 Claude — PDF klassifizieren** | `POST api.anthropic.com/v1/messages` mit PDF-base64. Modell Sonnet 4.6. Claude liefert: stream/entity/provider/amount/date_document/category | b64-PDF | Claude-JSON | ✅ **Claude API** | nein | ✅ **~2000 Tok/Call** | — | indirekt: später Tab Documents | Weiter |
-| 9a | **📦 CSV Array zusammenfassen** | Bündelt N Rows zu 1 Insert-Payload | Rows | Bulk-Array | nein | nein | nein | — | — | Weiter |
-| 9b | **📋 GDrive Claude Antwort** | Parst Claude-JSON, baut DB-Datensatz | Claude-Response | Doc-Object | nein | nein | nein | — | — | Weiter |
-| 10a | **💾 Supabase — txn_master (GDrive CSV)** | INSERT N Zeilen in `txn_master` mit dedup auf `booking_date+amount+counterparty_raw` | Bulk | DB-Insert | Supabase | nein | nein | ✅ **`txn_master`** | Tab **Transactions** | Weiter |
-| 10b | **💾 Supabase — documents (GDrive)** | INSERT in `documents` mit `source='gdrive'`, `drive_file_id`, `drive_file_name`, `final_path` | Doc | DB-Insert | Supabase | nein | nein | ✅ **`documents`** | Tab **Documents** (Filter `source=gdrive`) | Weiter |
-| 11 | **Intake Capture/Light/Routing/Drive-Versioning** (4 Sub-Nodes) | Schreibt Audit-Trail: `input_packages`, `input_items`, `file_versions`, `routing_decisions` | Doc | DB-Inserts | Supabase | nein | nein | ✅ 4 Tabellen | Tab **System → Intake-Audit** | Weiter |
-| 12 | **Intake Build Records V2** | Baut finales Audit-Aggregat | — | Summary | nein | nein | nein | — | — | **STOP** WF fertig |
+| # | Akteur (n8n-Node) | Was passiert | n8n-Exec? | Token? | Speichert wo? | Stop/Weiter |
+|---|---|---|---|---|---|---|
+| 1 | **⏰ Schedule INBOX** (24 h) **oder** **Webhook Manual Trigger** | Weckt den WF | startet 1 Exec | nein | — | Weiter |
+| 2 | **📁 Drive List INBOX** | Listet **alle** Dateien im INBOX-Ordner (kein Datums-Filter) | nein | nein | — | Weiter |
+| 3 | **🧹 Dedup Filter** | Pro Datei: (a) ist sie schon in `documents`? → raus (Dedup auf `drive_file_id` **und** `drive_file_name`). (b) **MIME-Klassifikation**: setzt `_mime_routing_target` ∈ `documents` / `parse_docling` / `parking_unsupported` — inkl. Endungs-Fallback wenn der Drive-MIME-Typ unzuverlässig ist | nein | nein | — | Weiter |
+| 4 | **🔀 IF Has New Files** | Gibt es nach Dedup noch Dateien? | nein | nein | — | nein → **STOP** (NoOp) · ja → Weiter |
+| 5 | **💾 INSERT Documents v2** | Pro neue Datei 1 Zeile in `documents`: `source='gdrive'`, `processing_state='inbox'`, `status='pending_review'`, `doc_type='Sonstiges'`, `target_stream='UNBEKANNT'`, `entity='privat'` | nein | nein | ✅ **`documents`** | Weiter |
+| 6 | **🏷️ Capture Doc Id** | Merkt sich die neue `documents.id` (`_doc_id`) und reicht das MIME-Routing-Ziel weiter | nein | nein | — | Weiter |
+| 7 | **🧭 Route By MIME** | 3-Wege-Switch auf `_mime_routing_target` → siehe Abschnitt 3 | nein | nein | — | 1 von 3 Routen |
+
+Ab Schritt 7 verzweigt der WF in die **3 MIME-Routen** (Abschnitt 3).
 
 ---
 
-## 3. Übergabe an die Cascade
+## 3. Der MIME-Branch — 3 Routen
 
-**Nicht direkt — gleicher Polling-Mechanismus wie WF A2.** WF B schreibt `documents` mit `status='inbox'`. Die [Cascade](PIPELINE_CASCADE.md) übernimmt im nächsten Cascade-Tick.
+WF B v2 schickt jede Datei je nach Datei-Typ auf genau **einen** von drei Wegen:
 
-**Unterschied zu WF A2:** WF B **lädt die Datei NICHT erneut auf Drive hoch** — sie liegt ja schon in `INBOX/`. Stattdessen schreibt der Skill `store-file-to-drive` (Cascade) den finalen Pfad und **verschiebt** die Datei von `INBOX/` nach `DOCUMENTS/{ENTITY}/{YEAR}/{MONTH}/`.
+| Route | Formate | Was passiert | Node-Kette |
+|---|---|---|---|
+| **`documents`** | PDF · CSV · JPEG · PNG · GIF · WEBP | Normale Pipeline: Orchestrator klassifiziert (Vertrag/Rechnung/…) → Skill-Router ruft die geplanten Skills | `POST Orchestrator` → `Capture Plan` → `POST Skill Router` |
+| **`parse_docling`** | DOCX · XLSX · PPTX · HTML / XHTML | **Erst** Skill `tgv-parse-docling` (extrahiert Text → `documents.extracted_markdown`), **dann** Re-Triage über Orchestrator + Skill-Router — danach läuft das Office-Doc wie ein PDF | `POST Parse Docling` → `POST Orchestrator Docling` → `Capture Plan Docling` → `POST Skill Router Docling` |
+| **`parking`** | alles andere (HEIC · EML · MSG · ZIP · Google-Docs/Sheets · …) | Datei → `DOCUMENTS/_PARKING/unsupported_format/`, Doc-Zeile bekommt `processing_state='unsupported_format'` (Mig 089). Nichts wird „still ignoriert" | `POST Store-File Parking` |
 
-→ **Wichtig:** Nach erfolgreicher Cascade verschwindet die Datei aus `INBOX/` automatisch. Wenn sie liegen bleibt = Cascade hat etwas nicht verarbeitet (Skill-Fehler, Manual-Review nötig).
+**Wie wird der Typ erkannt?** Der `Dedup Filter` prüft zuerst den Drive-MIME-Typ.
+Weil Drive bei manchen Dateien einen unzuverlässigen Typ liefert (z.B. PDFs als
+`octet-stream`), gibt es einen **Endungs-Fallback**: erkennt Drive den Typ nicht,
+entscheidet die Datei-Endung (`.pdf`, `.docx`, `.xlsx`, `.pptx`, `.html`, …).
+Dieser Fallback wurde in Iter 46.C1 eingebaut, nachdem PDFs fälschlich nach
+PARKING gerieten.
+
+> 🆕 **Iter 46 — Multi-Format-Parsing:** Vor Iter 46 landeten DOCX/XLSX/PPTX/HTML
+> im PARKING („Format nicht unterstützt"). Seit Iter 46 werden sie vom Skill
+> `tgv-parse-docling` (self-hosted docling-serve) in Markdown-Text umgewandelt und
+> dann ganz normal klassifiziert. **PNG/JPG-OCR** ist noch nicht über docling
+> abgedeckt (Bilder gehen weiter über die `documents`-Route / Claude-Document-API).
+> **EML/MSG** bleiben vorerst im PARKING (→ Iter 47, Apache Tika).
 
 ---
 
-## 4. FAQ
+## 4. Übergabe — wie geht es weiter?
 
-### Quota-Warnung
-- **Cron alle 15 Min** = 96 Ticks/Tag = 2.880/Monat **selbst wenn INBOX dauerhaft leer ist**.
-- Vergleich: WF A2 = 60 Execs/Monat (alle 12 h).
-- **Iter 12 Quota-Welle** hat diese Frequenz nicht reduziert — Begründung: User erwartet "binnen 15 Min sichtbar".
-- **Optimierungsidee Iter 25+:** auf 1× pro Stunde (24/Tag = 720/Monat) reduzieren wenn INBOX-Drop selten passiert.
+**WF B v2 ruft Orchestrator und Skill-Router direkt selbst auf** (inline, kein
+Warten auf einen separaten Cascade-Tick). Der genaue Ablauf von Orchestrator und
+Skill-Router ist in der [Cascade-Doku](PIPELINE_CASCADE.md) beschrieben.
+
+**Die Datei bleibt zunächst in `INBOX/` liegen.** Der Skill `store-file-to-drive`
+(vom Skill-Router aufgerufen) schreibt den finalen Pfad und **verschiebt** die
+Datei von `INBOX/` nach `DOCUMENTS/{ENTITY}/{JAHR}/{MONAT}/` bzw. `CONTRACTS/…`
+bzw. `DOCUMENTS/_PARKING/<sub>/`.
+
+→ **Wichtig:** Verschwindet die Datei nach einem Lauf **nicht** aus `INBOX/`, hat
+ein Skill etwas nicht abgeschlossen (Fehler / Manual-Review nötig).
+
+> ✅ **PARKING-Pfad LIVE (seit Iter 45.B4):** `DOCUMENTS/_PARKING/` mit Unterordnern
+> `unsupported_format/`, `low_confidence/`, `extraction_failed/`. Liegt unter
+> `DOCUMENTS/` (nicht direkt im TGV-CORE-Root — Service-Account-Permission).
+
+---
+
+## 5. FAQ
+
+### Wie oft läuft WF B?
+- **Schedule alle 24 Stunden** — eine Exec pro Tag, auch wenn INBOX leer ist.
+- Das ist **Absicht** (Quota-Schonung, by-design seit Iter 43): Drive-Drops sind
+  selten, ein 15-Min-Cron würde nur Leerläufe produzieren.
+- Wer **sofort** verarbeiten will: Webhook `POST /webhook/tgv-wf-b-v2-trigger`
+  manuell auslösen (Ad-hoc-Pickup).
 
 ### Welche Datei-Formate werden verarbeitet?
-| Erkannt | Pfad | Skill |
+| Format | Route | Verarbeitung |
 |---|---|---|
-| **PDF** | Schritt 7b/8b | Claude-Klassifikation |
-| **Bilder** (PNG/JPG/…) | wie PDF (Claude-Document-API verarbeitet Bilder) | Claude |
-| **CSV** | Schritt 7a/8a | Rule-based BV_DE/BNP_FR/timetrack |
-| **Google Docs/Sheets/Slides** | **ignoriert** (vnd.google-apps.*) | — |
-| **Ordner** | ignoriert | — |
-| **Andere** (DOCX, XLSX, ZIP…) | **ignoriert in v3** | — |
+| **PDF** | `documents` | Claude-Klassifikation über Orchestrator |
+| **Bilder** (PNG/JPG/GIF/WEBP) | `documents` | wie PDF (Claude-Document-API) |
+| **CSV** | `documents` | rule-based BV_DE / BNP_FR / timetrack |
+| **DOCX / XLSX / PPTX / HTML** | `parse_docling` | `tgv-parse-docling` → Markdown → dann normale Klassifikation |
+| **HEIC / EML / MSG / ZIP / Google-Docs** | `parking` | → `_PARKING/unsupported_format/`, sichtbar in der DB |
 
-→ **Bedeutung:** Wenn der User ein .docx oder .xlsx in INBOX legt, wird es **nicht verarbeitet** und bleibt unbemerkt liegen.
+→ **Nichts wird mehr „still ignoriert".** Jede Datei bekommt eine `documents`-Zeile.
 
 ### Dedup — passiert da was?
-- **CSV:** ja, auf `(booking_date, amount, counterparty_raw)` in `txn_master` Unique-Constraint.
-- **PDF:** **schwächer** — nur über `drive_file_id` (jede neue Drive-Datei = neues Doc). Wenn User dieselbe PDF 2× nach INBOX kopiert → 2 Docs in DB. Erst der Cascade-Skill `detect-duplicate` (Iter 16) markiert das als Dup.
+- WF B prüft **vor** dem Insert, ob die Datei (per `drive_file_id` **oder**
+  `drive_file_name`) schon in `documents` existiert — wenn ja, kein neuer Eintrag.
+- Inhaltsgleiche Dateien mit **anderem** Namen erkennt erst der Cascade-Skill
+  `detect-duplicate`.
 
 ### Wer kann was in INBOX legen?
-- **Service Account** `tgv-n8n-service` (Content Manager) — kann auch löschen
-- **Jean-Chris Binetti** persönlich
-- **Niemand sonst** — `INBOX/` ist auf TGV-CORE Shared Drive, nicht öffentlich
+- Service Account `tgv-n8n-service` (Content Manager) und Jean-Chris Binetti.
+- `INBOX/` liegt auf dem TGV-CORE Shared Drive, nicht öffentlich.
 
-### Mail↔Drive — gibt's Verknüpfung?
-**Nein, getrennte Pfade.** WF B-Docs haben `source='gdrive'`, WF A2-Docs `source='email'`. Es gibt **keine** Cross-Source-Dedup. Wenn ein PDF erst per Mail kommt und der User es dann zusätzlich nach INBOX legt → 2 Docs in DB (mit unterschiedlichen `drive_file_id`).
-
-### Audit-Trail — was wird wo gespeichert?
-| Tabelle | Inhalt |
-|---|---|
-| `input_packages` | Pro Drive-Scan ein Eintrag: wann, wie viele Files |
-| `input_items` | Pro File ein Eintrag: filename, mimetype, hash |
-| `file_versions` | Versions-History bei Re-Uploads gleichen Dateinamens |
-| `routing_decisions` | Pro File die getroffene Klassifikation (Stream, Entity) |
-| `documents` | Der finale Doc-Datensatz (1 Zeile pro File) |
-| `txn_master` | Bei CSV: N Zeilen Transaktionen |
-
-→ Tab **System → Intake-Audit** zeigt diese 4 Audit-Tabellen.
+### Mail ↔ Drive — gibt es eine Verknüpfung?
+**Nein, getrennte Pfade.** WF-B-Docs haben `source='gdrive'`, WF-A2-Docs
+`source='email'`. Kein Cross-Source-Dedup: dasselbe PDF per Mail **und** per
+Drive-Drop → 2 Doc-Zeilen.
 
 ---
 
-## 5. Was passiert NICHT (Mythen-Buster)
+## 6. Was passiert NICHT (Mythen-Buster)
 
 | Mythos | Realität |
 |---|---|
-| "WF B sieht nur neue Dateien" | ❌ V3 hat keinen modifiedTime-Filter — listet **alle** in INBOX. Dedup über DB. |
-| "WF B verarbeitet auch DOCX" | ❌ Nur PDF/Bild/CSV. Andere Formate werden still ignoriert. |
-| "Datei wird automatisch nach Entity-Ordner verschoben" | ❌ Erst die Cascade macht das (`store-file-to-drive`). WF B liest nur. |
-| "WF B ist token-frei" | ❌ Jede PDF kostet Claude-Tokens. |
+| „WF B läuft alle 15 Minuten" | ❌ Alle **24 h** (Schedule) + Webhook für Ad-hoc. Der 15-Min-Cron war WF v3 (gelöscht). |
+| „WF B ignoriert DOCX/XLSX" | ❌ Seit Iter 46 → Route `parse_docling` → Text wird extrahiert + klassifiziert. |
+| „DOCX-Verträge werden vollständig ausgelesen" | ⚠️ Der **Text** wird extrahiert (`extracted_markdown`) und das Doc als Vertrag klassifiziert + abgelegt. Die **strukturierte** Vertragsdaten-Extraktion (`tgv-extract-contract-pdf`) kann aktuell nur PDF — Markdown-Konsum → Iter 47. |
+| „Datei wandert automatisch in den Entity-Ordner" | ❌ Erst der Skill `store-file-to-drive` verschiebt sie. WF B liest nur. |
+| „WF B ist token-frei" | ❌ Pro Datei läuft mindestens 1 Orchestrator-Claude-Call. |
 
 ---
 
-## 6. Was der User selbst sehen/ändern kann
+## 7. Was der User selbst sehen/ändern kann
 
 | Was | Wo | Editierbar? |
 |---|---|---|
-| INBOX-Ordner-Inhalt | Google Drive **TGV-CORE/INBOX** | ✅ Files dazu/weg |
-| Verarbeitete Docs | Tab **Documents** Filter `source=gdrive` | Stream/Entity korrigierbar |
-| Intake-Audit | Tab **System → Intake-Audit** | nein (read) |
-| WF B aktivieren/deaktivieren | n8n-Cloud Console | ja |
+| INBOX-Ordner-Inhalt | Google Drive **TGV-CORE/INBOX** | ✅ Dateien dazu/weg |
+| Verarbeitete Docs | Tab **Documents**, Filter `source=gdrive` | Stream/Entity korrigierbar |
+| PARKING-Inhalt | Drive **DOCUMENTS/_PARKING/** + Tab Documents (`processing_state=unsupported_format`) | read |
+| WF B aktivieren/deaktivieren | n8n-Cloud-Console | ja |
+| Ad-hoc-Lauf auslösen | Webhook `tgv-wf-b-v2-trigger` | ja |
 
 ---
 
-## 7. TL;DR — die 4 Phasen
+## 8. TL;DR — die 4 Phasen
 
-1. **SCANNEN** (1–4): alle 15 Min Drive-INBOX listen
-2. **TRIAGE** (5–6): PDF vs. CSV vs. ignorieren
-3. **KLASSIFIZIEREN** (7a/b–9a/b): CSV per Regel · PDF per Claude
-4. **EINSPEISEN** (10–12): DB-Insert + Audit-Trail. Cascade übernimmt.
+1. **SCANNEN** (1–2): alle 24 h (oder per Webhook) den INBOX-Ordner listen.
+2. **DEDUP + MIME** (3–4): Bekanntes raus, jede neue Datei mit Routing-Ziel taggen.
+3. **EINSPEISEN** (5–6): `documents`-Zeile anlegen (`processing_state='inbox'`).
+4. **ROUTEN** (7 + Abschnitt 3): `documents` → Orchestrator · `parse_docling` →
+   parse-docling + Re-Triage · `parking` → `_PARKING/`.
 
 ---
 
-## 8. Verbesserungspunkte
+## 9. Verbesserungspunkte
 
 | Befund | Vorschlag | Iter? |
 |---|---|---|
-| 15-Min-Cron zu häufig wenn leer | Stündlich (96→24/Tag, −2.160 Execs/Monat) | 25 |
-| DOCX/XLSX still ignoriert | Whitelist-Erweiterung + User-Warnung "Format nicht unterstützt" | 25+ |
-| PDF-Dedup nur über drive_file_id | Content-Hash-Dedup wie A2 | 25+ |
-| Kein Cross-Source-Dedup Mail↔Drive | `detect-duplicate` auch nach WF B feuern | bereits Cascade, prüfen |
-| INBOX-Liegenbleiber unsichtbar | Dashboard-Widget "INBOX-Files älter als 24h" | 24-25 |
+| `tgv-extract-contract-pdf` / `tgv-pdf-invoice-extract` können kein Markdown — geparste Office-Docs werden klassifiziert+abgelegt, aber nicht strukturiert ausgelesen | Extract-Skills `extracted_markdown` lesen lassen | 47 |
+| PNG/JPG-OCR nicht über docling (Railway-RAM) | Railway-Upgrade oder Hetzner-Pivot | 47 |
+| EML/MSG → PARKING | Apache Tika anbinden | 47 |
+| Google-Docs/Sheets landen im PARKING | Export-nach-PDF vor dem Routing | später |
+| INBOX-Liegenbleiber unsichtbar | Dashboard-Widget „INBOX-Files älter als 24 h" | 47+ |
 
 ---
 
-*Stand: 2026-05-13 · Quelle: `TGV -App files/n8n_workflow_B_gdrive_scanner_intake_v3_persistence_fixed.json` · Iter 24*
+*Stand: 2026-05-22 · Aktive WF: `KRNRcSLSUiVC8nTW` „TGV WF B v2 Drive Adapter (thin)" — 17 Nodes, 3-Wege-MIME-Branch (Iter 46.C) · Legacy `c7B4trQwfyRFVm8m` v3 gelöscht.*
