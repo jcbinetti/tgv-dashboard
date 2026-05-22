@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.79.1 — 2026-05-22 — UX Hotfix: Sidebar wieder separat scrollbar, Bereichslabels mehrzeilig statt abgeschnitten und Kontextbalken von doppelten Entität/Zeitraum-Chips auf Menübereich + Arbeitsmodus reduziert. -->
+<!-- TGV Dashboard v11.79.2 — 2026-05-22 — UX Header Simplify: doppelten Kontextblock entfernt, Orientierung direkt in die Seitentitel verlagert (CORE · FINANZEN/System über dem Titel, Untertab am Titel, ein einheitlicher Erklärungssatz darunter). -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.79.1">
-<title>TGV Dashboard v11.79.1 — Financial OS</title>
+<meta name="version" content="11.79.2">
+<title>TGV Dashboard v11.79.2 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -891,15 +891,37 @@ tbody tr:last-child td { border-bottom: none; }
 .page-header {
   margin-bottom: 20px;
 }
+.page-header-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tx2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
 .page-header h1 {
   font-size: 22px;
   font-weight: 700;
   color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .page-header p {
   font-size: 13px;
   color: var(--tx2);
-  margin-top: 3px;
+  margin-top: 6px;
+  max-width: 980px;
+}
+.page-header-subtab {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--blu);
+  background: var(--blu-bg);
+  border: 1px solid var(--blu-bd);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 /* ─── INBOX ITEM ─── */
@@ -2549,26 +2571,6 @@ body.chat-open #main-content {
         <button class="filter-btn" data-period="2026-01" onclick="setPeriod('2026-01', this)">Jan 26</button>
       </div>
     </div>
-    <div id="contextbar">
-      <div class="contextbar-inner">
-        <div class="context-meta">
-          <div class="context-kicker" id="context-kicker">CORE · Finanzen</div>
-          <div class="context-title-row">
-            <div class="context-title" id="context-title">Übersicht</div>
-            <span class="context-subtab" id="context-subtab" style="display:none">—</span>
-          </div>
-          <div class="context-purpose" id="context-purpose">Gesamtlage prüfen: offene Mengen, Health-Signale und Arbeitsstau schnell erfassen.</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:100%;">
-          <div class="context-chips">
-            <div class="context-chip" id="context-chip-group"><span>Menübereich</span><strong>CORE · Finanzen</strong></div>
-            <div class="context-chip" id="context-chip-mode"><span>Arbeitsmodus</span><strong>Operations</strong></div>
-          </div>
-          <div class="context-focus" id="context-focus">Primär hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.</div>
-        </div>
-      </div>
-    </div>
-
     <!-- ═══════════════════════════════════════════════
          PAGE: ÜBERSICHT
     ════════════════════════════════════════════════ -->
@@ -4503,22 +4505,22 @@ const isBestandHealDoc = doc => /storage_guard_bestand_heal/i.test(String(doc?.r
 const ENTITY_CONTEXT_LABELS = { all: 'Alle', priv: 'PRIV', c3: 'C3', c4: 'C4' };
 const PERIOD_CONTEXT_LABELS = { all: 'Alles', '2026-04': 'Apr 26', '2026-03': 'Mär 26', '2026-02': 'Feb 26', '2026-01': 'Jan 26' };
 const DASHBOARD_PAGE_META = {
-  uebersicht: { group: 'CORE · Finanzen', mode: 'Operations', title: 'Übersicht', purpose: 'Gesamtlage prüfen: offene Mengen, Health-Signale und Arbeitsstau schnell erfassen.', focus: 'Primär hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.' },
-  inbox: { group: 'CORE · Finanzen', mode: 'Operations', title: 'Inbox', purpose: 'Neu eingegangene oder prüfpflichtige Dokumente freigeben, ablehnen oder an den Buchhalter senden.', focus: 'Primär hier: offene Freigaben abarbeiten und hängende Fälle identifizieren.' },
-  triage: { group: 'CORE · Finanzen', mode: 'Operations', title: 'Triage', purpose: 'Dokumente fachlich prüfen, Skills nachschärfen und Grenzfälle mit maximalem Kontext behandeln.', focus: 'Primär hier: unklare oder wertvolle Dokumente sauber einordnen, nicht Masse klicken.' },
-  finanzen: { group: 'CORE · Finanzen', mode: 'Analyse', title: 'Finanzen', purpose: 'Transaktionen, Dokumente und Abgleich zusammen lesen, statt einzelne Belege isoliert zu betrachten.', focus: 'Primär hier: Geldfluss, Kategorien und Lücken im Reconcile analysieren.' },
-  vertraege: { group: 'CORE · Finanzen', mode: 'Analyse', title: 'Verträge', purpose: 'Aktive Verträge, Deadlines und Verlängerungsrisiken verfolgen.', focus: 'Primär hier: Fristen und teure Renewal-Risiken früh erkennen.' },
-  projekte: { group: 'CORE · Finanzen', mode: 'Analyse', title: 'Projekte', purpose: 'Projektkontext, Aktivitäten und spätere Projekt-Domain vorbereiten.', focus: 'Primär hier: Projektlage lesen; operative Finanzarbeit passiert meist woanders.' },
-  monatsabschluss: { group: 'CORE · Finanzen', mode: 'Operations', title: 'Monatsabschluss', purpose: 'Buchhalter-Versand je Entity und Monat prüfen und sicher auslösen.', focus: 'Primär hier: Vollständigkeit prüfen, dann Versand bestätigen.' },
-  mailrules: { group: 'CORE · Finanzen', mode: 'Operations', title: 'Mail Rules', purpose: 'Mail-Routing-Regeln pflegen, testen und Fehlklassifikationen präventiv entschärfen.', focus: 'Primär hier: wiederkehrende Muster in Regeln statt in Einzelfällen heilen.' },
-  linkrate: { group: 'CORE · Finanzen', mode: 'Analyse', title: 'Linkrate', purpose: 'Verknüpfungsquote zwischen Dokumenten und Transaktionen über Zeit beobachten.', focus: 'Primär hier: strukturelle Schwächen erkennen, nicht einzelne Fälle bearbeiten.' },
-  'alle-docs': { group: 'CORE · Finanzen', mode: 'Analyse', title: 'Alle Docs', purpose: 'Universelle Such- und Referenzsicht über alle Dokumente, wenn kein anderer Tab passt.', focus: 'Primär hier: Dokumente finden, dann für Bearbeitung in Triage oder Side-Panel springen.' },
-  actions: { group: 'CORE · Finanzen', mode: 'Tools', title: 'Aktionen', purpose: 'Tool-Hub für gezielte Eingriffe, Suchen und Schreiboperationen ohne Chat-Prompt.', focus: 'Primär hier: nur bewusst auslösen; viele Karten ändern echte Daten oder triggern Workflows.' },
-  lernen: { group: 'CORE · Finanzen', mode: 'Lernen', title: 'Lernen', purpose: 'Systemlogik, Pipeline-Dokus und Topology als Single Source of Truth nachlesen.', focus: 'Primär hier: Begriffe, Flüsse und Architektur klären, bevor du Regeln oder Daten änderst.' },
-  system: { group: 'SYSTEM', mode: 'System', title: 'System', purpose: 'Health, Kosten, Pattern-Health und technische Betriebsübersicht im Blick behalten.', focus: 'Primär hier: Betriebszustand lesen und technische Risiken früh erkennen.' },
-  entitaeten: { group: 'SYSTEM', mode: 'Stammdaten', title: 'Entitäten', purpose: 'Juristische Stammdaten, Signaturen und Aliases je Entity pflegen.', focus: 'Primär hier: Stammdaten sauber halten; alles andere hängt daran.' },
-  mailoutbox: { group: 'SYSTEM', mode: 'System', title: 'Mail-Outbox', purpose: 'Ausgehende Mails, Fehlerzustände und Retries nachvollziehen.', focus: 'Primär hier: Versandprobleme verifizieren und bei Bedarf gezielt retryn.' },
-  architektur: { group: 'SYSTEM', mode: 'Lernen', title: 'Architektur', purpose: 'TGV als Layer-/Graph-Modell verstehen und Abhängigkeiten nachvollziehen.', focus: 'Primär hier: Strukturen verstehen, nicht operative Arbeit erledigen.' },
+  uebersicht: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Übersicht', purpose: 'Gesamtlage prüfen: offene Mengen, Health-Signale und Arbeitsstau schnell erfassen.', focus: 'Wichtig hier: Lagebild lesen und nur bei Auffälligkeiten tiefer in Inbox, Triage oder Finanzen springen.' },
+  inbox: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Inbox', purpose: 'Neu eingegangene oder prüfpflichtige Dokumente freigeben, ablehnen oder an den Buchhalter senden.', focus: 'Wichtig hier: offene Freigaben abarbeiten und hängende Fälle identifizieren.' },
+  triage: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Triage', purpose: 'Dokumente fachlich prüfen, Skills nachschärfen und Grenzfälle mit maximalem Kontext behandeln.', focus: 'Wichtig hier: unklare oder wertvolle Dokumente sauber einordnen, nicht Masse klicken.' },
+  finanzen: { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Finanzen', purpose: 'Transaktionen, Dokumente und Abgleich zusammen lesen, statt einzelne Belege isoliert zu betrachten.', focus: 'Wichtig hier: Geldfluss, Kategorien und Lücken im Reconcile analysieren.' },
+  vertraege: { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Verträge', purpose: 'Aktive Verträge, Deadlines und Verlängerungsrisiken verfolgen.', focus: 'Wichtig hier: Fristen und teure Renewal-Risiken früh erkennen.' },
+  projekte: { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Projekte', purpose: 'Projektkontext, Aktivitäten und spätere Projekt-Domain vorbereiten.', focus: 'Wichtig hier: Projektlage lesen; operative Finanzarbeit passiert meist woanders.' },
+  monatsabschluss: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Monatsabschluss', purpose: 'Buchhalter-Versand je Entity und Monat prüfen und sicher auslösen.', focus: 'Wichtig hier: Vollständigkeit prüfen, dann Versand bestätigen.' },
+  mailrules: { group: 'CORE · FINANZEN', mode: 'Operations', title: 'Mail Rules', purpose: 'Mail-Routing-Regeln pflegen, testen und Fehlklassifikationen präventiv entschärfen.', focus: 'Wichtig hier: wiederkehrende Muster in Regeln statt in Einzelfällen heilen.' },
+  linkrate: { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Linkrate', purpose: 'Verknüpfungsquote zwischen Dokumenten und Transaktionen über Zeit beobachten.', focus: 'Wichtig hier: strukturelle Schwächen erkennen, nicht einzelne Fälle bearbeiten.' },
+  'alle-docs': { group: 'CORE · FINANZEN', mode: 'Analyse', title: 'Alle Docs', purpose: 'Universelle Such- und Referenzsicht über alle Dokumente, wenn kein anderer Tab passt.', focus: 'Wichtig hier: Dokumente finden und dann für Bearbeitung in Triage oder Side-Panel springen.' },
+  actions: { group: 'CORE · FINANZEN', mode: 'Tools', title: 'Aktionen', purpose: 'Tool-Hub für gezielte Eingriffe, Suchen und Schreiboperationen ohne Chat-Prompt.', focus: 'Wichtig hier: nur bewusst auslösen; viele Karten ändern echte Daten oder triggern Workflows.' },
+  lernen: { group: 'CORE · FINANZEN', mode: 'Lernen', title: 'Lernen', purpose: 'Systemlogik, Pipeline-Dokus und Topology als Single Source of Truth nachlesen.', focus: 'Wichtig hier: Begriffe, Flüsse und Architektur klären, bevor du Regeln oder Daten änderst.' },
+  system: { group: 'SYSTEM', mode: 'System', title: 'System', purpose: 'Health, Kosten, Pattern-Health und technische Betriebsübersicht im Blick behalten.', focus: 'Wichtig hier: Betriebszustand lesen und technische Risiken früh erkennen.' },
+  entitaeten: { group: 'SYSTEM', mode: 'Stammdaten', title: 'Entitäten', purpose: 'Juristische Stammdaten, Signaturen und Aliases je Entity pflegen.', focus: 'Wichtig hier: Stammdaten sauber halten; alles andere hängt daran.' },
+  mailoutbox: { group: 'SYSTEM', mode: 'System', title: 'Mail-Outbox', purpose: 'Ausgehende Mails, Fehlerzustände und Retries nachvollziehen.', focus: 'Wichtig hier: Versandprobleme verifizieren und bei Bedarf gezielt retryn.' },
+  architektur: { group: 'SYSTEM', mode: 'Lernen', title: 'Architektur', purpose: 'TGV als Layer-/Graph-Modell verstehen und Abhängigkeiten nachvollziehen.', focus: 'Wichtig hier: Strukturen verstehen, nicht operative Arbeit erledigen.' },
 };
 const DASHBOARD_SUBTAB_META = {
   inbox: { docs: 'Dokumente', txn: 'Transaktionen', routed: 'Routed History' },
@@ -4534,27 +4536,39 @@ function updateContextBar() {
     : pageId === 'system' ? DASHBOARD_SUBTAB_META.system[currentSysTab]
     : pageId === 'lernen' ? DASHBOARD_SUBTAB_META.lernen[currentLernenTab]
     : '';
-  const kicker = document.getElementById('context-kicker');
-  const title = document.getElementById('context-title');
-  const purpose = document.getElementById('context-purpose');
-  const focus = document.getElementById('context-focus');
-  const subtab = document.getElementById('context-subtab');
-  const chipGroup = document.getElementById('context-chip-group');
-  const chipMode = document.getElementById('context-chip-mode');
-  if (kicker) kicker.textContent = meta.group;
-  if (title) title.textContent = meta.title;
-  if (purpose) purpose.textContent = meta.purpose;
-  if (focus) focus.textContent = meta.focus;
-  if (subtab) {
-    if (subtabLabel) {
-      subtab.textContent = subtabLabel;
-      subtab.style.display = 'inline-flex';
-    } else {
-      subtab.style.display = 'none';
-    }
+  const page = document.getElementById('page-' + pageId);
+  if (!page) return;
+  const header = page.querySelector('.page-header');
+  if (!header) return;
+  const main = Array.from(header.children).find(el => el.tagName === 'DIV' && el.querySelector('h1')) || header;
+  const h1 = Array.from(main.children).find(el => el.tagName === 'H1') || main.querySelector('h1');
+  const p = Array.from(main.children).find(el => el.tagName === 'P') || main.querySelector('p');
+  if (!h1 || !p) return;
+
+  let kicker = main.querySelector('.page-header-kicker');
+  if (!kicker) {
+    kicker = document.createElement('div');
+    kicker.className = 'page-header-kicker';
+    main.insertBefore(kicker, h1);
   }
-  if (chipGroup) chipGroup.innerHTML = `<span>Menübereich</span><strong>${meta.group}</strong>`;
-  if (chipMode) chipMode.innerHTML = `<span>Arbeitsmodus</span><strong>${meta.mode || '—'}</strong>`;
+  kicker.textContent = meta.group || '';
+
+  let subtab = h1.querySelector('.page-header-subtab');
+  if (!subtab) {
+    subtab = document.createElement('span');
+    subtab.className = 'page-header-subtab';
+    h1.appendChild(subtab);
+  }
+  if (subtabLabel) {
+    subtab.textContent = subtabLabel;
+    subtab.style.display = 'inline-flex';
+  } else {
+    subtab.style.display = 'none';
+  }
+
+  const pHelp = Array.from(p.querySelectorAll('.help-icon')).map(el => el.outerHTML).join(' ');
+  const note = [meta.purpose, meta.focus].filter(Boolean).join(' ');
+  p.innerHTML = `${note}${pHelp ? ' ' + pHelp : ''}`;
 }
 
 const STATUS_LABELS = {
