@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.83.0 — 2026-05-23 — Supplier Override Apply Flow: doc-lokale Overrides bieten jetzt direkten Re-Run-CTA, Cascade lädt den Doc-Stand danach neu aus der DB und Triage aktualisiert sich auf den echten processing_state nach dem Lauf. -->
+<!-- TGV Dashboard v11.83.1 — 2026-05-23 — Stability Pass: Supplier-Section refresht jetzt auch nach manuellen Feldkorrekturen, Sidepanel-Titel synchronisiert sauber mit Provider/Doc-Type, Triage-Dateiindikator zeigt echten Dateityp statt hartem PDF-Label. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.83.0">
-<title>TGV Dashboard v11.83.0 — Financial OS</title>
+<meta name="version" content="11.83.1">
+<title>TGV Dashboard v11.83.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -10671,6 +10671,7 @@ function triageDocCard(doc) {
   const docTypeHtml = docTypeBadge(doc.doc_type);
   const entityHtml = entityBadge(doc.entity);
   const triageStatusHtml = triageStatePill(doc);
+  const fileKind = _spFileKind(doc.drive_file_name);
   const nextStepText = psRaw === 'source_lost'
     ? 'Quelle fehlt oder ist nicht mehr lesbar. Hier prüfen, ob Original wiederbeschafft oder der Fall bewusst verworfen werden soll.'
     : `${statusHint.label}: ${statusHint.hint}`;
@@ -10721,7 +10722,7 @@ function triageDocCard(doc) {
             ${partyHtml}
             ${counterpartyHtml ? counterpartyHtml : ''}
             ${docConfHtml}
-            ${doc.drive_file_id ? '<span style="margin-left:2px;color:var(--tx2);font-size:11px;">📎 PDF</span>' : ''}
+            ${doc.drive_file_id ? `<span style="margin-left:2px;color:var(--tx2);font-size:11px;" title="${escHtml(fileKind.label)}">${fileKind.icon} ${escHtml(fileKind.ext === '?' ? 'Datei' : fileKind.ext.toUpperCase())}</span>` : ''}
           </div>
           ${recipientHtml ? `<div class="triage-context-row">${recipientHtml}</div>` : ''}
           <div class="triage-doc-grid">
@@ -14263,12 +14264,24 @@ async function _spKbAuditLog(action, kbId, before, after, docId) {
 async function _spKbRefreshList() {
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
+  const cont = document.getElementById('sp-supplier-content');
+  if (cont) cont.innerHTML = '<div style="font-size:11px;color:var(--tx2);">…aktualisiere Supplier-Wissen</div>';
+  await _spRefreshSupplierSection(doc);
+}
+
+async function _spRefreshSupplierSection(doc) {
+  if (!doc) return;
   const [rows, overrides] = await Promise.all([
     _spFetchSupplier(doc.provider),
     _spFetchSupplierOverrides(doc.id),
   ]);
   const cont = document.getElementById('sp-supplier-content');
-  if (cont) cont.innerHTML = _spKbRenderListHtml(rows, doc, overrides);
+  const loading = document.getElementById('sp-supplier-loading');
+  if (cont) {
+    cont.innerHTML = _spKbRenderListHtml(rows, doc, overrides);
+    cont.style.display = 'block';
+  }
+  if (loading) loading.style.display = 'none';
 }
 
 async function _spRefreshDocFromDb(docId, opts) {
@@ -14687,17 +14700,7 @@ function openSidePanel(doc) {
   });
 
   // kb_suppliers async (v11.82: Match-Indicator + Edit/Add/Deactivate + doc-lokale Overrides)
-  Promise.all([
-    _spFetchSupplier(doc.provider),
-    _spFetchSupplierOverrides(doc.id),
-  ]).then(([rows, overrides]) => {
-    const cont = document.getElementById('sp-supplier-content');
-    const loading = document.getElementById('sp-supplier-loading');
-    if (!cont || !loading) return;
-    cont.innerHTML = _spKbRenderListHtml(rows, doc, overrides);
-    cont.style.display = 'block';
-    loading.style.display = 'none';
-  });
+  _spRefreshSupplierSection(doc);
 }
 
 function closeSidePanel() {
@@ -15010,6 +15013,8 @@ async function sidePanelSaveEdit() {
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
   const status = document.getElementById('sp-edit-status');
+  const titleEl = document.getElementById('side-panel-title');
+  const subEl = document.getElementById('side-panel-subtitle');
   const newEntity = document.getElementById('sp-edit-entity').value;
   const newProvider = document.getElementById('sp-edit-provider').value.trim();
   const newDocType = document.getElementById('sp-edit-doctype').value;
@@ -15055,6 +15060,11 @@ async function sidePanelSaveEdit() {
     status.innerHTML = `✅ gespeichert (${Object.keys(changes).length} Feld${Object.keys(changes).length===1?'':'er'}). System lernt aus dieser Korrektur.`;
     // Update local doc reference
     Object.assign(doc, changes);
+    if (titleEl) titleEl.textContent = `${doc.provider || '— kein Provider —'}`;
+    if (subEl) subEl.textContent = `#${doc.id} · ${doc.doc_type || '?'} · ${doc.invoice_date || (doc.date_received||'').slice(0,10) || '—'}`;
+    if (changes.provider || changes.entity || changes.doc_type) {
+      await _spRefreshSupplierSection(doc);
+    }
     // Iter 38.A1 — Entity-Korrektur zieht das Drive-Re-Filing nach (F7).
     if (changes.entity && doc.drive_file_id) {
       status.innerHTML += ' <span style="color:var(--blu);">Entität geändert → Re-Filing (siehe „Drive-Pfad").</span>';
