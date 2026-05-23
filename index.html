@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.82.1 — 2026-05-23 — Supplier Override Clarify: UI erklärt jetzt explizit, dass doc-lokale Supplier-Overrides Triage nicht sofort verlassen lassen; Triage bleibt bis processing_state-Wechsel sichtbar, Resolver-Anwendung folgt backend-seitig. -->
+<!-- TGV Dashboard v11.83.0 — 2026-05-23 — Supplier Override Apply Flow: doc-lokale Overrides bieten jetzt direkten Re-Run-CTA, Cascade lädt den Doc-Stand danach neu aus der DB und Triage aktualisiert sich auf den echten processing_state nach dem Lauf. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
 <!-- TGV Dashboard v11.72.0 — 2026-05-18 — Iter 36. (A2/F18) Vorschau-Regression behoben: loadTriage() selektierte drive_file_id, aber nicht drive_file_name → seit Iter 33 (_spFileKind typ-abhängig) zeigte das Detail-Panel ".?"/"unbenannt". Fix: drive_file_name in loadTriage-fields + Vorschau robust (Drive-/preview-iframe auch bei unbekannter Extension). Kein Intake-Regress. (C2/F19) Triage-Skill-Karten lesen Verfügbarkeit live aus skill_definitions statt Hardcode "@Iter 16". (A3/F12c) Bei unbekanntem Doc-Type "Rechnung extrahieren" vorausgewählt. (B2/F23) Reconcile-Zähler "Verknüpfte Paare" gefixt — is.not.null → not.is.null (ungültige PostgREST-Syntax → 0). (D2/F21-Workshop) Triage = Review-Inbox: Skill-Maschinenraum in <details> eingeklappt, Standard-Aktion "📋 Prüfen". (F20) detect-duplicate ist kein Checkbox-Skill mehr (läuft serverseitig garantiert). -->
@@ -7,8 +7,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.82.1">
-<title>TGV Dashboard v11.82.1 — Financial OS</title>
+<meta name="version" content="11.83.0">
+<title>TGV Dashboard v11.83.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13916,7 +13916,7 @@ function _spFindDocOverrideState(s, overrides) {
 
 function _spRenderOverrideSummary(rows, overrides, doc) {
   const provider = _spEsc(doc?.provider || '—');
-  const resolverNote = `<div style="font-size:10px;color:#b45309;margin-top:6px;">Hinweis: Override wird jetzt doc-lokal gespeichert und auditiert. Das Dokument bleibt in Triage, bis ein neuer Lauf den <code>processing_state</code> ändert. Die eigentliche Resolver-Anwendung des Overrides wird backend-seitig separat zugeschaltet.</div>`;
+  const resolverNote = `<div style="font-size:10px;color:#b45309;margin-top:6px;">Hinweis: Override gilt doc-lokal. Damit die neue Supplier-Entscheidung sichtbar greift, danach einmal Cascade/Skill-Lauf neu starten. Erst wenn dabei der <code>processing_state</code> wechselt, verschwindet das Dokument ggf. aus Triage.</div>`;
   if (!overrides.length) {
     return `<div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.18);border-radius:6px;padding:9px 10px;margin-bottom:10px;">
       <div style="font-size:11px;color:var(--tx);font-weight:600;">Kein doc-lokaler Supplier-Override aktiv</div>
@@ -13951,7 +13951,10 @@ function _spRenderOverrideSummary(rows, overrides, doc) {
         <div style="font-size:11px;font-weight:700;color:#047857;">Doc-Override aktiv (${overrides.length})</div>
         <div style="font-size:10.5px;color:var(--tx2);margin-top:2px;">Diese Entscheidung gilt nur für Doc #${_spEsc(doc?.id)}. Globale Supplier-Patterns bleiben unverändert.</div>
       </div>
-      <button onclick="_spClearDocSupplierOverrides()" style="background:transparent;border:1px solid #10b981;color:#047857;padding:4px 10px;border-radius:4px;font-size:10.5px;cursor:pointer;font-weight:700;">Override löschen</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button onclick='sidePanelRerunCascade({ skipConfirm: true, source: "supplier-override-rerun" })' style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.35);color:#047857;padding:4px 10px;border-radius:4px;font-size:10.5px;cursor:pointer;font-weight:700;">↻ Mit Override neu laufen lassen</button>
+        <button onclick="_spClearDocSupplierOverrides()" style="background:transparent;border:1px solid #10b981;color:#047857;padding:4px 10px;border-radius:4px;font-size:10.5px;cursor:pointer;font-weight:700;">Override löschen</button>
+      </div>
     </div>
     ${items}
     ${resolverNote}
@@ -14063,9 +14066,12 @@ async function _spApplyDocSupplierOverride(mode, kbSupplierId, supplierName) {
       p_notes: notes || null,
     });
     if (typeof showToast === 'function') {
-      showToast('success', isIgnore ? 'Doc-Override gespeichert. Bleibt bis Statuswechsel weiter in Triage sichtbar.' : 'Doc-Override gespeichert. Bleibt bis Statuswechsel weiter in Triage sichtbar.');
+      showToast('success', isIgnore ? 'Doc-Override gespeichert. Jetzt neu laufen lassen, damit die Änderung greift.' : 'Doc-Override gespeichert. Jetzt neu laufen lassen, damit die Änderung greift.');
     }
     await _spKbRefreshList();
+    if (confirm('Override gespeichert.\n\nCascade jetzt direkt neu starten, damit der neue Supplier-Override angewendet wird?')) {
+      await sidePanelRerunCascade({ skipConfirm: true, source: 'supplier-override-rerun' });
+    }
   } catch (e) {
     if (typeof showToast === 'function') showToast('error', `Override fehlgeschlagen: ${e.message}`);
     else alert(`Override fehlgeschlagen: ${e.message}`);
@@ -14265,6 +14271,30 @@ async function _spKbRefreshList() {
   if (cont) cont.innerHTML = _spKbRenderListHtml(rows, doc, overrides);
 }
 
+async function _spRefreshDocFromDb(docId, opts) {
+  opts = opts || {};
+  let row = null;
+  try {
+    const rows = await supa(`documents?id=eq.${docId}&select=*`);
+    row = rows && rows[0] ? rows[0] : null;
+  } catch (e) {
+    console.warn('[side-panel] doc refresh after cascade failed', e);
+    return null;
+  }
+  if (!row) return null;
+  if (typeof gTriageDocs !== 'undefined' && Array.isArray(gTriageDocs)) {
+    const idx = gTriageDocs.findIndex(d => d.id === docId);
+    if (idx >= 0) gTriageDocs[idx] = { ...gTriageDocs[idx], ...row };
+  }
+  if (opts.refreshTriage && document.getElementById('page-triage')?.classList.contains('active')) {
+    await loadTriage();
+  }
+  if (_sidePanelCurrentDoc && _sidePanelCurrentDoc.id === docId) {
+    await openSidePanelForDocId(docId);
+  }
+  return row;
+}
+
 // Iter 38.B1 — Live-Cascade-Feedback: Poll-State.
 let _spCascadePollToken = 0;
 let _spSkillHints = null;
@@ -14330,10 +14360,11 @@ function _spAnimateCascadeProgress(durationMs) {
   }, 180);
 }
 
-async function sidePanelRerunCascade() {
+async function sidePanelRerunCascade(opts) {
+  opts = opts || {};
   const doc = _sidePanelCurrentDoc;
   if (!doc) return;
-  if (!confirm(`Skills für Doc #${doc.id} (${doc.provider}) neu starten?\nKostet ~5-9 n8n-Execs (Cascade-chain).`)) return;
+  if (!opts.skipConfirm && !confirm(`Skills für Doc #${doc.id} (${doc.provider}) neu starten?\nKostet ~5-9 n8n-Execs (Cascade-chain).`)) return false;
   _spClearCascadeTimers();
   _spSetCascadeButtonState(true);
   _spSetCascadeStatus('info', 'Cascade wird gestartet', 'Webhook wird ausgelöst und danach auf neue Skill-Events gewartet.', 8);
@@ -14344,15 +14375,17 @@ async function sidePanelRerunCascade() {
     const res = await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doc_id: doc.id, _trigger: 'side-panel-rerun' }),
+      body: JSON.stringify({ doc_id: doc.id, _trigger: opts.source || 'side-panel-rerun' }),
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     // Iter 38.B1: Live-Feedback statt „Refresh in 30s" — agent_events pollen.
     _spSetCascadeStatus('info', 'Cascade gestartet', `Trigger akzeptiert. Bisher ${baselineCount} bekannte Skill-Events auf diesem Doc — jetzt warte ich auf neue.`, 0);
     _spPollCascade(doc.id, { baselineCount, startedAt: Date.now() });
+    return true;
   } catch (e) {
     _spSetCascadeStatus('error', 'Cascade konnte nicht gestartet werden', e.message || 'Unbekannter Fehler beim Triggern des Skill-Routers.', 100);
     _spSetCascadeButtonState(false);
+    return false;
   }
 }
 
@@ -14390,6 +14423,13 @@ function _spPollCascade(docId, opts) {
         _spSetCascadeStatus('warn', 'Keine neuen Skill-Events sichtbar', 'Der Trigger wurde gesendet, aber im Poll-Fenster sind keine neuen Events aufgetaucht. Möglich: Queue hängt, gleicher Skill wurde nicht erneut geloggt oder der Run ist noch verspätet.', 100);
       }
       _spSetCascadeButtonState(false);
+      if (delta > 0) {
+        await new Promise(r => setTimeout(r, 900));
+        if (_sidePanelCurrentDoc && _sidePanelCurrentDoc.id === docId) {
+          await _spRefreshDocFromDb(docId, { refreshTriage: true });
+          if (typeof showToast === 'function') showToast('success', 'Doc-Stand nach Cascade neu geladen.');
+        }
+      }
     } else {
       const detail = delta > 0
         ? `${delta} neues Event seit Start erkannt. Zuletzt: ${lastName}. Nächster Poll läuft gleich.`
