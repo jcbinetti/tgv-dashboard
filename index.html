@@ -1,4 +1,4 @@
-<!-- TGV Dashboard v11.84.1 — 2026-05-25 — Iter 51 B2 UX-Polish nach User-T5-Befund: UStVA-Gate-Banner umformuliert auf 3-Zeilen-Was-Warum-Wenn-Dann-Lösung mit Emoji-Anchors statt Fachbegriff-Wand. -->
+<!-- TGV Dashboard v11.84.2 — 2026-05-25 — Inbox Entity Pill Fix: editierbare Entitäts-Pills haben jetzt eigene Mindestbreite und laufen nicht mehr in dieselbe schmale Select-Breite wie Doc-Type-Pills; Labels wie PRIV bleiben vollständig lesbar. -->
 <!-- TGV Dashboard v11.84.0 — 2026-05-25 — Iter 51 B2 — Linkrate-Tab neue Section "🏢 UStVA-Gate pro Entität": 1 Row pro entity_signature mit Linkrate-gesamt + Linkrate-90d + UStVA-Gate-Status (pass/warn/fail/no_vat). Quelle: View v_reconcile_quote_per_entity (Mig 097). Lints: c3+c4 müssen ≥98% Linkrate 90d erreichen für UStVA-Prep-Gate. -->
 <!-- TGV Dashboard v11.83.2 — 2026-05-24 — Chat Error Parse Fix: Proxy-/Claude-Fehler werden jetzt robust behandelt; kaputtes JSON in error.message bricht den Chat nicht mehr mit JSON.parse-Syntaxfehlern. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
@@ -9,7 +9,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.84.1">
+<meta name="version" content="11.84.2">
 <title>TGV Dashboard v11.84.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -595,13 +595,16 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ─── BADGES ─── */
 .badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 8px;
   border-radius: 9999px;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 .badge-priv  { background: var(--teal); color: #fff; }
 .badge-c3    { background: var(--navy); color: #fff; }
@@ -1141,7 +1144,7 @@ a[title],
   font-family: inherit;
   color: var(--tx0);
   cursor: pointer;
-  max-width: 140px;
+  min-width: 0;
   display: block;
   width: 100%;
 }
@@ -1152,6 +1155,7 @@ a[title],
   padding: 4px 28px 4px 10px;
   font-weight: 700;
   border-width: 1px;
+  white-space: nowrap;
   appearance: none;
   -webkit-appearance: none;
   background-image:
@@ -1162,6 +1166,16 @@ a[title],
     calc(100% - 9px) calc(50% - 2px);
   background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
+}
+.inbox-edit-sel.entity-pill-select {
+  width: auto;
+  min-width: 76px;
+  max-width: none;
+  padding-right: 24px;
+}
+.inbox-edit-sel.doctype-pill-select {
+  min-width: 124px;
+  max-width: 100%;
 }
 .inbox-doc-meta {
   margin-top: 4px;
@@ -6247,11 +6261,11 @@ function renderInbox() {
         ? `<span style="color:#f59e0b;font-size:11px" title="Wird durch Invoice-Skill extrahiert">&#x23F3;</span>`
         : `<span style="color:var(--tx2)">—</span>`;
 
-    const entitySel = `<select class="inbox-edit-sel select-pill" style="${inboxEntitySelectStyle(r.entity)}" onchange="refreshInboxEditableSelect(this,'entity')" id="sel-entity-${r.id}">${DOC_ENTITY_OPTS.map(o => {
+    const entitySel = `<select class="inbox-edit-sel select-pill entity-pill-select" style="${inboxEntitySelectStyle(r.entity)}" onchange="refreshInboxEditableSelect(this,'entity')" id="sel-entity-${r.id}">${DOC_ENTITY_OPTS.map(o => {
       const label = mapEntity(o) === 'priv' ? 'PRIV' : mapEntity(o) === 'c3' ? 'C3' : mapEntity(o) === 'c4' ? 'C4' : o;
       return `<option value="${o}"${mapEntity(o)===mapEntity(r.entity)?' selected':''}>${label}</option>`;
     }).join('')}</select>`;
-    const docTypeSel = `<select class="inbox-edit-sel select-pill" style="${inboxDocTypeSelectStyle(r.doc_type)}" onchange="refreshInboxEditableSelect(this,'doctype')" id="sel-doctype-${r.id}">${DOC_TYPES.map(o=>`<option value="${o}"${o===r.doc_type?' selected':''}>${o}</option>`).join('')}</select>`;
+    const docTypeSel = `<select class="inbox-edit-sel select-pill doctype-pill-select" style="${inboxDocTypeSelectStyle(r.doc_type)}" onchange="refreshInboxEditableSelect(this,'doctype')" id="sel-doctype-${r.id}">${DOC_TYPES.map(o=>`<option value="${o}"${o===r.doc_type?' selected':''}>${o}</option>`).join('')}</select>`;
 
     const rowBg = isDup ? ' style="background:rgba(251,191,36,0.07)"' : '';
 
