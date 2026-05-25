@@ -1,3 +1,4 @@
+<!-- TGV Dashboard v11.85.0 — 2026-05-26 — Iter 52.E6 NEU — Triage-Card "✅ Freigeben"-Button (User-Trust-Fix nach Live-UX-Befund 2026-05-26). Memory ⭐ feedback_triage_tab_no_approve_button. Neue Funktion triageApproveDoc() PATCHt status='approved' + final_path + fade-out + skill-router-Trigger (RECHNUNG/STEUER/VERTRAG). Bestehender "Prüfen — Vorschau & Felder" wird sekundär als "📋 Erst prüfen…" umbenannt. -->
 <!-- TGV Dashboard v11.84.2 — 2026-05-25 — Inbox Entity Pill Fix: editierbare Entitäts-Pills haben jetzt eigene Mindestbreite und laufen nicht mehr in dieselbe schmale Select-Breite wie Doc-Type-Pills; Labels wie PRIV bleiben vollständig lesbar. -->
 <!-- TGV Dashboard v11.84.0 — 2026-05-25 — Iter 51 B2 — Linkrate-Tab neue Section "🏢 UStVA-Gate pro Entität": 1 Row pro entity_signature mit Linkrate-gesamt + Linkrate-90d + UStVA-Gate-Status (pass/warn/fail/no_vat). Quelle: View v_reconcile_quote_per_entity (Mig 097). Lints: c3+c4 müssen ≥98% Linkrate 90d erreichen für UStVA-Prep-Gate. -->
 <!-- TGV Dashboard v11.83.2 — 2026-05-24 — Chat Error Parse Fix: Proxy-/Claude-Fehler werden jetzt robust behandelt; kaputtes JSON in error.message bricht den Chat nicht mehr mit JSON.parse-Syntaxfehlern. -->
@@ -9,8 +10,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.84.2">
-<title>TGV Dashboard v11.84.1 — Financial OS</title>
+<meta name="version" content="11.85.0">
+<title>TGV Dashboard v11.85.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6375,6 +6376,61 @@ async function approveDoc(id) {
   }
 }
 
+// Iter 52.E6 — Triage-Card Freigeben-Button (User-Trust-Fix nach Live-UX-Befund 2026-05-26)
+// Memory ⭐ feedback_triage_tab_no_approve_button. Simpler als approveDoc weil Triage keine Inline-Edits hat.
+async function triageApproveDoc(id) {
+  const doc = (typeof gTriageDocs !== 'undefined' && gTriageDocs)
+    ? gTriageDocs.find(d => d.id === id) : null;
+  if (!doc) { toast('Doc #' + id + ' nicht in gTriageDocs gefunden', 'err'); return; }
+
+  const dateForPath = doc.invoice_date || doc.date_scanned || doc.date_received;
+  const finalPath = (typeof calcFinalPath === 'function') ? calcFinalPath(doc.entity, dateForPath) : null;
+  const patchBody = { status: 'approved' };
+  if (finalPath) patchBody.final_path = finalPath;
+
+  let ok = false;
+  try {
+    ok = await supaPatch('documents', `id=eq.${id}`, patchBody);
+  } catch (e) {
+    console.error('triageApproveDoc fail', { id, patchBody, error: e });
+    toast('❌ Freigabe fehlgeschlagen: ' + e.message, 'err');
+    return;
+  }
+  if (!ok) { toast('Freigabe fehlgeschlagen', 'err'); return; }
+
+  toast('✅ Doc #' + id + ' freigegeben' + (finalPath ? ' → ' + finalPath : ''));
+
+  // Karte sanft ausblenden + aus gTriageDocs entfernen
+  const cards = document.querySelectorAll('.triage-doc-card, [data-triage-doc-id="' + id + '"]');
+  // Fallback: nach Card mit dem Doc-ID-onClick-Pattern suchen
+  let card = null;
+  document.querySelectorAll('button[onclick*="triageApproveDoc(' + id + ')"]').forEach(b => {
+    card = b.closest('.triage-doc-card') || b.closest('div[style*="border"]') || b.closest('div');
+  });
+  if (card) {
+    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.97)';
+    setTimeout(() => {
+      card.remove();
+      if (typeof gTriageDocs !== 'undefined') {
+        gTriageDocs = gTriageDocs.filter(d => d.id !== id);
+      }
+    }, 500);
+  }
+
+  // Skill-Router triggern (analog approveDoc Inbox)
+  const stream = doc.target_stream;
+  if (stream === 'RECHNUNG' || stream === 'STEUER' || stream === 'VERTRAG') {
+    try {
+      await fetch('https://jcbinetti.app.n8n.cloud/webhook/tgv-skill-router', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ doc_id: id })
+      });
+    } catch(e) { /* skill-router fehler ignorieren */ }
+  }
+}
+
 async function rejectDoc(id) {
   showConfirmModal(
     '⚠️ Dokument ablehnen',
@@ -10821,7 +10877,8 @@ function triageDocCard(doc) {
            Prüfung im Detail-Panel; der Orchestrator führt die Skills
            serverseitig selbst aus (Orchestrator-Vision). -->
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
-        <button class="btn-sm btn-primary" onclick="openSidePanelForDocId(${doc.id})" title="Detail-Panel: Vorschau + extrahierte Felder prüfen/korrigieren" style="padding:6px 16px;font-weight:700;">📋 Prüfen — Vorschau &amp; Felder</button>
+        <button class="btn-sm" onclick="triageApproveDoc(${doc.id})" title="Doc bestätigen: status='approved' + Drive-Move-Pfad berechnen + (für RECHNUNG/STEUER/VERTRAG) Skill-Cascade serverseitig (Orchestrator-Vision)." style="padding:6px 16px;font-weight:700;background:var(--grn);color:white;border:0;border-radius:4px;cursor:pointer;">✅ Freigeben</button>
+        <button class="btn-sm btn-primary" onclick="openSidePanelForDocId(${doc.id})" title="Detail-Panel: Vorschau + extrahierte Felder prüfen/korrigieren BEVOR Freigeben" style="padding:6px 16px;font-weight:700;">📋 Erst prüfen…</button>
         ${doc.drive_file_id ? `<a class="btn-sm btn-neutral" href="https://drive.google.com/file/d/${doc.drive_file_id}/view" target="_blank" style="padding:6px 14px;text-decoration:none;">↗ Doc öffnen</a>` : ''}
       </div>
       <details class="triage-maschinenraum" style="margin-top:10px;">
