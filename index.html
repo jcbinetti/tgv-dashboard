@@ -1,3 +1,4 @@
+<!-- TGV Dashboard v11.85.1 — 2026-05-26 — Iter 52.E6 Hotfix — Triage-Card Fade-out greift jetzt (Klasse war ".card" nicht ".triage-doc-card"). triageApproveDoc nutzt button.closest(".card") + loadTriage-Fallback. -->
 <!-- TGV Dashboard v11.85.0 — 2026-05-26 — Iter 52.E6 NEU — Triage-Card "✅ Freigeben"-Button (User-Trust-Fix nach Live-UX-Befund 2026-05-26). Memory ⭐ feedback_triage_tab_no_approve_button. Neue Funktion triageApproveDoc() PATCHt status='approved' + final_path + fade-out + skill-router-Trigger (RECHNUNG/STEUER/VERTRAG). Bestehender "Prüfen — Vorschau & Felder" wird sekundär als "📋 Erst prüfen…" umbenannt. -->
 <!-- TGV Dashboard v11.84.2 — 2026-05-25 — Inbox Entity Pill Fix: editierbare Entitäts-Pills haben jetzt eigene Mindestbreite und laufen nicht mehr in dieselbe schmale Select-Breite wie Doc-Type-Pills; Labels wie PRIV bleiben vollständig lesbar. -->
 <!-- TGV Dashboard v11.84.0 — 2026-05-25 — Iter 51 B2 — Linkrate-Tab neue Section "🏢 UStVA-Gate pro Entität": 1 Row pro entity_signature mit Linkrate-gesamt + Linkrate-90d + UStVA-Gate-Status (pass/warn/fail/no_vat). Quelle: View v_reconcile_quote_per_entity (Mig 097). Lints: c3+c4 müssen ≥98% Linkrate 90d erreichen für UStVA-Prep-Gate. -->
@@ -10,8 +11,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.0">
-<title>TGV Dashboard v11.85.0 — Financial OS</title>
+<meta name="version" content="11.85.1">
+<title>TGV Dashboard v11.85.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6401,12 +6402,9 @@ async function triageApproveDoc(id) {
   toast('✅ Doc #' + id + ' freigegeben' + (finalPath ? ' → ' + finalPath : ''));
 
   // Karte sanft ausblenden + aus gTriageDocs entfernen
-  const cards = document.querySelectorAll('.triage-doc-card, [data-triage-doc-id="' + id + '"]');
-  // Fallback: nach Card mit dem Doc-ID-onClick-Pattern suchen
-  let card = null;
-  document.querySelectorAll('button[onclick*="triageApproveDoc(' + id + ')"]').forEach(b => {
-    card = b.closest('.triage-doc-card') || b.closest('div[style*="border"]') || b.closest('div');
-  });
+  // Real Card-Klasse ist "card" (Z.10811), nicht "triage-doc-card" — closest('.card') ist robust.
+  const triggerBtn = document.querySelector('button[onclick*="triageApproveDoc(' + id + ')"]');
+  const card = triggerBtn ? triggerBtn.closest('.card') : null;
   if (card) {
     card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
     card.style.opacity = '0';
@@ -6417,6 +6415,9 @@ async function triageApproveDoc(id) {
         gTriageDocs = gTriageDocs.filter(d => d.id !== id);
       }
     }, 500);
+  } else {
+    // Fallback: reload Triage
+    if (typeof loadTriage === 'function') setTimeout(loadTriage, 700);
   }
 
   // Skill-Router triggern (analog approveDoc Inbox)
