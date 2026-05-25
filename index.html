@@ -1,3 +1,4 @@
+<!-- TGV Dashboard v11.84.1 — 2026-05-25 — Iter 51 B2 UX-Polish nach User-T5-Befund: UStVA-Gate-Banner umformuliert auf 3-Zeilen-Was-Warum-Wenn-Dann-Lösung mit Emoji-Anchors statt Fachbegriff-Wand. -->
 <!-- TGV Dashboard v11.84.0 — 2026-05-25 — Iter 51 B2 — Linkrate-Tab neue Section "🏢 UStVA-Gate pro Entität": 1 Row pro entity_signature mit Linkrate-gesamt + Linkrate-90d + UStVA-Gate-Status (pass/warn/fail/no_vat). Quelle: View v_reconcile_quote_per_entity (Mig 097). Lints: c3+c4 müssen ≥98% Linkrate 90d erreichen für UStVA-Prep-Gate. -->
 <!-- TGV Dashboard v11.83.2 — 2026-05-24 — Chat Error Parse Fix: Proxy-/Claude-Fehler werden jetzt robust behandelt; kaputtes JSON in error.message bricht den Chat nicht mehr mit JSON.parse-Syntaxfehlern. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
@@ -8,8 +9,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.84.0">
-<title>TGV Dashboard v11.84.0 — Financial OS</title>
+<meta name="version" content="11.84.1">
+<title>TGV Dashboard v11.84.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3482,8 +3483,10 @@ body.chat-open #main-content {
           <h2>🏢 UStVA-Gate pro Entität</h2>
           <div style="font-size:12px; color:var(--tx2);">Bank-Reconcile-Quote pro Entity (90-Tage-Fenster ist UStVA-Gate; ≥ 98 % = pass)</div>
         </div>
-        <div class="alert alert-info" style="margin:8px 12px 12px; font-size:12px;">
-          <strong>Warum hier:</strong> UStVA-Phase A Voraussetzung V4 verlangt <strong>≥ 98 % Linkrate</strong> in den letzten 90 Tagen pro Entity mit Regelbesteuerung (C3, C4). Wenn der Gate <em>fail</em> oder <em>warn</em> ist, kann das UStVA-Paket noch nicht generiert werden — fehlende Banking-CSVs einlegen oder kb_bank_accounts pflegen.
+        <div class="alert alert-info" style="display:block; margin:8px 12px 12px; font-size:12px; line-height:1.55;">
+          <p style="margin:0 0 6px;"><strong>🟢 Was UStVA-Automation braucht:</strong> TGV verknüpft jeden Beleg mit der passenden Bank-Buchung. Erst bei einer Linkrate <strong>≥ 98 %</strong> in den letzten 90 Tagen kann TGV das UStVA-Paket für den Steuerberater automatisch erstellen.</p>
+          <p style="margin:0 0 6px;"><strong>🔴 Wenn unten ❌ fail steht:</strong> Für diese Firma ist die UStVA-Automatik <em>blockiert</em>, weil zu viele Belege noch keine Zahlung zugeordnet haben.</p>
+          <p style="margin:0;"><strong>🛠 So heilen:</strong> Fehlende Kontoauszüge als <code>.csv</code> in den Drive-Ordner <code>/INBOX</code> legen — ODER neue Konto-IBANs in der Tabelle <code>kb_bank_accounts</code> der jeweiligen Firma zuordnen, damit TGV Banking-Transaktionen automatisch der richtigen Firma zuweist.</p>
         </div>
         <div style="overflow-x:auto;">
           <table id="lr-ustva-table" style="width:100%; border-collapse:collapse; font-size:13px;">
