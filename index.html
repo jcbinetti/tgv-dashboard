@@ -1,3 +1,4 @@
+<!-- TGV Dashboard v11.84.0 — 2026-05-25 — Iter 51 B2 — Linkrate-Tab neue Section "🏢 UStVA-Gate pro Entität": 1 Row pro entity_signature mit Linkrate-gesamt + Linkrate-90d + UStVA-Gate-Status (pass/warn/fail/no_vat). Quelle: View v_reconcile_quote_per_entity (Mig 097). Lints: c3+c4 müssen ≥98% Linkrate 90d erreichen für UStVA-Prep-Gate. -->
 <!-- TGV Dashboard v11.83.2 — 2026-05-24 — Chat Error Parse Fix: Proxy-/Claude-Fehler werden jetzt robust behandelt; kaputtes JSON in error.message bricht den Chat nicht mehr mit JSON.parse-Syntaxfehlern. -->
 <!-- TGV Dashboard v11.64 — 2026-05-13 — Iter 26 Block A+B1 komplett: (A1) Lernen-Tab Top-Level mit 2 Sub-Tabs marked.js-Render. (A2) RAG-Index 66 Chunks rag_chunks via reindex_user_docs.py + Mig 072-074. (A3) MCP-Tool lookup_pipeline_doc. (A4) Chatbot lookup_pipeline_doc + Citation #lernen:X:anchor click-handler. (B1.0) extract_system_topology.py liefert 140 Nodes / 99 Edges (45 WFs + 30 Skills + 65 Tables, 26 webhook_call + 18 skill_binding + 55 FKs). (B1) Cytoscape-Renderer in System-Karte Sub-Tab: cose-bilkent Layout, Filter pro Type/Active-Only, Klick zeigt Node-Detail, Doppelklick auf WF öffnet Pipeline-Doc. Audit-Hits = rote Border. B2-Live-Status: active+hits_count overlay liegt im Extract, Voll-Live-Polling deferred zu Iter 27 (Quota). -->
 <!-- TGV Dashboard v11.70.0 — 2026-05-16 — Iter 34 Dashboard-Verständlichkeit (Block C). v11.69.0 (Session 1): Glossar erweitert (term_inbox, entity_canon, skill_run_status, party_role), entityBadge mit vollem Firmennamen, Inbox-/Triage-Header-Erklärer, U3 Action-Button, U1 Skill-Lauf-Status, Topology-Buttons 2→1. v11.69.1 (C2): U4 Spalte "Art" + Wording, U6 Block-3-Anleitung. v11.70.0 (Session 2, C4/C5/C6): C4 — U7 Mail-Rules-Erklärer + Aktion-Glossar (forward/block), U8 Linkrate-Erklärer + Glossar (CSV-Import-Zusammenhang), P9 Action-Hub Lesen-vs-Schreiben-Erklärer. C5 — P4 Glossar target_stream/Cascade/UNBEKANNT + entityBadge-Tooltip für unzugeordnete Entität, P5 leere-Kachel-Erklärung ("—" = kein Wert), P8 Header-Button-Tooltips (Health Check/Version), P10 System-Karte-Einstiegs-Erklärer. C6 — U9 Chatbot-Capability-Selbstbild: false "TGV kann nicht"-Zeilen entfernt, Selbstbild live aus skill_definitions abgeleitet (TGV_SKILL_REGISTRY_BLOCK), P6 API-Key-Erklärung. -->
@@ -7,8 +8,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.83.2">
-<title>TGV Dashboard v11.83.2 — Financial OS</title>
+<meta name="version" content="11.84.0">
+<title>TGV Dashboard v11.84.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3472,6 +3473,36 @@ body.chat-open #main-content {
         <div class="card">
           <div style="font-size:11px; color:var(--tx2); text-transform:uppercase;">Unverlinkter Wert</div>
           <div id="lr-amount-unlinked" style="font-size:24px; font-weight:600; color:var(--orng); margin-top:6px;">—</div>
+        </div>
+      </div>
+
+      <!-- USTVA-GATE PRO ENTITY (Iter 51 B2) -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-head">
+          <h2>🏢 UStVA-Gate pro Entität</h2>
+          <div style="font-size:12px; color:var(--tx2);">Bank-Reconcile-Quote pro Entity (90-Tage-Fenster ist UStVA-Gate; ≥ 98 % = pass)</div>
+        </div>
+        <div class="alert alert-info" style="margin:8px 12px 12px; font-size:12px;">
+          <strong>Warum hier:</strong> UStVA-Phase A Voraussetzung V4 verlangt <strong>≥ 98 % Linkrate</strong> in den letzten 90 Tagen pro Entity mit Regelbesteuerung (C3, C4). Wenn der Gate <em>fail</em> oder <em>warn</em> ist, kann das UStVA-Paket noch nicht generiert werden — fehlende Banking-CSVs einlegen oder kb_bank_accounts pflegen.
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="lr-ustva-table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="text-align:left; background:var(--bg1); border-bottom:1px solid var(--bdr);">
+                <th style="padding:8px 12px;">Entität</th>
+                <th style="padding:8px 12px;">USt-Regime</th>
+                <th style="padding:8px 12px; text-align:right;">Docs gesamt</th>
+                <th style="padding:8px 12px; text-align:right;">Linkrate gesamt</th>
+                <th style="padding:8px 12px; text-align:right;">Docs 90 d</th>
+                <th style="padding:8px 12px; text-align:right;">Linkrate 90 d</th>
+                <th style="padding:8px 12px; text-align:right;">Unverlinkter € Wert</th>
+                <th style="padding:8px 12px;">UStVA-Gate</th>
+              </tr>
+            </thead>
+            <tbody id="lr-ustva-rows">
+              <tr><td colspan="8" style="padding:16px; text-align:center; color:var(--tx2);">Lade…</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -11230,11 +11261,12 @@ async function loadLinkrate() {
   }
 
   try {
-    // 3 parallele Calls auf die Views
-    const [overall, byProvider, byMonth] = await Promise.all([
+    // 4 parallele Calls auf die Views (Iter 51 B2: +v_reconcile_quote_per_entity)
+    const [overall, byProvider, byMonth, perEntity] = await Promise.all([
       supa('v_linkrate_overall?select=*'),
       supa('v_linkrate_by_provider?select=*&limit=25'),
       supa('v_linkrate_by_month?select=*'),
+      supa('v_reconcile_quote_per_entity?select=*'),
     ]);
 
     // KPI Tiles
@@ -11272,6 +11304,42 @@ async function loadLinkrate() {
               <td style="padding:8px 12px; text-align:right; color:var(--grn);">${r.docs_linked || 0}</td>
               <td style="padding:8px 12px; text-align:right; font-weight:600; color:${colorForPct(pct)};">${fmtPct(r.link_pct)}</td>
               <td style="padding:8px 12px; text-align:right; color:var(--orng);">${fmtEur(r.amount_unlinked_eur)}</td>
+            </tr>`;
+        }).join('');
+      }
+    }
+
+    // UStVA-Gate per Entity (Iter 51 B2)
+    const ustvaBody = document.getElementById('lr-ustva-rows');
+    if (ustvaBody) {
+      if (!perEntity || !perEntity.length) {
+        ustvaBody.innerHTML = '<tr><td colspan="8" style="padding:16px; text-align:center; color:var(--tx2);">Keine Entitäten im entity_signatures.</td></tr>';
+      } else {
+        const gateMeta = {
+          pass:        { color: 'var(--grn)',  label: '✅ pass',         desc: '≥ 98 %' },
+          warn:        { color: 'var(--orng)', label: '⚠️ warn',         desc: '90 – 97 %' },
+          fail:        { color: 'var(--red)',  label: '❌ fail',         desc: '< 90 %' },
+          no_data_90d: { color: 'var(--tx2)',  label: '— keine Daten',   desc: '0 Docs in 90 d' },
+          no_vat:      { color: 'var(--tx2)',  label: '— kein USt-Gate', desc: 'Marke/privat' },
+        };
+        ustvaBody.innerHTML = perEntity.map(r => {
+          const pAll = parseFloat(r.link_pct_all || 0);
+          const p90  = parseFloat(r.link_pct_90d || 0);
+          const m = gateMeta[r.ust_gate_status] || gateMeta.no_data_90d;
+          const regimeLabel = r.vat_regime === 'regular'
+            ? `Regel (${r.vat_frequency || '—'})`
+            : (r.vat_regime || 'kein USt');
+          const entityCell = (r.display_name || r.entity || '—').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+          return `
+            <tr style="border-bottom:1px solid var(--bdr);">
+              <td style="padding:8px 12px; font-weight:500;">${entityCell}</td>
+              <td style="padding:8px 12px; color:var(--tx2);">${regimeLabel}</td>
+              <td style="padding:8px 12px; text-align:right;">${r.docs_total_all || 0}</td>
+              <td style="padding:8px 12px; text-align:right; font-weight:600; color:${colorForPct(pAll)};">${fmtPct(r.link_pct_all)}</td>
+              <td style="padding:8px 12px; text-align:right;">${r.docs_total_90d || 0}</td>
+              <td style="padding:8px 12px; text-align:right; font-weight:600; color:${colorForPct(p90)};">${fmtPct(r.link_pct_90d)}</td>
+              <td style="padding:8px 12px; text-align:right; color:var(--orng);">${fmtEur(r.amount_unlinked_eur_all)}</td>
+              <td style="padding:8px 12px; font-weight:600; color:${m.color};" title="${m.desc}">${m.label}</td>
             </tr>`;
         }).join('');
       }
