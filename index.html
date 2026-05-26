@@ -1,3 +1,12 @@
+<!-- TGV Dashboard v11.85.7 — 2026-05-26 — Iter 52.E14 Card-Layout-Refactor:
+     User-Befund 2026-05-26: "text überlappt in titel doc tabelle, immer noch Euros in titel, review empfohlen scheint doppelt".
+     Komplettes Triage-Card-Re-Layout in 4 sauberen Bloecken:
+     1) Header kompakt: #ID + Eingang + Bulk-Checkbox
+     2) Filename als eigene Zeile (ellipsis-overflow-safe, kein "Datei"-Cell-Duplikat in Tabelle mehr)
+     3) Pills-Row (entity/doc_type/status/party/filetype) + Konfidenz-Pill rechts
+     4) Daten-Box (bordered) mit Anbieter/Betrag/Partei/Belegdatum/Routing/Naechster Schritt
+     KEIN doppeltes Provider/Betrag mehr im Header. Cell-Overflow per ellipsis gehandhabt.
+     Plus Healing H7b: #7538 iter48_b3_pptx_smoke rejected (analog H7-Pattern). -->
 <!-- TGV Dashboard v11.85.6 — 2026-05-26 — Iter 52.E13 Hotfix:
      v11.85.5 Help-Modal sagte falsch "Status-Filter all_active zeigt done"
      - tatsaechlich zeigt KEIN Triage-Filter done/approved/rejected/archived.
@@ -40,8 +49,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.6">
-<title>TGV Dashboard v11.85.6 — Financial OS</title>
+<meta name="version" content="11.85.7">
+<title>TGV Dashboard v11.85.7 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -10869,64 +10878,63 @@ function triageDocCard(doc) {
     <div class="card" style="padding:14px;">
       ${dupBannerHtml}
       ${healBannerHtml}
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px;">
-        <div style="flex:1;">
-          <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · ${receivedDate !== '—' ? `Eingang ${receivedDate}` : 'ohne Eingangsdatum'}</div>
-          <div style="font-size:15px;font-weight:700;margin-top:3px;line-height:1.35;" title="${displayName}">${displayName}</div>
-          <div style="font-size:13px;color:var(--tx);margin-top:4px;">
-            <strong>${providerName}</strong>
-            ${amount ? `<span style="font-weight:400;color:var(--tx2);margin-left:6px;">${amount}</span>` : ''}
-          </div>
-          <div class="triage-context-row">
-            ${entityHtml}
-            ${docTypeHtml}
-            ${triageStatusHtml}${helpIcon('processing_state')}
-            ${partyHtml}
-            ${counterpartyHtml ? counterpartyHtml : ''}
-            ${docConfHtml}
-            ${doc.drive_file_id ? `<span style="margin-left:2px;color:var(--tx2);font-size:11px;" title="${escHtml(fileKind.label)}">${fileKind.icon} ${escHtml(fileKind.ext === '?' ? 'Datei' : fileKind.ext.toUpperCase())}</span>` : ''}
-          </div>
-          ${recipientHtml ? `<div class="triage-context-row" style="font-size:12px;color:var(--tx2);"><span style="margin-right:4px;">📬 Auf Rechnung an:</span>${recipientHtml}</div>` : ''}
-          <div class="triage-doc-grid">
-            <!-- v11.85.2 E8 — Tabelle redundanz-frei: Entität/Typ/Status sind oben als Pills, hier zeigen wir die ZUSÄTZLICHEN Felder -->
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Datei</div>
-              <div class="triage-doc-value mono" title="${displayName}">${displayName}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Anbieter</div>
-              <div class="triage-doc-value">${providerName}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Betrag</div>
-              <div class="triage-doc-value" style="font-weight:600;">${amount || '—'}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Partei-Rolle</div>
-              <div class="triage-doc-value">${partyHtml || '—'}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Belegdatum</div>
-              <div class="triage-doc-value">${invoiceDate}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Routing-Grund</div>
-              <div class="triage-doc-value" title="${escHtml(doc.routing_reason || '—')}">${routingReasonPreview}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Nächster Schritt</div>
-              <div class="triage-doc-value">${escHtml(statusHint.label)}</div>
-            </div>
-          </div>
-          <div class="triage-next-step"><strong>Hier prüfen:</strong> ${escHtml(nextStepText)}</div>
+      <!-- v11.85.7 Card-Refactor: redundanz-frei. Header = nur Identitaet+Status-Pills.
+           Filename = eigene Zeile (kein "ANBIETER"-Spalten-Overflow mehr).
+           ALLE Werte (Anbieter, Betrag, Datum, Partei-Rolle, ...) NUR in EINER Box. -->
+      <!-- Block 1: Header — ID + Eingang + Bulk-Checkbox -->
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--tx2);font-family:monospace;">#${doc.id} · ${receivedDate !== '—' ? `Eingang ${receivedDate}` : 'ohne Eingangsdatum'}</div>
+        <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
+               onchange="triageToggleBulk(${doc.id})"
+               title="Bulk-Auswahl"
+               style="width:18px;height:18px;accent-color:var(--blu);cursor:pointer;flex-shrink:0;">
+      </div>
+      <!-- Block 2: Filename — eigene Zeile, overflow-safe -->
+      <div style="font-size:15px;font-weight:700;line-height:1.35;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${displayName}">${displayName}</div>
+      <!-- Block 3: Pills-Row — Status/Entitaet/Typ/Party/Filetype + Confidence rechts -->
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <div class="triage-context-row" style="margin-bottom:0;">
+          ${entityHtml}
+          ${docTypeHtml}
+          ${triageStatusHtml}${helpIcon('processing_state')}
+          ${partyHtml}
+          ${counterpartyHtml ? counterpartyHtml : ''}
+          ${doc.drive_file_id ? `<span style="margin-left:2px;color:var(--tx2);font-size:11px;" title="${escHtml(fileKind.label)}">${fileKind.icon} ${escHtml(fileKind.ext === '?' ? 'Datei' : fileKind.ext.toUpperCase())}</span>` : ''}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <input type="checkbox" class="triage-bulk-cb" ${bulkChecked}
-                 onchange="triageToggleBulk(${doc.id})"
-                 title="Bulk-Auswahl"
-                 style="width:18px;height:18px;accent-color:var(--blu);cursor:pointer;">
+        ${docConfHtml}
+      </div>
+      ${recipientHtml ? `<div class="triage-context-row" style="font-size:12px;color:var(--tx2);margin-bottom:8px;"><span style="margin-right:4px;">📬 Auf Rechnung an:</span>${recipientHtml}</div>` : ''}
+      <!-- Block 4: Daten-Box — EINE Tabelle, alle wichtigen Werte, KEIN Filename-Dup -->
+      <div style="background:var(--bg1);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;">
+        <div class="triage-doc-grid" style="margin-top:0;">
+          <div class="triage-doc-field">
+            <div class="triage-doc-label">Anbieter</div>
+            <div class="triage-doc-value" style="font-weight:500;overflow:hidden;text-overflow:ellipsis;" title="${providerName}">${providerName}</div>
+          </div>
+          <div class="triage-doc-field">
+            <div class="triage-doc-label">Betrag</div>
+            <div class="triage-doc-value" style="font-weight:600;">${amount || '—'}</div>
+          </div>
+          <div class="triage-doc-field">
+            <div class="triage-doc-label">Partei-Rolle</div>
+            <div class="triage-doc-value">${partyHtml || '<span style="color:var(--tx2);">— leer —</span>'}</div>
+          </div>
+          <div class="triage-doc-field">
+            <div class="triage-doc-label">Belegdatum</div>
+            <div class="triage-doc-value">${invoiceDate}</div>
+          </div>
+          <div class="triage-doc-field">
+            <div class="triage-doc-label">Routing-Grund</div>
+            <div class="triage-doc-value" title="${escHtml(doc.routing_reason || '—')}" style="overflow:hidden;text-overflow:ellipsis;">${routingReasonPreview}</div>
+          </div>
+          <div class="triage-doc-field">
+            <div class="triage-doc-label">Nächster Schritt</div>
+            <div class="triage-doc-value">${escHtml(statusHint.label)}</div>
+          </div>
         </div>
       </div>
+      <!-- v11.85.7: "Hier prüfen"-Hinweis als Sub-Zeile nach Daten-Box -->
+      <div class="triage-next-step" style="margin-top:8px;font-size:12px;color:var(--tx2);"><strong style="color:var(--tx);">Hier prüfen:</strong> ${escHtml(nextStepText)}</div>
       <!-- Iter 36 D2 (Option A, F21-Workshop): Review-Inbox — der Skill-
            Maschinenraum ist eingeklappt. Standard-Aktion ist die fachliche
            Prüfung im Detail-Panel; der Orchestrator führt die Skills
