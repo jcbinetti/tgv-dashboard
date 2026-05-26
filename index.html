@@ -1,3 +1,9 @@
+<!-- TGV Dashboard v11.85.4 — 2026-05-26 — Iter 52.E10 + E7-Polish:
+     E10: Side-Panel hat jetzt Party-Rolle-Editor (Selectbox kreditor/debitor/
+          mitarbeiter/sonstiges) -> User kann self-provider-Outbound jetzt selbst
+          fixen statt SQL anzufordern (Memory feedback_self_provider_outbound_misclassified).
+     E7-Polish: Side-Panel-Save zeigt Toast "✅ Doc #X gespeichert (Felder) - System lernt"
+          + "Keine Aenderungen"-Toast bei No-Op (Memory feedback_override_no_confirm_signal). -->
 <!-- TGV Dashboard v11.85.3 — 2026-05-26 — Iter 52 CRITICAL BUGFIX:
      triageApproveDoc setzte nur status='approved', aber Iter-35-B2-Trigger
      spiegelte status zurueck auf needs_review weil processing_state SSOT ist.
@@ -22,8 +28,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.3">
-<title>TGV Dashboard v11.85.3 — Financial OS</title>
+<meta name="version" content="11.85.4">
+<title>TGV Dashboard v11.85.4 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14776,6 +14782,12 @@ function openSidePanel(doc) {
       source: 'tgv-pdf-invoice-extract',
       editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren</label>
                <input type="number" step="0.01" id="sp-edit-amount" value="${amount}" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">` },
+    { key: 'party_role', label: 'Partei-Rolle', value: doc.party_role || null,
+      source: 'tgv-skill-classify-party-role v0.4 (Self-Provider-Detection erst v0.5)',
+      editor: `<label style="font-size:10px;color:var(--tx2);">korrigieren (kreditor=wir bezahlen · debitor=wir bekommen Geld · mitarbeiter · sonstiges)</label>
+               <select id="sp-edit-party-role" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bdr);border-radius:3px;padding:5px 8px;font-size:12px;margin-top:3px;">
+                 ${['', 'kreditor', 'debitor', 'mitarbeiter', 'sonstiges'].map(v => `<option value="${v}"${v === (doc.party_role || '') ? ' selected' : ''}>${v || '— leer —'}</option>`).join('')}
+               </select>` },
     { key: 'invoice_date', label: 'Rechnungsdatum', value: doc.invoice_date,
       source: 'tgv-pdf-invoice-extract', editor: '' },
     { key: 'confidence', label: `📋 Doc-Felder-Sicherheit (${conf != null ? conf + '%' : 'n/a'})`, value: conf != null ? String(conf) + '%' : null,
@@ -15194,17 +15206,22 @@ async function sidePanelSaveEdit() {
   const newDocType = document.getElementById('sp-edit-doctype').value;
   const newAmountRaw = document.getElementById('sp-edit-amount').value;
   const newAmount = newAmountRaw === '' ? null : Number(newAmountRaw);
+  // v11.85.3 E10 — party_role Editor (kreditor/debitor/mitarbeiter/sonstiges)
+  const partyEl = document.getElementById('sp-edit-party-role');
+  const newPartyRole = partyEl ? (partyEl.value === '' ? null : partyEl.value) : (doc.party_role || null);
 
   // Diff vs Original
   const changes = {};
-  const orig = { entity: doc.entity, provider: doc.provider, doc_type: doc.doc_type, amount: doc.amount };
+  const orig = { entity: doc.entity, provider: doc.provider, doc_type: doc.doc_type, amount: doc.amount, party_role: doc.party_role };
   if (newEntity !== doc.entity) changes.entity = newEntity;
   if (newProvider !== (doc.provider||'')) changes.provider = newProvider;
   if (newDocType !== doc.doc_type) changes.doc_type = newDocType;
   if (newAmount !== doc.amount) changes.amount = newAmount;
+  if (newPartyRole !== (doc.party_role || null)) changes.party_role = newPartyRole;
 
   if (Object.keys(changes).length === 0) {
     status.textContent = '— keine Änderungen';
+    if (typeof toast === 'function') toast('Keine Änderungen zum Speichern', 'info');
     return;
   }
 
@@ -15232,6 +15249,11 @@ async function sidePanelSaveEdit() {
     }
 
     status.innerHTML = `✅ gespeichert (${Object.keys(changes).length} Feld${Object.keys(changes).length===1?'':'er'}). System lernt aus dieser Korrektur.`;
+    // v11.85.3 E7 — zusätzlich klarer Toast-Hinweis (Memory feedback_override_no_confirm_signal)
+    if (typeof toast === 'function') {
+      const fieldNames = Object.keys(changes).join(', ');
+      toast(`✅ Doc #${doc.id} gespeichert (${fieldNames}) — System lernt`, 'ok');
+    }
     // Update local doc reference
     Object.assign(doc, changes);
     if (titleEl) titleEl.textContent = `${doc.provider || '— kein Provider —'}`;
