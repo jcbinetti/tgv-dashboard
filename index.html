@@ -1,3 +1,8 @@
+<!-- TGV Dashboard v11.85.6 — 2026-05-26 — Iter 52.E13 Hotfix:
+     v11.85.5 Help-Modal sagte falsch "Status-Filter all_active zeigt done"
+     - tatsaechlich zeigt KEIN Triage-Filter done/approved/rejected/archived.
+     Fix: Modal-Text zeigt jetzt explizit alle 5 Filter-Optionen + Klar-Hinweis
+     "Triage zeigt NIEMALS done/approved/rejected/archived -> Alle-Docs-Tab". -->
 <!-- TGV Dashboard v11.85.5 — 2026-05-26 — Iter 52.E13 NEU — processing_state Help-Modal:
      User-Befund 2026-05-26: Status-Pill "Eingang" auf Card aber Erklär-Modal listete nur enum-Werte
      (inbox/needs_review/done/...) ohne deutsche Labels. Inkonsistenz = User-Verwirrung.
@@ -35,8 +40,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.5">
-<title>TGV Dashboard v11.85.5 — Financial OS</title>
+<meta name="version" content="11.85.6">
+<title>TGV Dashboard v11.85.6 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4992,7 +4997,13 @@ const HELP_TOPICS = {
               • <strong>🗂 Archiviert</strong> = <code>archived</code> — historisch, nicht aktiv<br>
               • <strong>🔴 Fehler</strong> = <code>error</code> — Skill-Crash oder Pipeline-Fehler<br>
               • <strong>✍️ Manuell</strong> = <code>todo_manual</code> — User-Task ohne Skill-Pfad</p>
-           <p><strong>Triage-Filter „action-needed":</strong> zeigt nur <code>inbox</code> + <code>needs_review</code> + <code>source_lost</code>. Andere Status (z.B. <code>done</code>, <code>approved</code>) findest du im <strong>„Alle Docs"-Tab</strong> oder via Status-Filter „all_active".</p>
+           <p><strong>Triage-Tab-Filter:</strong> zeigt <strong>NUR aktive Status</strong>. Die 5 Filter-Optionen decken ab:<br>
+              • „action-needed (default)" = <code>inbox</code> + <code>needs_review</code> + <code>source_lost</code><br>
+              • „nur neu" = <code>inbox</code><br>
+              • „nur prüfen" = <code>needs_review</code><br>
+              • „nur source_lost" = <code>source_lost</code><br>
+              • „action-needed + triaged/source_lost" = die obigen + <code>triaged</code><br>
+           <strong>⚠️ Triage zeigt NIEMALS</strong> <code>done</code>/<code>approved</code>/<code>rejected</code>/<code>archived</code>. Für diese musst du in den <strong>„Alle Docs"-Tab</strong> wechseln (links Sidebar) und dort per Status-Chip oder Such-ID filtern.</p>
            <p><strong>Achtung:</strong> <code>processing_state</code> ist SSOT (Iter 35.B2-Trigger), <code>status</code> wird automatisch gespiegelt. Drive-Bewegung (z.B. INBOX → DOCUMENTS) passiert separat via <code>store-file-to-drive</code>-Skill.</p>`,
   },
   drive_path: {
