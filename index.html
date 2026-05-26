@@ -1,3 +1,10 @@
+<!-- TGV Dashboard v11.85.3 — 2026-05-26 — Iter 52 CRITICAL BUGFIX:
+     triageApproveDoc setzte nur status='approved', aber Iter-35-B2-Trigger
+     spiegelte status zurueck auf needs_review weil processing_state SSOT ist.
+     -> User-Klicks gingen optisch durch (Toast + Fade), aber DB-Stand bleibt
+     needs_review. 11 Docs heute betroffen (H9 Bulk-Heilung gelaufen).
+     Fix v11.85.3: PATCH setzt status='approved' + processing_state='done' +
+     approved_date BEIDE atomar. Memory project_dual_status_field_drift. -->
 <!-- TGV Dashboard v11.85.2 — 2026-05-26 — Iter 52 UX-Sprint Triple-Fix:
      E6.hotfix2: Freigeben-Animation in 3 Phasen (green-flash 400ms → fade+scale 1200ms → DOM-remove). User sah Fade vorher kaum.
      E8: Triage-Tabelle redundanz-frei — Entität/Typ/Status raus (sind oben als Pills), NEU: Betrag + Partei-Rolle als Tabellen-Felder.
@@ -15,8 +22,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.2">
-<title>TGV Dashboard v11.85.2 — Financial OS</title>
+<meta name="version" content="11.85.3">
+<title>TGV Dashboard v11.85.3 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6390,7 +6397,15 @@ async function triageApproveDoc(id) {
 
   const dateForPath = doc.invoice_date || doc.date_scanned || doc.date_received;
   const finalPath = (typeof calcFinalPath === 'function') ? calcFinalPath(doc.entity, dateForPath) : null;
-  const patchBody = { status: 'approved' };
+  // v11.85.3 BUGFIX — processing_state ist SSOT (Iter 35.B2 Trigger),
+  // status wird automatisch gespiegelt. Wenn nur status='approved' gesetzt
+  // wird, kontert der Trigger sofort wegen processing_state='needs_review'.
+  // BEIDE muessen gesetzt werden + approved_date.
+  const patchBody = {
+    status: 'approved',
+    processing_state: 'done',
+    approved_date: new Date().toISOString()
+  };
   if (finalPath) patchBody.final_path = finalPath;
 
   let ok = false;
