@@ -1,3 +1,7 @@
+<!-- TGV Dashboard v11.85.2 — 2026-05-26 — Iter 52 UX-Sprint Triple-Fix:
+     E6.hotfix2: Freigeben-Animation in 3 Phasen (green-flash 400ms → fade+scale 1200ms → DOM-remove). User sah Fade vorher kaum.
+     E8: Triage-Tabelle redundanz-frei — Entität/Typ/Status raus (sind oben als Pills), NEU: Betrag + Partei-Rolle als Tabellen-Felder.
+     E9: Recipient-Pill bekommt Label "📬 Auf Rechnung an: ..." für Klar-Erkennbarkeit. -->
 <!-- TGV Dashboard v11.85.1 — 2026-05-26 — Iter 52.E6 Hotfix — Triage-Card Fade-out greift jetzt (Klasse war ".card" nicht ".triage-doc-card"). triageApproveDoc nutzt button.closest(".card") + loadTriage-Fallback. -->
 <!-- TGV Dashboard v11.85.0 — 2026-05-26 — Iter 52.E6 NEU — Triage-Card "✅ Freigeben"-Button (User-Trust-Fix nach Live-UX-Befund 2026-05-26). Memory ⭐ feedback_triage_tab_no_approve_button. Neue Funktion triageApproveDoc() PATCHt status='approved' + final_path + fade-out + skill-router-Trigger (RECHNUNG/STEUER/VERTRAG). Bestehender "Prüfen — Vorschau & Felder" wird sekundär als "📋 Erst prüfen…" umbenannt. -->
 <!-- TGV Dashboard v11.84.2 — 2026-05-25 — Inbox Entity Pill Fix: editierbare Entitäts-Pills haben jetzt eigene Mindestbreite und laufen nicht mehr in dieselbe schmale Select-Breite wie Doc-Type-Pills; Labels wie PRIV bleiben vollständig lesbar. -->
@@ -11,8 +15,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.1">
-<title>TGV Dashboard v11.85.1 — Financial OS</title>
+<meta name="version" content="11.85.2">
+<title>TGV Dashboard v11.85.2 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6401,20 +6405,30 @@ async function triageApproveDoc(id) {
 
   toast('✅ Doc #' + id + ' freigegeben' + (finalPath ? ' → ' + finalPath : ''));
 
-  // Karte sanft ausblenden + aus gTriageDocs entfernen
-  // Real Card-Klasse ist "card" (Z.10811), nicht "triage-doc-card" — closest('.card') ist robust.
+  // v11.85.2 E6.hotfix2 — Karten-Feedback in 3 Phasen für klare User-Bestätigung:
+  //   1) Sofort grünes flash (400ms) als "Klick angekommen"-Signal
+  //   2) Sanftes scale + fade (1200ms) als "wird entfernt"-Signal
+  //   3) DOM-Remove + State-Cleanup
   const triggerBtn = document.querySelector('button[onclick*="triageApproveDoc(' + id + ')"]');
   const card = triggerBtn ? triggerBtn.closest('.card') : null;
   if (card) {
-    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-    card.style.opacity = '0';
-    card.style.transform = 'scale(0.97)';
+    // Phase 1: green flash
+    card.style.transition = 'background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease';
+    card.style.backgroundColor = 'var(--grn-bg)';
+    card.style.boxShadow = '0 0 0 2px var(--grn)';
+    // Phase 2: fade + scale nach 400ms green-Phase
+    setTimeout(() => {
+      card.style.transition = 'opacity 1.2s ease, transform 1.2s ease, background-color 1.2s ease';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.95)';
+    }, 400);
+    // Phase 3: DOM-Remove nach total 1.6s
     setTimeout(() => {
       card.remove();
       if (typeof gTriageDocs !== 'undefined') {
         gTriageDocs = gTriageDocs.filter(d => d.id !== id);
       }
-    }, 500);
+    }, 1600);
   } else {
     // Fallback: reload Triage
     if (typeof loadTriage === 'function') setTimeout(loadTriage, 700);
@@ -10829,8 +10843,9 @@ function triageDocCard(doc) {
             ${docConfHtml}
             ${doc.drive_file_id ? `<span style="margin-left:2px;color:var(--tx2);font-size:11px;" title="${escHtml(fileKind.label)}">${fileKind.icon} ${escHtml(fileKind.ext === '?' ? 'Datei' : fileKind.ext.toUpperCase())}</span>` : ''}
           </div>
-          ${recipientHtml ? `<div class="triage-context-row">${recipientHtml}</div>` : ''}
+          ${recipientHtml ? `<div class="triage-context-row" style="font-size:12px;color:var(--tx2);"><span style="margin-right:4px;">📬 Auf Rechnung an:</span>${recipientHtml}</div>` : ''}
           <div class="triage-doc-grid">
+            <!-- v11.85.2 E8 — Tabelle redundanz-frei: Entität/Typ/Status sind oben als Pills, hier zeigen wir die ZUSÄTZLICHEN Felder -->
             <div class="triage-doc-field">
               <div class="triage-doc-label">Datei</div>
               <div class="triage-doc-value mono" title="${displayName}">${displayName}</div>
@@ -10840,16 +10855,12 @@ function triageDocCard(doc) {
               <div class="triage-doc-value">${providerName}</div>
             </div>
             <div class="triage-doc-field">
-              <div class="triage-doc-label">Entität</div>
-              <div class="triage-doc-value">${entityHtml}</div>
+              <div class="triage-doc-label">Betrag</div>
+              <div class="triage-doc-value" style="font-weight:600;">${amount || '—'}</div>
             </div>
             <div class="triage-doc-field">
-              <div class="triage-doc-label">Typ</div>
-              <div class="triage-doc-value">${docTypeHtml}</div>
-            </div>
-            <div class="triage-doc-field">
-              <div class="triage-doc-label">Status</div>
-              <div class="triage-doc-value">${triageStatusHtml}</div>
+              <div class="triage-doc-label">Partei-Rolle</div>
+              <div class="triage-doc-value">${partyHtml || '—'}</div>
             </div>
             <div class="triage-doc-field">
               <div class="triage-doc-label">Belegdatum</div>
