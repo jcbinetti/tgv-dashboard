@@ -1,3 +1,10 @@
+<!-- TGV Dashboard v11.85.5 — 2026-05-26 — Iter 52.E13 NEU — processing_state Help-Modal:
+     User-Befund 2026-05-26: Status-Pill "Eingang" auf Card aber Erklär-Modal listete nur enum-Werte
+     (inbox/needs_review/done/...) ohne deutsche Labels. Inkonsistenz = User-Verwirrung.
+     Fix: Modal-Body zeigt jetzt "UI-Label → DB-Wert" Mapping fuer ALLE 10 STATUS_LABELS (inkl.
+     bisher fehlende pending_review/in_progress/archived/error/todo_manual). Plus: Triage-Filter-
+     Erklaerung "action-needed zeigt nur 3 Status, Rest in Alle-Docs-Tab finden". Plus: SSOT-Hinweis
+     processing_state vs status (Iter 35.B2-Trigger). -->
 <!-- TGV Dashboard v11.85.4 — 2026-05-26 — Iter 52.E10 + E7-Polish:
      E10: Side-Panel hat jetzt Party-Rolle-Editor (Selectbox kreditor/debitor/
           mitarbeiter/sonstiges) -> User kann self-provider-Outbound jetzt selbst
@@ -28,8 +35,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.85.4">
-<title>TGV Dashboard v11.85.4 — Financial OS</title>
+<meta name="version" content="11.85.5">
+<title>TGV Dashboard v11.85.5 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4974,15 +4981,19 @@ const HELP_TOPICS = {
   processing_state: {
     title: 'processing_state (DB-Status)',
     body: `<p><strong>Was es ist:</strong> Lebenszyklus-Status des Docs in der DB — <strong>NICHT</strong> der Drive-Ordner!</p>
-           <p><strong>Werte:</strong></p>
-           <p>• <code>inbox</code> = neu, noch nicht durchgelaufen<br>
-              • <code>needs_review</code> = User-Eingriff nötig<br>
-              • <code>triaged</code> = in Bearbeitung<br>
-              • <code>source_lost</code> = Quelle/Routing unklar, Doc wurde bewusst geparkt statt still abgelegt<br>
-              • <code>approved</code> = User confirmed<br>
-              • <code>rejected</code> = verworfen<br>
-              • <code>done</code> = vollständig durchgelaufen</p>
-           <p><strong>Achtung:</strong> Drive-Bewegung (z.B. INBOX → DOCUMENTS) passiert separat via <code>store-file-to-drive</code>-Skill.</p>`,
+           <p><strong>UI-Label → DB-Wert (alle möglichen Werte):</strong></p>
+           <p>• <strong>📥 Eingang</strong> = <code>inbox</code> — neu, noch nicht durchgelaufen<br>
+              • <strong>⚠️ Prüfen</strong> = <code>needs_review</code> / <code>pending_review</code> — User-Eingriff nötig<br>
+              • <strong>⚙️ In Verarbeitung</strong> = <code>triaged</code> / <code>in_progress</code> — Skills laufen<br>
+              • <strong>🚫 Source Lost</strong> = <code>source_lost</code> — Quelle/Routing unklar, bewusst geparkt<br>
+              • <strong>✅ Freigegeben</strong> = <code>approved</code> — User confirmed<br>
+              • <strong>✅ Fertig</strong> = <code>done</code> — vollständig durchgelaufen<br>
+              • <strong>❌ Abgelehnt</strong> = <code>rejected</code> — verworfen<br>
+              • <strong>🗂 Archiviert</strong> = <code>archived</code> — historisch, nicht aktiv<br>
+              • <strong>🔴 Fehler</strong> = <code>error</code> — Skill-Crash oder Pipeline-Fehler<br>
+              • <strong>✍️ Manuell</strong> = <code>todo_manual</code> — User-Task ohne Skill-Pfad</p>
+           <p><strong>Triage-Filter „action-needed":</strong> zeigt nur <code>inbox</code> + <code>needs_review</code> + <code>source_lost</code>. Andere Status (z.B. <code>done</code>, <code>approved</code>) findest du im <strong>„Alle Docs"-Tab</strong> oder via Status-Filter „all_active".</p>
+           <p><strong>Achtung:</strong> <code>processing_state</code> ist SSOT (Iter 35.B2-Trigger), <code>status</code> wird automatisch gespiegelt. Drive-Bewegung (z.B. INBOX → DOCUMENTS) passiert separat via <code>store-file-to-drive</code>-Skill.</p>`,
   },
   drive_path: {
     title: '📂 Drive-Pfad',
