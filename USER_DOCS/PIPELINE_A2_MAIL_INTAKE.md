@@ -1,7 +1,7 @@
 # Pipeline A2 — Mail-Intake bis DB-Eintrag
 
 > **Was passiert wenn eine neue Mail in `factures@convis.fr` ankommt?**
-> Schritt-für-Schritt für Nicht-Coder. Stand: 2026-05-13.
+> Schritt-für-Schritt für Nicht-Coder. Stand: **2026-05-27** (Iter 55: Iter-54-Updates nachgezogen — v01.29, intake_text-Persistenz, Strangler-Shadow-Mode).
 
 ---
 
@@ -10,7 +10,7 @@
 | Feld | Wert |
 |---|---|
 | Workflow | **TGV WF A2 Mail Intake + Universal Triage** |
-| Version | **v01.27** (`native_supabase`) |
+| Version | **v01.29** (Iter 54: A2 Strangler-Shadow-Mode + E2 `intake_text`/`intake_text_html` Persistenz. Vorher v01.27/v01.28) |
 | n8n-ID | `fx9POuhD3ybynhat` |
 | Datei | `TGV -App files/TGV_WFA2_v0127_native_supabase.json` |
 | Aktiv | ✅ ja (`active: true`) |
@@ -44,7 +44,7 @@
 | 15c | **Universal Triage Agent** | **HTTP-POST an `api.anthropic.com/v1/messages`** mit Modell `claude-haiku-4-5-20251001`, max_tokens=1000. Claude liefert JSON: `{stream, entity, provider, amount, currency, date_document, category_l1, category_l2, confidence, requires_review, skills_needed, detected_patterns, new_pattern_suggestion, routing_reason}` | Prompt | Claude-Antwort | ✅ **Claude API** | nein (gleicher Exec) | ✅ **~800 Input + ~300 Output Tokens / Anhang** | — | indirekt: Tab **Documents** zeigt das fertige Doc | Weiter |
 | 16 | **Merge Rule + AI Triage** | Führt Rule-Ergebnis + Claude-Ergebnis zusammen. **Rule sticht AI** — wenn eine Regel zugeschlagen hat, wird ihr `doc_type/entity` genommen, Konfidenz auf 100 gesetzt | Item | Item + `triage` | nein | nein | nein | — | — | Weiter |
 | 17 | **Triage Ergebnis zusammenfuehren** | Baut den finalen DB-Datensatz. Setzt `target_skill` deterministisch (siehe FAQ 13). `confidence ≥ 70` → `review_status='inbox'`, sonst `pending_review` | Item | Item + `preprocessing_contract` + `target_skill` | nein | nein | nein | — | — | Weiter |
-| 18 | **Supabase INSERT documents** | **DER PERSISTENZ-PUNKT.** Native Supabase-Node legt Zeile in `documents` an mit: `source`, `sender`, `subject`, `message_id`, `doc_type`, `target_stream`, `entity`, `provider`, `amount`, `currency`, `date_received`, `invoice_date`, `category`, `status`, `confidence_score`, `original_from`, `mail_attachment_index`, `mail_subject`, `routing_reason`, `todo_manual`, `is_correction`, `project_hint`. **HTTP 201/200** = OK. **HTTP 409** = Duplikat (toleriert, kein Fehler) | Item | DB-Row + HTTP-Status | Supabase-API | nein | nein | ✅ **`documents`-Tabelle** | Tab **Documents** (alle Belege), Tab **Mail-Pipeline** (Triage-Zeile) | Weiter |
+| 18 | **Supabase INSERT documents** | **DER PERSISTENZ-PUNKT.** Native Supabase-Node legt Zeile in `documents` an mit: `source`, `sender`, `subject`, `message_id`, `doc_type`, `target_stream`, `entity`, `provider`, `amount`, `currency`, `date_received`, `invoice_date`, `category`, `status`, `confidence_score`, `original_from`, `mail_attachment_index`, `mail_subject`, `routing_reason`, `todo_manual`, `is_correction`, `project_hint`, **`intake_text`** (Plain-Text-Body, Iter 54.E2), **`intake_text_html`** (HTML-Body, Iter 54.E2). **HTTP 201/200** = OK. **HTTP 409** = Duplikat (toleriert, kein Fehler) | Item | DB-Row + HTTP-Status | Supabase-API | nein | nein | ✅ **`documents`-Tabelle** | Tab **Documents** (alle Belege), Tab **Mail-Pipeline** (Triage-Zeile) | Weiter |
 | 19 | **INSERT Ergebnis auswerten** | Erkennt 201/200=ok, 409=duplicate, sonst=error. Setzt `document_id` aus Response. Workflow läuft trotzdem weiter (`continueOnFail`) | DB-Response | Item + Flags | nein | nein | nein | — | — | Weiter |
 | 20 | **A2 Handoff Contract bauen** | Schreibt den fertigen Übergabe-Vertrag `_tgv02_handoff` mit: `document_id, stream, entity, skills_needed, target_skill, preprocessing_contract, …`. **Genau das wird in FAQ 18 abgefragt** — siehe unten "Was wird übergeben" | Item | Item + Handoff-Objekt | nein | nein | nein | — | — | Weiter |
 | 21 | **Konfidenz Router (Switch)** | Routet nach `triage.stream`: RECHNUNG / BANKING / VERTRAG / PROJEKT / *fallback*. In v01.27 münden **alle 5 Äste in denselben Log-Node** — der Switch ist also nur Vorbereitung für künftige Sub-WF-Trigger | Item | gleiches Item, 1 von 5 Outputs | nein | nein | nein | — | — | Weiter |
@@ -275,4 +275,12 @@ Die Cascade liest **nicht** dieses Objekt direkt — sie liest `documents`-Zeile
 
 ---
 
-*Stand: 2026-05-13 · Quelle: `TGV -App files/TGV_WFA2_v0127_native_supabase.json` · Iter 24*
+## 9. Iter-54-Erweiterungen (v01.28 + v01.29)
+
+**v01.28 (Iter 54.A2 — Strangler-Shadow-Mode):** WF A2 ruft jetzt parallel zum Inline-Triage auch den Orchestrator auf und speichert dessen Plan als `strangler.inline_triage_snapshot` in `agent_events`. Ein Daily-Cron (`O6WPZZWXpdG6MuDb`, 02:00 UTC) vergleicht beide Ergebnisse und erzeugt `shadow_diff.daily_report` Events. Ziel: Stage-3-Cutover wenn Drift <10% (Iter 55 Block A).
+
+**v01.29 (Iter 54.E2 — intake_text Persistenz):** Neue Felder `intake_text` (Plain-Text des Mail-Body, max 6000 Zeichen) und `intake_text_html` (roher HTML-Body) werden im INSERT (Schritt 18) mit-geschrieben. Ermoeglicht Body-only-Mail-Erkennung: wenn kein PDF-Anhang vorhanden aber `intake_text_html` > 200 Zeichen, kann der `mail-body-to-pdf`-Skill (Iter 53 X-Block) den Body als PDF rendern.
+
+---
+
+*Stand: 2026-05-27 · Quelle: `TGV -App files/TGV_WFA2_v0127_native_supabase.json` (Basis) + Iter 54 Patches · Iter 48.B2 + Iter 54.A2+E2*
