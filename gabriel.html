@@ -155,6 +155,50 @@
     font-style: italic;
   }
   .intro-hint .tiroir-label { font-style: normal; font-weight: 600; color: var(--accent); }
+  .fiche-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 8px 0;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.05s;
+  }
+  .fiche-card:hover { border-color: var(--accent); }
+  .fiche-card:active { transform: scale(0.99); }
+  .fiche-card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .fiche-card .meta { font-size: 12px; color: var(--muted); }
+  .fiche-card .pills { margin-top: 6px; }
+  .fiche-card .pills .pill { margin-right: 4px; }
+  .pill.conf-private_gabriel_jc { background: #d4c1b8; color: #5a3d2e; }
+  .pill.conf-family_close       { background: #e6d0bc; color: #6b4a35; }
+  .pill.conf-editorial_team     { background: #d0deeb; color: #2c5677; }
+  .pill.conf-publishable_book   { background: #cfe3cf; color: #2f6b3a; }
+  .pill.conf-excluded           { background: #e8c8c8; color: #8a3030; }
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 100;
+  }
+  .modal-card {
+    background: var(--bg);
+    border-radius: 12px;
+    max-width: 680px;
+    width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .modal-card h2 { margin: 0 0 6px; font-size: 19px; }
+  .modal-card .modal-meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .modal-card .modal-section { margin: 16px 0; }
+  .modal-card .modal-section h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); }
+  .modal-card .modal-body { white-space: pre-wrap; line-height: 1.55; font-size: 15px; }
+  .modal-card .close-btn { float: right; background: transparent; border: none; font-size: 22px; cursor: pointer; padding: 0 4px; min-height: auto; color: var(--muted); }
+  .modal-card .close-btn:hover { color: var(--ink); background: transparent; }
   footer {
     text-align: center;
     padding: 24px 16px;
@@ -297,11 +341,52 @@
 
   <section id="view-fiches" class="card hidden">
     <h2 style="margin-top:0; font-size: 18px;">📖 Voir les fiches</h2>
-    <p class="muted">L'index des fiches mémoire arrive en LM#05. (À venir : liste filtrée par thème + confidentialité + recherche plein-texte.)</p>
-    <button onclick="backToCockpit()" style="width:100%;">
+
+    <div class="row" style="gap:8px; margin-bottom: 10px;">
+      <div class="field" style="margin:0;">
+        <label for="fiches-theme-filter" style="margin-bottom:2px;">Tiroir</label>
+        <select id="fiches-theme-filter" onchange="loadFiches()">
+          <option value="">— tous —</option>
+          <!-- options injectées par loadThemes() -->
+        </select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label for="fiches-sort" style="margin-bottom:2px;">Tri</label>
+        <select id="fiches-sort" onchange="loadFiches()">
+          <option value="created_at.desc">Plus récentes</option>
+          <option value="created_at.asc">Plus anciennes</option>
+          <option value="theme_key.asc">Par tiroir</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="fiches-list" class="muted" style="min-height: 40px;">Chargement…</div>
+
+    <button onclick="backToCockpit()" style="width:100%; margin-top:12px;">
       <span class="btn-label">Retour</span>
     </button>
   </section>
+
+  <!-- Fiche detail modal (B4) -->
+  <div id="fiche-modal" class="modal-backdrop hidden" onclick="closeFicheModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <button class="close-btn" onclick="closeFicheModal()" title="Fermer">×</button>
+      <h2 id="fm-title">…</h2>
+      <div class="modal-meta" id="fm-meta">…</div>
+      <div class="modal-section">
+        <h4>Résumé</h4>
+        <div class="modal-body" id="fm-summary">…</div>
+      </div>
+      <div class="modal-section">
+        <h4>Contenu développé</h4>
+        <div class="modal-body" id="fm-content">…</div>
+      </div>
+      <div class="modal-section" id="fm-time-section">
+        <h4>Notes temporelles</h4>
+        <div class="modal-body" id="fm-time">…</div>
+      </div>
+    </div>
+  </div>
 
   <section id="view-chat" class="card hidden">
     <h2 style="margin-top:0; font-size: 18px;">💬 Discuter avec la mémoire</h2>
@@ -321,7 +406,7 @@
 </main>
 
 <footer>
-  Gabriel — Œuvre de vie · cockpit v0.2 (LM#05.B1)
+  Gabriel — Œuvre de vie · cockpit v0.3 (LM#05.B1+B4)
 </footer>
 
 <script type="module">
@@ -388,21 +473,27 @@ async function renderAuthed() {
 // ──────────────────────────────────────────────────────────
 let themesByKey = {};   // theme_key → {label, description}
 
+let themesLoaded = false;
 async function loadThemes() {
+  if (themesLoaded) return;   // idempotent: no double-population on re-renderAuthed
   const { data, error } = await supabase
     .from("life_memory_themes")
     .select("theme_key,theme_label_fr,description_fr,display_order")
     .eq("active", true)
     .order("display_order");
   if (error) { console.warn("themes RLS:", error.message); return; }
+  themesLoaded = true;
   const sel = document.getElementById("text-theme");
-  // Keep "aucun" placeholder + append fetched options
+  const filterSel = document.getElementById("fiches-theme-filter");
+  // Keep placeholders + append fetched options to BOTH text-input + fiches-filter selects
   for (const t of data) {
     themesByKey[t.theme_key] = { label: t.theme_label_fr, description: t.description_fr };
-    const opt = document.createElement("option");
-    opt.value = t.theme_key;
-    opt.textContent = t.theme_label_fr;
-    sel.appendChild(opt);
+    for (const target of [sel, filterSel]) {
+      const opt = document.createElement("option");
+      opt.value = t.theme_key;
+      opt.textContent = t.theme_label_fr;
+      target.appendChild(opt);
+    }
   }
 }
 
@@ -495,6 +586,119 @@ function stopDictation() {
   try { recognition.stop(); } catch (e) { /* not running */ }
 }
 
+// ──────────────────────────────────────────────────────────
+// Fiches index (LM#05.B4 — RLS-filtered list + modal)
+// ──────────────────────────────────────────────────────────
+const CONF_LABELS = {
+  private_gabriel_jc: "privé",
+  family_close:       "famille proche",
+  editorial_team:     "équipe rédactionnelle",
+  publishable_book:   "publiable",
+  excluded:           "exclu",
+};
+
+const ficheCache = new Map();  // id → row (used by openFicheModal without refetch)
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+async function loadFiches() {
+  const list = document.getElementById("fiches-list");
+  list.innerHTML = '<span class="muted">Chargement…</span>';
+  const themeFilter = document.getElementById("fiches-theme-filter").value;
+  const sortRaw     = document.getElementById("fiches-sort").value;
+  const [sortCol, sortDir] = sortRaw.split(".");
+
+  let q = supabase
+    .from("memoir_fiches")
+    .select("id,project_id,title_fr,theme_key,status,confidentiality_level,summary_short,content_developed,time_axis_notes,created_at,updated_at")
+    .eq("project_id", PROJECT_ID)
+    .order(sortCol, { ascending: sortDir === "asc" })
+    .limit(50);
+  if (themeFilter) q = q.eq("theme_key", themeFilter);
+
+  const { data, error } = await q;
+  if (error) {
+    list.innerHTML = '<span class="err">Erreur RLS : ' + escapeHtml(error.message) + '</span>';
+    return;
+  }
+  if (!data || data.length === 0) {
+    list.innerHTML = '<span class="muted">Aucune fiche visible pour ton rôle dans ce tiroir.</span>';
+    return;
+  }
+  ficheCache.clear();
+  data.forEach(f => ficheCache.set(f.id, f));
+
+  list.innerHTML = data.map(f => {
+    const themeLabel = (themesByKey[f.theme_key] && themesByKey[f.theme_key].label) || f.theme_key || "—";
+    const confLabel = CONF_LABELS[f.confidentiality_level] || f.confidentiality_level || "—";
+    const confClass = f.confidentiality_level ? `pill conf-${f.confidentiality_level}` : "pill";
+    const summary = (f.summary_short || "").substring(0, 180);
+    return `
+      <div class="fiche-card" onclick="openFicheModal(${f.id})">
+        <h3>${escapeHtml(f.title_fr)}</h3>
+        <div class="muted">${escapeHtml(summary)}${summary.length === 180 ? "…" : ""}</div>
+        <div class="pills">
+          <span class="pill">${escapeHtml(themeLabel)}</span>
+          <span class="${confClass}">${escapeHtml(confLabel)}</span>
+          <span class="meta">· ${fmtDate(f.created_at)}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+window.loadFiches = loadFiches;
+
+function openFicheModal(id) {
+  const f = ficheCache.get(id);
+  if (!f) return;
+  document.getElementById("fm-title").textContent = f.title_fr || "(sans titre)";
+  const themeLabel = (themesByKey[f.theme_key] && themesByKey[f.theme_key].label) || f.theme_key || "—";
+  const confLabel = CONF_LABELS[f.confidentiality_level] || f.confidentiality_level || "—";
+  document.getElementById("fm-meta").innerHTML =
+    `<span class="pill">${escapeHtml(themeLabel)}</span> ` +
+    `<span class="pill conf-${f.confidentiality_level || ''}">${escapeHtml(confLabel)}</span> ` +
+    `<span class="meta">· créée le ${fmtDate(f.created_at)}` +
+    (f.updated_at && f.updated_at !== f.created_at ? `, mise à jour le ${fmtDate(f.updated_at)}` : "") +
+    `</span>`;
+  document.getElementById("fm-summary").textContent = f.summary_short || "(pas de résumé)";
+  document.getElementById("fm-content").textContent = f.content_developed || "(pas de contenu développé)";
+  const timeSection = document.getElementById("fm-time-section");
+  if (f.time_axis_notes) {
+    timeSection.classList.remove("hidden");
+    document.getElementById("fm-time").textContent = f.time_axis_notes;
+  } else {
+    timeSection.classList.add("hidden");
+  }
+  document.getElementById("fiche-modal").classList.remove("hidden");
+}
+window.openFicheModal = openFicheModal;
+
+function closeFicheModal(event) {
+  // Called either from backdrop click (event.target === backdrop) or from close-btn (no event)
+  if (event && event.target && event.target.id !== "fiche-modal" && event.currentTarget !== event.target) {
+    // click inside the card — do nothing, stopPropagation handles it
+    return;
+  }
+  document.getElementById("fiche-modal").classList.add("hidden");
+}
+window.closeFicheModal = closeFicheModal;
+
+// Esc closes the fiche modal
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !document.getElementById("fiche-modal").classList.contains("hidden")) {
+    closeFicheModal();
+  }
+});
+
 function renderUnauthed() {
   document.getElementById("auth-logged-out").classList.remove("hidden");
   document.getElementById("auth-logged-in").classList.add("hidden");
@@ -523,7 +727,7 @@ window.backToCockpit = backToCockpit;
 window.openTextInput   = () => showView("view-text");
 window.openAudioInput  = () => showView("view-audio");
 window.openScanInput   = () => showView("view-scan");
-window.openFichesView  = () => showView("view-fiches");
+window.openFichesView  = () => { showView("view-fiches"); loadFiches(); };
 window.openChat        = () => { showView("view-chat"); document.getElementById("chat-question").focus(); };
 window.signIn  = signIn;
 window.signOut = signOut;
