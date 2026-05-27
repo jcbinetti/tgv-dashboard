@@ -112,6 +112,49 @@
   .chat-msg.bot  { background: white; border: 1px solid var(--line); margin-right: 20%; }
   .chat-msg .sources { color: var(--muted); font-size: 12px; margin-top: 6px; }
   .hidden { display: none !important; }
+  select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    background: white;
+    color: var(--ink);
+  }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { flex: 1; }
+  .dict-btn {
+    flex: 0 0 auto;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 18px;
+    cursor: pointer;
+    min-height: 38px;
+  }
+  .dict-btn.recording {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.7; }
+  }
+  .intro-hint {
+    background: var(--accent-soft);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 10px 0;
+    font-style: italic;
+  }
+  .intro-hint .tiroir-label { font-style: normal; font-weight: 600; color: var(--accent); }
   footer {
     text-align: center;
     padding: 24px 16px;
@@ -185,13 +228,39 @@
 
   <section id="view-text" class="card hidden">
     <h2 style="margin-top:0; font-size: 18px;">📝 Écrire un texte</h2>
+
+    <div class="field">
+      <label for="text-theme">Tiroir de mémoire <span class="muted">(optionnel)</span></label>
+      <select id="text-theme" onchange="updateThemeHint()">
+        <option value="">— aucun tiroir choisi —</option>
+        <!-- options injectées au sign-in via loadThemes() -->
+      </select>
+    </div>
+
+    <div id="text-intro" class="intro-hint">
+      Note libre, souvenir, réflexion… Écris, colle un texte, ou clique sur 🎤 pour dicter.
+    </div>
+
     <div class="field">
       <label for="text-content">Ton texte</label>
-      <textarea id="text-content" rows="6" placeholder="Note libre, souvenir, réflexion…"></textarea>
+      <div class="row" style="align-items: flex-start;">
+        <textarea id="text-content" rows="6" placeholder="…"></textarea>
+        <button type="button" class="dict-btn" id="dict-btn" onclick="toggleDictation()" title="Dicter (français)">🎤</button>
+      </div>
+      <div id="dict-status" class="muted" style="font-size:12px; margin-top:4px;"></div>
     </div>
+
+    <div class="field">
+      <label for="text-author">Voix (qui parle ?)</label>
+      <select id="text-author">
+        <option value="gabriel-binetti" selected>Gabriel (voix canonique de la mémoire)</option>
+        <option value="">Annotation rédactionnelle (moi)</option>
+      </select>
+    </div>
+
     <div class="field">
       <label for="text-confidentiality">Confidentialité</label>
-      <select id="text-confidentiality" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:15px; background:white;">
+      <select id="text-confidentiality">
         <option value="">— (non précisée)</option>
         <option value="private_gabriel_jc">privé (Gabriel + JC seulement)</option>
         <option value="family_close">famille proche</option>
@@ -200,6 +269,7 @@
         <option value="excluded">à exclure</option>
       </select>
     </div>
+
     <button class="primary" onclick="submitText()" style="width:100%; min-height:44px;">
       <span class="btn-label">Enregistrer</span>
     </button>
@@ -251,7 +321,7 @@
 </main>
 
 <footer>
-  Gabriel — Œuvre de vie · cockpit v0.1 (LM#04.3)
+  Gabriel — Œuvre de vie · cockpit v0.2 (LM#05.B1)
 </footer>
 
 <script type="module">
@@ -308,6 +378,121 @@ async function renderAuthed() {
     .eq("project_id", PROJECT_ID);
   const role = (roleRows && roleRows[0] && roleRows[0].role) || "—";
   document.getElementById("user-role").textContent = role;
+  // LM#05.B1: populate theme selector (Tiroirs de mémoire)
+  loadThemes().catch(e => console.warn("loadThemes failed:", e));
+  initDictation();
+}
+
+// ──────────────────────────────────────────────────────────
+// Themes (LM#05.B1 — Tiroirs de mémoire)
+// ──────────────────────────────────────────────────────────
+let themesByKey = {};   // theme_key → {label, description}
+
+async function loadThemes() {
+  const { data, error } = await supabase
+    .from("life_memory_themes")
+    .select("theme_key,theme_label_fr,description_fr,display_order")
+    .eq("active", true)
+    .order("display_order");
+  if (error) { console.warn("themes RLS:", error.message); return; }
+  const sel = document.getElementById("text-theme");
+  // Keep "aucun" placeholder + append fetched options
+  for (const t of data) {
+    themesByKey[t.theme_key] = { label: t.theme_label_fr, description: t.description_fr };
+    const opt = document.createElement("option");
+    opt.value = t.theme_key;
+    opt.textContent = t.theme_label_fr;
+    sel.appendChild(opt);
+  }
+}
+
+function updateThemeHint() {
+  const key = document.getElementById("text-theme").value;
+  const intro = document.getElementById("text-intro");
+  if (!key || !themesByKey[key]) {
+    intro.innerHTML = "Note libre, souvenir, réflexion… Écris, colle un texte, ou clique sur 🎤 pour dicter.";
+    return;
+  }
+  const t = themesByKey[key];
+  intro.innerHTML = `<span class="tiroir-label">Tiroir « ${t.label} »</span> — ${t.description}`;
+}
+window.updateThemeHint = updateThemeHint;
+
+// ──────────────────────────────────────────────────────────
+// Dictation (LM#05.B1 — Web Speech API, fr-FR)
+// ──────────────────────────────────────────────────────────
+let recognition = null;
+let isRecording = false;
+let textBeforeDictation = "";
+
+function initDictation() {
+  const btn = document.getElementById("dict-btn");
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    btn.disabled = true;
+    btn.title = "Ton navigateur ne supporte pas la dictée vocale (essaie Chrome ou Edge).";
+    btn.style.opacity = "0.4";
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = "fr-FR";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event) => {
+    const ta = document.getElementById("text-content");
+    let interim = "";
+    let final = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const r = event.results[i];
+      if (r.isFinal) final += r[0].transcript;
+      else            interim += r[0].transcript;
+    }
+    // Reconstruct: baseline (before dictation start) + accumulated final + current interim
+    const sep = textBeforeDictation && !textBeforeDictation.endsWith(" ") ? " " : "";
+    if (final) textBeforeDictation += sep + final.trim();
+    const showSep = textBeforeDictation && !textBeforeDictation.endsWith(" ") ? " " : "";
+    ta.value = textBeforeDictation + (interim ? showSep + interim : "");
+  };
+  recognition.onerror = (e) => {
+    document.getElementById("dict-status").textContent = "Erreur dictée : " + e.error;
+    document.getElementById("dict-status").className = "err";
+    stopDictation();
+  };
+  recognition.onend = () => {
+    if (isRecording) {
+      // Browser auto-stopped (silence/timeout) → restart while user hasn't pressed stop
+      try { recognition.start(); } catch (_) { /* already started */ }
+    }
+  };
+}
+
+function toggleDictation() {
+  if (!recognition) return;
+  if (isRecording) stopDictation();
+  else             startDictation();
+}
+window.toggleDictation = toggleDictation;
+
+function startDictation() {
+  const ta = document.getElementById("text-content");
+  textBeforeDictation = ta.value;
+  isRecording = true;
+  document.getElementById("dict-btn").classList.add("recording");
+  document.getElementById("dict-btn").textContent = "⏹";
+  document.getElementById("dict-btn").title = "Arrêter la dictée";
+  document.getElementById("dict-status").textContent = "🔴 Dictée en cours… parle naturellement.";
+  document.getElementById("dict-status").className = "muted";
+  try { recognition.start(); } catch (e) { /* already started */ }
+}
+
+function stopDictation() {
+  isRecording = false;
+  document.getElementById("dict-btn").classList.remove("recording");
+  document.getElementById("dict-btn").textContent = "🎤";
+  document.getElementById("dict-btn").title = "Dicter (français)";
+  document.getElementById("dict-status").textContent = "";
+  try { recognition.stop(); } catch (e) { /* not running */ }
 }
 
 function renderUnauthed() {
@@ -366,11 +551,14 @@ async function callSkill(path, body) {
 // Text input
 // ──────────────────────────────────────────────────────────
 async function submitText() {
-  const text = document.getElementById("text-content").value.trim();
-  const conf = document.getElementById("text-confidentiality").value || null;
-  const msg = document.getElementById("text-msg");
+  const text   = document.getElementById("text-content").value.trim();
+  const conf   = document.getElementById("text-confidentiality").value || null;
+  const theme  = document.getElementById("text-theme").value || null;
+  const author = document.getElementById("text-author").value || null;
+  const msg    = document.getElementById("text-msg");
   if (!text) { msg.textContent = "Le texte est vide."; msg.className = "err"; return; }
   if (!currentUser) { msg.textContent = "Connecte-toi d'abord."; msg.className = "err"; return; }
+  if (isRecording) stopDictation();
   msg.textContent = "Enregistrement…"; msg.className = "muted";
   try {
     const data = await callSkill("/api/skill/conversational-input", {
@@ -379,11 +567,14 @@ async function submitText() {
       user_id: currentUser.id,
       content_text: text,
       confidentiality: conf,
+      theme_key: theme,
+      author_entity_key: author,
       apply: true,
     });
     msg.textContent = "✓ " + data.message;
     msg.className = "ok";
     document.getElementById("text-content").value = "";
+    textBeforeDictation = "";
   } catch (e) {
     msg.textContent = "Erreur : " + e.message;
     msg.className = "err";
