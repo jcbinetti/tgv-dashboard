@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Gabriel — Œuvre de vie · cockpit</title>
+<style>
+  :root {
+    --bg: #faf7f2;
+    --ink: #2a2422;
+    --muted: #6b6260;
+    --line: #e0d8cf;
+    --accent: #8b3a1f;
+    --accent-soft: #f1e5dc;
+    --ok: #2f6b3a;
+    --warn: #b85a00;
+    --err: #b03030;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  header {
+    padding: 24px 20px 12px;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  header .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 14px; font-style: italic; }
+  main { max-width: 600px; margin: 0 auto; padding: 16px; }
+  .card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  button {
+    background: var(--accent-soft);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 8px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s;
+    min-height: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  button:hover:not(:disabled) { background: #e8d6c5; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  button.primary:hover:not(:disabled) { background: #6e2d18; }
+  .emoji { font-size: 22px; }
+  .btn-label { font-size: 14px; font-weight: 500; }
+  input[type="text"], input[type="email"], input[type="password"], textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--ink);
+    background: white;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  .field { margin: 10px 0; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .ok    { color: var(--ok); }
+  .warn  { color: var(--warn); }
+  .err   { color: var(--err); }
+  .pill {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  #chat-log {
+    max-height: 40vh;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: #fdfbf8;
+  }
+  .chat-msg { margin: 8px 0; padding: 8px 12px; border-radius: 8px; }
+  .chat-msg.user { background: var(--accent-soft); margin-left: 20%; }
+  .chat-msg.bot  { background: white; border: 1px solid var(--line); margin-right: 20%; }
+  .chat-msg .sources { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .hidden { display: none !important; }
+  footer {
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Gabriel — Œuvre de vie</h1>
+  <div class="subtitle">cockpit mémoire</div>
+</header>
+
+<main>
+  <!-- Auth section -->
+  <section id="auth-section" class="card">
+    <h2 style="margin-top:0; font-size: 18px;">Connexion</h2>
+    <div id="auth-logged-out">
+      <p class="muted">Connecte-toi pour accéder à la mémoire du projet.</p>
+      <div class="field">
+        <label for="email">Adresse e-mail</label>
+        <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" autocomplete="current-password" />
+      </div>
+      <button class="primary" onclick="signIn()" id="signin-btn" style="width:100%; min-height:48px;">
+        <span class="btn-label">Se connecter</span>
+      </button>
+      <div id="auth-msg" class="muted" style="margin-top:8px;"></div>
+    </div>
+    <div id="auth-logged-in" class="hidden">
+      <p>Bienvenue, <strong id="user-email"></strong> <span class="pill" id="user-role">—</span></p>
+      <button onclick="signOut()" style="min-height: 36px;">
+        <span class="btn-label">Se déconnecter</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Cockpit (5 boutons) -->
+  <section id="cockpit-section" class="card hidden">
+    <h2 style="margin-top:0; font-size: 18px;">Que veux-tu faire ?</h2>
+    <div class="grid">
+      <button onclick="openTextInput()">
+        <span class="emoji">📝</span>
+        <span class="btn-label">Écrire un texte</span>
+      </button>
+      <button onclick="openAudioInput()">
+        <span class="emoji">🎙️</span>
+        <span class="btn-label">Enregistrer<br/>audio</span>
+      </button>
+      <button onclick="openScanInput()">
+        <span class="emoji">📷</span>
+        <span class="btn-label">Scanner / téléverser</span>
+      </button>
+      <button onclick="openFichesView()">
+        <span class="emoji">📖</span>
+        <span class="btn-label">Voir les fiches</span>
+      </button>
+      <button onclick="openChat()" style="grid-column: span 2;">
+        <span class="emoji">💬</span>
+        <span class="btn-label">Discuter avec la mémoire</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Sub-views (one visible at a time) -->
+
+  <section id="view-text" class="card hidden">
+    <h2 style="margin-top:0; font-size: 18px;">📝 Écrire un texte</h2>
+    <div class="field">
+      <label for="text-content">Ton texte</label>
+      <textarea id="text-content" rows="6" placeholder="Note libre, souvenir, réflexion…"></textarea>
+    </div>
+    <div class="field">
+      <label for="text-confidentiality">Confidentialité</label>
+      <select id="text-confidentiality" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:15px; background:white;">
+        <option value="">— (non précisée)</option>
+        <option value="private_gabriel_jc">privé (Gabriel + JC seulement)</option>
+        <option value="family_close">famille proche</option>
+        <option value="editorial_team">équipe rédactionnelle</option>
+        <option value="publishable_book">publiable (livre)</option>
+        <option value="excluded">à exclure</option>
+      </select>
+    </div>
+    <button class="primary" onclick="submitText()" style="width:100%; min-height:44px;">
+      <span class="btn-label">Enregistrer</span>
+    </button>
+    <button onclick="backToCockpit()" style="width:100%; margin-top:8px;">
+      <span class="btn-label">Retour</span>
+    </button>
+    <div id="text-msg" class="muted" style="margin-top:8px;"></div>
+  </section>
+
+  <section id="view-audio" class="card hidden">
+    <h2 style="margin-top:0; font-size: 18px;">🎙️ Enregistrer audio</h2>
+    <p class="muted">Cette fonctionnalité arrive dans la prochaine itération (LM#05). Pour l'instant, on prévoit que tu téléverses un fichier audio existant.</p>
+    <button onclick="backToCockpit()" style="width:100%;">
+      <span class="btn-label">Retour</span>
+    </button>
+  </section>
+
+  <section id="view-scan" class="card hidden">
+    <h2 style="margin-top:0; font-size: 18px;">📷 Scanner / téléverser</h2>
+    <p class="muted">Cette fonctionnalité arrive dans la prochaine itération (LM#05). Pour l'instant, tu peux téléverser un PDF existant.</p>
+    <button onclick="backToCockpit()" style="width:100%;">
+      <span class="btn-label">Retour</span>
+    </button>
+  </section>
+
+  <section id="view-fiches" class="card hidden">
+    <h2 style="margin-top:0; font-size: 18px;">📖 Voir les fiches</h2>
+    <p class="muted">L'index des fiches mémoire arrive en LM#05. (À venir : liste filtrée par thème + confidentialité + recherche plein-texte.)</p>
+    <button onclick="backToCockpit()" style="width:100%;">
+      <span class="btn-label">Retour</span>
+    </button>
+  </section>
+
+  <section id="view-chat" class="card hidden">
+    <h2 style="margin-top:0; font-size: 18px;">💬 Discuter avec la mémoire</h2>
+    <div id="chat-log">
+      <div class="chat-msg bot">Bonjour. Pose-moi une question sur le contenu de la mémoire du projet.</div>
+    </div>
+    <div class="field" style="margin-top:12px;">
+      <input type="text" id="chat-question" placeholder="Ta question…" onkeydown="if(event.key==='Enter') askChat()" />
+    </div>
+    <button class="primary" onclick="askChat()" id="chat-send" style="width:100%; min-height:44px;">
+      <span class="btn-label">Envoyer</span>
+    </button>
+    <button onclick="backToCockpit()" style="width:100%; margin-top:8px;">
+      <span class="btn-label">Retour</span>
+    </button>
+  </section>
+</main>
+
+<footer>
+  Gabriel — Œuvre de vie · cockpit v0.1 (LM#04.3)
+</footer>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// ──────────────────────────────────────────────────────────
+// Configuration — gets injected from query string for now
+// LM#05 will swap to a /config endpoint served by the FastAPI service.
+// ──────────────────────────────────────────────────────────
+const SB_URL  = "https://egcdlozsvyhhvipylxky.supabase.co";
+const SB_ANON = "sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_";
+
+// API base — same origin if hosted on Hetzner; override via ?api=... for local dev.
+const url = new URL(window.location.href);
+const API_BASE = url.searchParams.get("api") || "";   // empty = same origin (recommended)
+// MVP: API-Key in URL (LM#05 will swap to Supabase JWT-only auth)
+const API_KEY  = url.searchParams.get("key") || "";
+const PROJECT_ID = 5;  // Gabriel — Œuvre de vie
+
+const supabase = createClient(SB_URL, SB_ANON);
+let currentUser = null;
+
+// ──────────────────────────────────────────────────────────
+// Auth
+// ──────────────────────────────────────────────────────────
+async function signIn() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("auth-msg");
+  if (!email || !password) { msg.textContent = "Adresse e-mail et mot de passe requis."; msg.className = "err"; return; }
+  msg.textContent = "Connexion en cours…"; msg.className = "muted";
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) { msg.textContent = "Échec : " + error.message; msg.className = "err"; return; }
+  currentUser = data.user;
+  await renderAuthed();
+}
+
+async function signOut() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  renderUnauthed();
+}
+
+async function renderAuthed() {
+  document.getElementById("auth-logged-out").classList.add("hidden");
+  document.getElementById("auth-logged-in").classList.remove("hidden");
+  document.getElementById("cockpit-section").classList.remove("hidden");
+  document.getElementById("user-email").textContent = currentUser.email;
+  // Try to fetch role for display
+  const { data: roleRows } = await supabase
+    .from("user_project_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .eq("project_id", PROJECT_ID);
+  const role = (roleRows && roleRows[0] && roleRows[0].role) || "—";
+  document.getElementById("user-role").textContent = role;
+}
+
+function renderUnauthed() {
+  document.getElementById("auth-logged-out").classList.remove("hidden");
+  document.getElementById("auth-logged-in").classList.add("hidden");
+  document.getElementById("cockpit-section").classList.add("hidden");
+  hideAllViews();
+  document.getElementById("auth-msg").textContent = "";
+}
+
+// ──────────────────────────────────────────────────────────
+// Cockpit + view router
+// ──────────────────────────────────────────────────────────
+function hideAllViews() {
+  ["view-text", "view-audio", "view-scan", "view-fiches", "view-chat"]
+    .forEach(id => document.getElementById(id).classList.add("hidden"));
+}
+function showView(id) {
+  document.getElementById("cockpit-section").classList.add("hidden");
+  hideAllViews();
+  document.getElementById(id).classList.remove("hidden");
+}
+function backToCockpit() {
+  hideAllViews();
+  document.getElementById("cockpit-section").classList.remove("hidden");
+}
+window.backToCockpit = backToCockpit;
+window.openTextInput   = () => showView("view-text");
+window.openAudioInput  = () => showView("view-audio");
+window.openScanInput   = () => showView("view-scan");
+window.openFichesView  = () => showView("view-fiches");
+window.openChat        = () => { showView("view-chat"); document.getElementById("chat-question").focus(); };
+window.signIn  = signIn;
+window.signOut = signOut;
+
+// ──────────────────────────────────────────────────────────
+// API helpers
+// ──────────────────────────────────────────────────────────
+async function callSkill(path, body) {
+  if (!API_KEY) throw new Error("missing ?key=… in URL (MVP API-Key auth)");
+  const resp = await fetch(API_BASE + path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-TGV-API-KEY": API_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await resp.text();
+  let data; try { data = JSON.parse(text); } catch { data = { detail: text }; }
+  if (!resp.ok) throw new Error(data.detail || ("HTTP " + resp.status));
+  return data;
+}
+
+// ──────────────────────────────────────────────────────────
+// Text input
+// ──────────────────────────────────────────────────────────
+async function submitText() {
+  const text = document.getElementById("text-content").value.trim();
+  const conf = document.getElementById("text-confidentiality").value || null;
+  const msg = document.getElementById("text-msg");
+  if (!text) { msg.textContent = "Le texte est vide."; msg.className = "err"; return; }
+  if (!currentUser) { msg.textContent = "Connecte-toi d'abord."; msg.className = "err"; return; }
+  msg.textContent = "Enregistrement…"; msg.className = "muted";
+  try {
+    const data = await callSkill("/api/skill/conversational-input", {
+      content_kind: "text",
+      project_id: PROJECT_ID,
+      user_id: currentUser.id,
+      content_text: text,
+      confidentiality: conf,
+      apply: true,
+    });
+    msg.textContent = "✓ " + data.message;
+    msg.className = "ok";
+    document.getElementById("text-content").value = "";
+  } catch (e) {
+    msg.textContent = "Erreur : " + e.message;
+    msg.className = "err";
+  }
+}
+window.submitText = submitText;
+
+// ──────────────────────────────────────────────────────────
+// Chatbot
+// ──────────────────────────────────────────────────────────
+async function askChat() {
+  const input = document.getElementById("chat-question");
+  const q = input.value.trim();
+  if (!q) return;
+  if (!currentUser) { appendChat("bot", "Connecte-toi d'abord, je ne peux pas filtrer par tes droits sinon."); return; }
+  appendChat("user", q);
+  input.value = "";
+  document.getElementById("chat-send").disabled = true;
+  appendChat("bot", "…", "thinking");
+  try {
+    const data = await callSkill("/api/skill/memory-search-chat", {
+      user_id: currentUser.id,
+      project_id: PROJECT_ID,
+      question: q,
+      top_k: 5,
+    });
+    removeThinking();
+    const answer = data.message || "(réponse vide)";
+    const meta = data.data || {};
+    const sourcesLine = meta.cited_doc_ids && meta.cited_doc_ids.length
+      ? `Sources : doc#${meta.cited_doc_ids.join(", doc#")}`
+      : "";
+    appendChat("bot", answer, null, sourcesLine);
+  } catch (e) {
+    removeThinking();
+    appendChat("bot", "Erreur : " + e.message);
+  } finally {
+    document.getElementById("chat-send").disabled = false;
+    input.focus();
+  }
+}
+window.askChat = askChat;
+
+function appendChat(who, text, marker, sources) {
+  const log = document.getElementById("chat-log");
+  const div = document.createElement("div");
+  div.className = "chat-msg " + who;
+  if (marker) div.dataset.marker = marker;
+  div.textContent = text;
+  if (sources) {
+    const s = document.createElement("div");
+    s.className = "sources";
+    s.textContent = sources;
+    div.appendChild(s);
+  }
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+function removeThinking() {
+  document.querySelectorAll('.chat-msg[data-marker="thinking"]').forEach(el => el.remove());
+}
+
+// ──────────────────────────────────────────────────────────
+// Bootstrap
+// ──────────────────────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await renderAuthed();
+  } else {
+    renderUnauthed();
+  }
+})();
+</script>
+</body>
+</html>
