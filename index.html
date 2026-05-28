@@ -1,3 +1,10 @@
+<!-- TGV Dashboard v11.85.8 — 2026-05-28 — Iter 57.A4 Cross-Scope-Leak fix:
+     User-Befund 2026-05-28: Übersicht-Tab "Letzte Eingänge" zeigt LM#02 RLS-Matrix-Test-Docs + gabriel.html Diktat-Tests (alle project_id=5)
+     als TGV-Core-Docs an. Live-Diagnose: 8 von 10 letzten Docs sind LM-Projekt.
+     Fix: isTestData() prüft jetzt zusätzlich row.project_id != null als Scope-Filter (Defense-in-Depth),
+     + 6 documents-Queries selektieren jetzt project_id für korrekte Client-Side-Filterung.
+     Memory ⭐ project_life_memory_gabriel_state + neue Memory project_cross_scope_leak_dashboard_fix.
+     Smoke: Übersicht-Tab darf KEINEN Doc mit subject "iter53lm02" oder "test de texte" zeigen. -->
 <!-- TGV Dashboard v11.85.7 — 2026-05-26 — Iter 52.E14 Card-Layout-Refactor:
      User-Befund 2026-05-26: "text überlappt in titel doc tabelle, immer noch Euros in titel, review empfohlen scheint doppelt".
      Komplettes Triage-Card-Re-Layout in 4 sauberen Bloecken:
@@ -4900,8 +4907,9 @@ const statusPill = st => {
 };
 
 const isTestData = row => {
+  if (row.project_id != null) return true; // Iter 57.A4: cross-scope-leak fix — PROJEKT-docs out of CORE views
   const fields = [row.provider, row.subject, row.drive_file_name, row.counterparty_raw, row.merchant_normalized];
-  return fields.some(f => f && f.includes('TEST_WF_B'));
+  return fields.some(f => f && (f.includes('TEST_WF_B') || f.includes('iter53lm02_rls_matrix_seed')));
 };
 
 const entityMatchesFilter = raw => {
@@ -6114,7 +6122,7 @@ async function loadKPIs() {
 async function loadLetzteEingaenge() {
   const wrap = document.getElementById('letzte-eingang-wrap');
   try {
-    let q = `documents?select=id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
+    let q = `documents?select=id,project_id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
     const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
 
@@ -6170,7 +6178,7 @@ async function loadInbox() {
   const wrap = document.getElementById('inbox-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>`;
   try {
-    let q = `documents?select=id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
+    let q = `documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
     const data = await supa(q);
     gInboxRows = data.filter(r => !isTestData(r));
     renderInbox();
@@ -6622,7 +6630,7 @@ async function loadTxns() {
 
 async function loadDocsFin() {
   try {
-    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
+    const data = await supa(`documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
     gDocs = data.filter(r => !isTestData(r));
   } catch (e) {
     gDocs = [];
@@ -6668,7 +6676,7 @@ async function loadAbgleich() {
 
     const [txnData, docData] = await Promise.all([
       supa(`txn_master?select=id,booking_date,entity,amount,counterparty_raw,purpose,document_id&${txnFilter}`),
-      supa(`documents?select=id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
+      supa(`documents?select=id,project_id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
     ]);
 
     gAbgleichTxns = (txnData || []).filter(r => !isTestData(r));
@@ -11317,7 +11325,7 @@ async function loadTriage() {
     const search = (document.getElementById('triage-search').value || '').trim();
 
     // Build PostgREST query
-    const fields = 'id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
+    const fields = 'id,project_id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
     const filters = [];
     if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
     else if (status === 'inbox') filters.push('processing_state=eq.inbox');
@@ -13182,7 +13190,7 @@ async function loadAlleDocs() {
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>`;
   try {
     const q = (document.getElementById('alle-docs-q')?.value || '').trim();
-    const fields = 'id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
+    const fields = 'id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
     let path = `documents?select=${fields}&order=id.desc&limit=200`;
     if (q) {
       // PostgREST OR over provider/drive_file_name/subject — ilike
