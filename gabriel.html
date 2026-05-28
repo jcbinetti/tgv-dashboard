@@ -406,7 +406,7 @@
 </main>
 
 <footer>
-  Gabriel — Œuvre de vie · cockpit v0.3 (LM#05.B1+B4)
+  Gabriel — Œuvre de vie · cockpit v0.4 (LM#05.A5 JWT-only auth, HTTPS)
 </footer>
 
 <script type="module">
@@ -419,11 +419,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SB_URL  = "https://egcdlozsvyhhvipylxky.supabase.co";
 const SB_ANON = "sb_publishable_0zFCpVXEku0NW6Kz_ZDKgw_S5iGLD3_";
 
-// API base — same origin if hosted on Hetzner; override via ?api=... for local dev.
+// API base — same origin (recommended). ?api=... override for local dev only.
 const url = new URL(window.location.href);
-const API_BASE = url.searchParams.get("api") || "";   // empty = same origin (recommended)
-// MVP: API-Key in URL (LM#05 will swap to Supabase JWT-only auth)
-const API_KEY  = url.searchParams.get("key") || "";
+const API_BASE = url.searchParams.get("api") || "";   // empty = same origin
+// LM#05.A5 (2026-05-28): Supabase JWT-only auth. API-Key URL-param dropped
+// for security (no secret in browser history/referer). Backend accepts both
+// Bearer-JWT and X-TGV-API-KEY per LM#05.A2; gabriel.html now only sends Bearer.
 const PROJECT_ID = 5;  // Gabriel — Œuvre de vie
 
 const supabase = createClient(SB_URL, SB_ANON);
@@ -736,17 +737,24 @@ window.signOut = signOut;
 // API helpers
 // ──────────────────────────────────────────────────────────
 async function callSkill(path, body) {
-  if (!API_KEY) throw new Error("missing ?key=… in URL (MVP API-Key auth)");
+  // LM#05.A5: get current Supabase session JWT (Bearer) — replaces X-TGV-API-KEY URL-param
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || !session.access_token) {
+    throw new Error("Pas connecté — connecte-toi d'abord (formulaire en haut).");
+  }
   const resp = await fetch(API_BASE + path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-TGV-API-KEY": API_KEY,
+      "Authorization": `Bearer ${session.access_token}`,
     },
     body: JSON.stringify(body),
   });
   const text = await resp.text();
   let data; try { data = JSON.parse(text); } catch { data = { detail: text }; }
+  if (resp.status === 401) {
+    throw new Error("Session expirée — re-connecte-toi (bouton 'Se déconnecter' puis re-login).");
+  }
   if (!resp.ok) throw new Error(data.detail || ("HTTP " + resp.status));
   return data;
 }
