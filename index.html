@@ -1,18 +1,8 @@
-<!-- TGV Dashboard v11.85.9 — 2026-05-28 — Iter 57.A1 Chatbot Server-Side-Auth (Option C):
-     User-Befund 2026-05-28 (Memory feedback_dashboard_chatbot_401): "invalid x-api-key" weil Dashboard
-     User-Key aus localStorage zur n8n-Proxy-WF schickt, die ihn 1:1 zu Anthropic weiterleitet — User-Key invalid → 401.
-     Fix: WF ceurPCxGciw1CN0v patched mit Auth-Check + If-Split + Respond 401 (deploy_iter57_a1_chatbot_auth.py).
-     Anthropic x-api-key kommt jetzt aus n8n $vars.TGV_ANTHROPIC_API_KEY (server-side).
-     Frontend sendet x-tgv-proxy-auth Token-Header statt query.key. localStorage 'tgv_claude_api_key' wird beim
-     Laden bereinigt. Migration-Phase: TGV_PROXY_AUTH_STRICT=false akzeptiert noch Legacy-Key-Fallback.
-     Smokes: ohne Auth=401, mit Token=200, mit Legacy-Key=200 (fallback). -->
-<!-- TGV Dashboard v11.85.8 — 2026-05-28 — Iter 57.A4 Cross-Scope-Leak fix:
-     User-Befund 2026-05-28: Übersicht-Tab "Letzte Eingänge" zeigt LM#02 RLS-Matrix-Test-Docs + gabriel.html Diktat-Tests (alle project_id=5)
-     als TGV-Core-Docs an. Live-Diagnose: 8 von 10 letzten Docs sind LM-Projekt.
-     Fix: isTestData() prüft jetzt zusätzlich row.project_id != null als Scope-Filter (Defense-in-Depth),
-     + 6 documents-Queries selektieren jetzt project_id für korrekte Client-Side-Filterung.
-     Memory ⭐ project_life_memory_gabriel_state + neue Memory project_cross_scope_leak_dashboard_fix.
-     Smoke: Übersicht-Tab darf KEINEN Doc mit subject "iter53lm02" oder "test de texte" zeigen. -->
+<!-- TGV Dashboard v11.86.0 — 2026-05-28 — LM#07.B4 LM-Skills Telemetrie:
+     Neuer System-Sub-Tab "🚀 LM-Skills" zeigt agent_events_lm07_proxy_latency view
+     (p50/p95/p99 ms + Calls + Error-Rate per Skill, letzte 24h).
+     Source: LM#06 proxy WF agent_events (tool_output.elapsed_ms + status_code).
+     Status-Pill: ✅ (0% err) | ⚠️ (<50%) | ❌ (≥50%). Auto-Refresh on tab-click. -->
 <!-- TGV Dashboard v11.85.7 — 2026-05-26 — Iter 52.E14 Card-Layout-Refactor:
      User-Befund 2026-05-26: "text überlappt in titel doc tabelle, immer noch Euros in titel, review empfohlen scheint doppelt".
      Komplettes Triage-Card-Re-Layout in 4 sauberen Bloecken:
@@ -3780,6 +3770,7 @@ body.chat-open #main-content {
         <button class="inbox-tab active" id="sys-tab-main"     onclick="showSysTab('main', this)">⚙️ System</button>
         <button class="inbox-tab"        id="sys-tab-costs"    onclick="showSysTab('costs', this)">💰 Costs</button>
         <button class="inbox-tab"        id="sys-tab-patterns" onclick="showSysTab('patterns', this)">🩺 Pattern Health</button>
+        <button class="inbox-tab"        id="sys-tab-lm-skills" onclick="showSysTab('lm-skills', this)">🚀 LM-Skills</button>
       </div>
 
       <div class="inbox-panel active" id="sys-panel-main">
@@ -4076,6 +4067,35 @@ body.chat-open #main-content {
           <div class="card-head"><h2>📈 Auto-Promote-Log (letzte 20)</h2></div>
           <div class="card-body" style="padding:0">
             <div id="ph-promotions"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LM#07.B4 — LM-Skills Telemetrie (agent_events_lm07_proxy_latency, letzte 24h) -->
+      <div class="inbox-panel" id="sys-panel-lm-skills">
+        <div class="card">
+          <div class="card-head" style="display:flex;align-items:center;justify-content:space-between">
+            <h2>🚀 LM-Skills Telemetrie
+              <span style="font-size:11px;color:var(--tx2);font-weight:400">
+                — agent_events_lm07_proxy_latency (LM#06 proxy WFs, letzte 24h)
+              </span>
+            </h2>
+            <button onclick="loadLMSkillsTelemetry(true)" class="btn-sm"
+              style="background:var(--s2);color:var(--tx1);border:1px solid var(--s3);padding:4px 10px;font-size:11px"
+              title="View aus Supabase neu laden">↻</button>
+          </div>
+          <div class="card-body">
+            <div id="lm07-telemetry-grid">
+              <div class="spinner-wrap"><div class="spinner"></div> Lade LM-Skills Telemetrie…</div>
+            </div>
+            <div style="font-size:10px;color:var(--tx2);margin-top:10px;line-height:1.5">
+              <strong>Status-Pill:</strong> ✅ 0% err · ⚠️ &lt;50% · ❌ ≥50%
+              · <strong>Latency-Bar:</strong> p95 normalized auf max(p99, 3000ms)
+              · <strong>Quellen:</strong> n8n LM#06 proxy WFs schreiben agent_events
+              (event_type LIKE <code>skill.proxy.lm06.%</code>) mit
+              <code>tool_output.elapsed_ms</code>.
+              <br>Aktualisierung manuell via ↻. View definiert in Mig 129.
+            </div>
           </div>
         </div>
       </div>
@@ -4915,9 +4935,8 @@ const statusPill = st => {
 };
 
 const isTestData = row => {
-  if (row.project_id != null) return true; // Iter 57.A4: cross-scope-leak fix — PROJEKT-docs out of CORE views
   const fields = [row.provider, row.subject, row.drive_file_name, row.counterparty_raw, row.merchant_normalized];
-  return fields.some(f => f && (f.includes('TEST_WF_B') || f.includes('iter53lm02_rls_matrix_seed')));
+  return fields.some(f => f && f.includes('TEST_WF_B'));
 };
 
 const entityMatchesFilter = raw => {
@@ -5089,11 +5108,11 @@ const HELP_TOPICS = {
            <p><strong>NICHT verwechseln mit:</strong> Das sagt <em>nichts</em> darüber aus, was TGV inhaltlich über das Dokument weiß. „noch nicht gelaufen" heißt nicht „TGV fehlt Wissen" — es heißt nur „dieser Arbeitsschritt steht noch aus". Was TGV weiß, steht in den Doc-Feldern + der Doc-Sicherheit (📋).</p>`,
   },
   chat_api_key: {
-    title: '🔑 Chat-Auth (Server-Side seit Iter 57.A1)',
-    body: `<p><strong>Neu:</strong> Der TGV-Chat braucht keinen eigenen API-Key mehr. Auth läuft jetzt server-side über den TGV-Proxy.</p>
-           <p><strong>Wie es funktioniert:</strong> Dashboard sendet einen geteilten Token (<code>x-tgv-proxy-auth</code>-Header) an den n8n-Proxy. Der Proxy ruft Anthropic mit dem zentralen <code>TGV_ANTHROPIC_API_KEY</code> (Server-Variable) auf. Du musst nichts konfigurieren.</p>
-           <p><strong>Cost-Schutz:</strong> Token-basierte Auth + Anthropic-API-Spend-Limit + n8n-Webhook-Quota. Token rotierbar via <code>$vars.TGV_PROXY_AUTH_KEY</code> + Dashboard re-deploy.</p>
-           <p><strong>Migration:</strong> Falls noch ein alter persönlicher Key in deinem Browser steht, wird er beim nächsten Laden automatisch entfernt.</p>`,
+    title: '🔑 Warum braucht der Chat einen eigenen API-Key?',
+    body: `<p><strong>Warum:</strong> Der TGV-Chat spricht direkt mit Claude (Anthropic). Damit das Dashboard keine fremden Kosten verursacht, läuft der Chat über <strong>deinen persönlichen</strong> Anthropic-API-Key — nicht über einen geteilten System-Key.</p>
+           <p><strong>Wo bleibt der Key:</strong> Nur lokal in deinem Browser (<code>localStorage</code>). Er wird nicht an TGV-Server, n8n oder Supabase gesendet — nur an Anthropic, für deine Chat-Anfragen.</p>
+           <p><strong>Key holen:</strong> Unter <code>console.anthropic.com</code> → API Keys. Beginnt mit <code>sk-ant-</code>. Einmal über das 🔑-Symbol eintragen, dann gemerkt.</p>
+           <p><strong>Wichtig:</strong> Der Rest des Dashboards (Inbox, Triage, Monatsabschluss …) braucht <em>keinen</em> Key — nur der 💬 Chat.</p>`,
   },
   mail_rule_action: {
     title: '📬 Mail-Regel — Aktion (Weiterleiten / Blockieren)',
@@ -6130,7 +6149,7 @@ async function loadKPIs() {
 async function loadLetzteEingaenge() {
   const wrap = document.getElementById('letzte-eingang-wrap');
   try {
-    let q = `documents?select=id,project_id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
+    let q = `documents?select=id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
     const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
 
@@ -6186,7 +6205,7 @@ async function loadInbox() {
   const wrap = document.getElementById('inbox-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>`;
   try {
-    let q = `documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
+    let q = `documents?select=id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
     const data = await supa(q);
     gInboxRows = data.filter(r => !isTestData(r));
     renderInbox();
@@ -6638,7 +6657,7 @@ async function loadTxns() {
 
 async function loadDocsFin() {
   try {
-    const data = await supa(`documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
+    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
     gDocs = data.filter(r => !isTestData(r));
   } catch (e) {
     gDocs = [];
@@ -6684,7 +6703,7 @@ async function loadAbgleich() {
 
     const [txnData, docData] = await Promise.all([
       supa(`txn_master?select=id,booking_date,entity,amount,counterparty_raw,purpose,document_id&${txnFilter}`),
-      supa(`documents?select=id,project_id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
+      supa(`documents?select=id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
     ]);
 
     gAbgleichTxns = (txnData || []).filter(r => !isTestData(r));
@@ -7961,7 +7980,58 @@ function showSysTab(tabId, btn) {
   if (panel) panel.classList.add('active');
   if (tabId === 'costs')    loadCostsView();
   if (tabId === 'patterns') { loadPatternHealthView(); loadPatternRulesLifecycle(); }
+  if (tabId === 'lm-skills') loadLMSkillsTelemetry();
   updateContextBar();
+}
+
+// ─── LM#07.B4 — LM-Skills Telemetrie (System > LM-Skills sub-tab) ──────────
+let _lmSkillsTelemetryLoaded = false;
+async function loadLMSkillsTelemetry(force) {
+  if (_lmSkillsTelemetryLoaded && !force) return;
+  _lmSkillsTelemetryLoaded = true;
+  const target = document.getElementById('lm07-telemetry-grid');
+  if (!target) return;
+  target.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade LM-Skills Telemetrie…</div>';
+  try {
+    const rows = await supa('agent_events_lm07_proxy_latency?order=skill.asc');
+    if (!Array.isArray(rows) || rows.length === 0) {
+      target.innerHTML = '<div style="padding:14px;color:var(--tx2);font-style:italic">Keine LM-Skill-Calls in den letzten 24h.</div>';
+      return;
+    }
+    target.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">' +
+      rows.map(r => _lmSkillCard(r)).join('') + '</div>';
+  } catch (e) {
+    target.innerHTML = `<div style="padding:14px;color:#c00">Fehler beim Laden: ${escHtml(String(e))}</div>`;
+  }
+}
+
+function _lmSkillCard(r) {
+  const errRate = parseFloat(r.error_rate_pct) || 0;
+  const statusIcon = errRate === 0 ? '✅' : errRate < 50 ? '⚠️' : '❌';
+  const color      = errRate === 0 ? '#10b981' : errRate < 50 ? '#f59e0b' : '#ef4444';
+  const colorBg    = errRate === 0 ? '#ecfdf5' : errRate < 50 ? '#fef3c7' : '#fee2e2';
+  // Normalize p95 bar to max(p99, 3000ms) — memory_search_chat can hit 2600ms.
+  const maxBar = Math.max(3000, r.max_ms || 0);
+  const p95w   = Math.min(100, ((r.p95_ms || 0) / maxBar) * 100);
+  const lastSeen = r.last_seen_at
+    ? new Date(r.last_seen_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+    : '–';
+  return `<div style="background:#fff;border:1px solid var(--s3);border-left:4px solid ${color};border-radius:8px;padding:12px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+      <div style="font-size:13px;font-weight:600">${statusIcon} <code style="font-size:12px">${escHtml(r.skill)}</code></div>
+      <span style="background:${colorBg};color:${color};padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">${r.n_error}/${r.n} err</span>
+    </div>
+    <div style="font-size:11px;color:var(--tx2);margin-bottom:6px">
+      p50 <strong>${r.p50_ms}ms</strong> · p95 <strong>${r.p95_ms}ms</strong> · p99 ${r.p99_ms}ms · max ${r.max_ms}ms
+    </div>
+    <div style="height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;margin:6px 0">
+      <div style="height:100%;background:${color};width:${p95w}%"></div>
+    </div>
+    <div style="font-size:10px;color:var(--tx2);display:flex;justify-content:space-between">
+      <span><strong>${r.n}</strong> calls · ${errRate.toFixed(1)}% err</span>
+      <span title="last_seen_at">${lastSeen}</span>
+    </div>
+  </div>`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -11333,7 +11403,7 @@ async function loadTriage() {
     const search = (document.getElementById('triage-search').value || '').trim();
 
     // Build PostgREST query
-    const fields = 'id,project_id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
+    const fields = 'id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
     const filters = [];
     if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
     else if (status === 'inbox') filters.push('processing_state=eq.inbox');
@@ -11799,16 +11869,10 @@ async function deleteMailRule(id) {
 // ═══════════════════════════════════════════════════════
 //  MCP CHAT (Feature 2)
 // ═══════════════════════════════════════════════════════
-// Iter 57.A1 — Server-Side-Auth Option C. Frontend sendet shared bearer token (TGV_PROXY_AUTH_TOKEN),
-// n8n proxy WF (ceurPCxGciw1CN0v) validiert + nutzt $vars.TGV_ANTHROPIC_API_KEY server-side.
-// Token ist effectively public (in static HTML); echter Cost-Schutz via Anthropic-API-Side-Limit + n8n-Quota.
-// Token-Rotation: $vars.TGV_PROXY_AUTH_KEY in n8n updaten + diese Constant ersetzen + Dashboard re-deploy.
-let CLAUDE_API_KEY = 'server-side'; // legacy var kept truthy for backwards compat
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-const CLAUDE_PROXY = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy';
-const TGV_PROXY_AUTH_TOKEN = 'e74f624d5ac7b8b62d4b481ba2d3e7ea20c3004ad6a764ac6625a5257e987a9b';
-// One-time migration: clear legacy per-user key from localStorage
-try { localStorage.removeItem('tgv_claude_api_key'); } catch (e) { /* private mode */ }
+// API Key wird zur Laufzeit aus Supabase agent_config geladen (kein Hardcode im Repo)
+let CLAUDE_API_KEY = null;
+const CLAUDE_MODEL   = 'claude-haiku-4-5-20251001';
+const CLAUDE_PROXY   = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy';
 
 let chatHistory = []; // Session-only
 let chatOpen = false;
@@ -12331,7 +12395,15 @@ function clearChatImage() {
 }
 
 async function sendChat() {
-  // Iter 57.A1: kein per-user Key mehr — Auth ist server-side
+  // Auto-Prompt wenn noch kein Key gesetzt
+  const existingKey = await loadClaudeApiKey();
+  if (!existingKey) {
+    configureChatKey();
+    if (!CLAUDE_API_KEY) {
+      addChatBubble('error', '⚠️ Kein API-Key konfiguriert. Bitte 🔑 oben rechts klicken und deinen Anthropic API-Key (sk-ant-…) eingeben.');
+      return;
+    }
+  }
   //
   const input  = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
@@ -12374,21 +12446,41 @@ async function sendChat() {
   }
 }
 
-// Iter 57.A1 — Server-Side-Auth: no per-user key needed
 async function loadClaudeApiKey() {
-  return CLAUDE_API_KEY; // 'server-side' marker
+  if (CLAUDE_API_KEY) return CLAUDE_API_KEY;
+  // 1. localStorage (persistent, vom User einmalig gesetzt)
+  const lsKey = localStorage.getItem('tgv_claude_api_key');
+  if (lsKey) { CLAUDE_API_KEY = lsKey; updateChatKeyStatus(true); return lsKey; }
+  return null;
 }
 
-function updateChatKeyStatus(_hasKey) {
+function updateChatKeyStatus(hasKey) {
   const el = document.getElementById('chat-key-status');
   if (!el) return;
-  el.textContent = 'Claude Haiku — bereit ✅';
-  el.style.color = 'rgba(100,220,180,0.9)';
+  el.textContent = hasKey ? 'Claude Haiku — bereit ✅' : 'Kein API-Key — 🔑 klicken';
+  el.style.color = hasKey ? 'rgba(100,220,180,0.9)' : 'rgba(255,180,80,0.9)';
 }
 
 function configureChatKey() {
-  // Iter 57.A1: per-user key deprecated — auth läuft jetzt server-side via shared token.
-  toast('Auth läuft jetzt server-side — kein eigener Key mehr nötig ✅');
+  const current = localStorage.getItem('tgv_claude_api_key') || '';
+  const key = prompt(
+    'Anthropic API-Key eingeben (sk-ant-…)\nWird nur lokal im Browser gespeichert.',
+    current
+  );
+  if (key === null) return; // Abbrechen
+  if (key.trim().startsWith('sk-ant-') || key.trim().startsWith('sk-')) {
+    localStorage.setItem('tgv_claude_api_key', key.trim());
+    CLAUDE_API_KEY = key.trim();
+    updateChatKeyStatus(true);
+    toast('🔑 API-Key gespeichert');
+  } else if (key.trim() === '') {
+    localStorage.removeItem('tgv_claude_api_key');
+    CLAUDE_API_KEY = null;
+    updateChatKeyStatus(false);
+    toast('API-Key entfernt', 'err');
+  } else {
+    toast('Ungültiges Format — muss mit sk-ant- beginnen', 'err');
+  }
 }
 
 async function callClaude(messages) {
@@ -12403,12 +12495,9 @@ async function callClaude(messages) {
     messages: messages
   };
 
-  const res = await fetch(CLAUDE_PROXY, {
+  const res = await fetch(`${CLAUDE_PROXY}?key=${encodeURIComponent(apiKey)}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-tgv-proxy-auth': TGV_PROXY_AUTH_TOKEN,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
 
@@ -13179,7 +13268,7 @@ async function loadAlleDocs() {
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>`;
   try {
     const q = (document.getElementById('alle-docs-q')?.value || '').trim();
-    const fields = 'id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
+    const fields = 'id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
     let path = `documents?select=${fields}&order=id.desc&limit=200`;
     if (q) {
       // PostgREST OR over provider/drive_file_name/subject — ilike
