@@ -1,8 +1,26 @@
+<!-- TGV Dashboard v11.87.0 — 2026-05-29 — LM#08.E4 Gabriel-Kachel LIVE:
+     PROJEKT-Sidebar "🚧 Coming Iter 22+" → aktiver Button "🌿 Gabriel — Mémoire de vie"
+     öffnet gabriel.megabook.fr/gabriel.html (erstes TGV-PROJEKT-Cockpit) in neuem Tab. -->
 <!-- TGV Dashboard v11.86.0 — 2026-05-28 — LM#07.B4 LM-Skills Telemetrie:
      Neuer System-Sub-Tab "🚀 LM-Skills" zeigt agent_events_lm07_proxy_latency view
      (p50/p95/p99 ms + Calls + Error-Rate per Skill, letzte 24h).
      Source: LM#06 proxy WF agent_events (tool_output.elapsed_ms + status_code).
      Status-Pill: ✅ (0% err) | ⚠️ (<50%) | ❌ (≥50%). Auto-Refresh on tab-click. -->
+<!-- TGV Dashboard v11.85.9 — 2026-05-28 — Iter 57.A1 Chatbot Server-Side-Auth (Option C):
+     User-Befund 2026-05-28 (Memory feedback_dashboard_chatbot_401): "invalid x-api-key" weil Dashboard
+     User-Key aus localStorage zur n8n-Proxy-WF schickt, die ihn 1:1 zu Anthropic weiterleitet — User-Key invalid → 401.
+     Fix: WF ceurPCxGciw1CN0v patched mit Auth-Check + If-Split + Respond 401 (deploy_iter57_a1_chatbot_auth.py).
+     Anthropic x-api-key kommt jetzt aus n8n $vars.TGV_ANTHROPIC_API_KEY (server-side).
+     Frontend sendet x-tgv-proxy-auth Token-Header statt query.key. localStorage 'tgv_claude_api_key' wird beim
+     Laden bereinigt. Migration-Phase: TGV_PROXY_AUTH_STRICT=false akzeptiert noch Legacy-Key-Fallback.
+     Smokes: ohne Auth=401, mit Token=200, mit Legacy-Key=200 (fallback). -->
+<!-- TGV Dashboard v11.85.8 — 2026-05-28 — Iter 57.A4 Cross-Scope-Leak fix:
+     User-Befund 2026-05-28: Übersicht-Tab "Letzte Eingänge" zeigt LM#02 RLS-Matrix-Test-Docs + gabriel.html Diktat-Tests (alle project_id=5)
+     als TGV-Core-Docs an. Live-Diagnose: 8 von 10 letzten Docs sind LM-Projekt.
+     Fix: isTestData() prüft jetzt zusätzlich row.project_id != null als Scope-Filter (Defense-in-Depth),
+     + 6 documents-Queries selektieren jetzt project_id für korrekte Client-Side-Filterung.
+     Memory ⭐ project_life_memory_gabriel_state + neue Memory project_cross_scope_leak_dashboard_fix.
+     Smoke: Übersicht-Tab darf KEINEN Doc mit subject "iter53lm02" oder "test de texte" zeigen. -->
 <!-- TGV Dashboard v11.85.7 — 2026-05-26 — Iter 52.E14 Card-Layout-Refactor:
      User-Befund 2026-05-26: "text überlappt in titel doc tabelle, immer noch Euros in titel, review empfohlen scheint doppelt".
      Komplettes Triage-Card-Re-Layout in 4 sauberen Bloecken:
@@ -54,8 +72,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.86.0">
-<title>TGV Dashboard v11.86.0 — Financial OS</title>
+<meta name="version" content="11.87.0">
+<title>TGV Dashboard v11.87.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2771,9 +2789,9 @@ body.chat-open #main-content {
       <span class="sidebar-section-sub">Späterer Ausbau für projektgetriebene Skills und eigene Workspace-Ansichten</span>
     </div>
 
-    <button class="nav-item" disabled style="opacity:0.45;cursor:not-allowed" title="TGV-PROJEKT-Domain: Phase 2 Roadmap. Skills wie Steuerberater, Copywriter, Projektsteuer, Controller, Graphikdesigner, Reisekosten-Master in projekt-spezifischer Konfiguration. Aktiviert ab Iter 22+ (siehe Memory project_tgv_core_vs_projekt_vision).">
-      <span class="nav-icon">🚧</span>
-      <span class="nav-label">Coming Iter 22+</span>
+    <button class="nav-item" onclick="window.open('https://gabriel.megabook.fr/gabriel.html','_blank','noopener')" title="Gabriel — Œuvre de vie (Life Memory): erstes TGV-PROJEKT live. Cockpit zum Erfassen von Texten, Diktaten, Scans + 'Discuter avec la mémoire'. Öffnet gabriel.megabook.fr in neuem Tab (Supabase-Login nötig).">
+      <span class="nav-icon">🌿</span>
+      <span class="nav-label">Gabriel — Mémoire de vie</span>
     </button>
 
     <div class="sidebar-section-label" title="System-Tools für Configuration, Telemetrie, Pattern-Health, Architektur-Visualisierung">
@@ -4094,7 +4112,7 @@ body.chat-open #main-content {
               · <strong>Quellen:</strong> n8n LM#06 proxy WFs schreiben agent_events
               (event_type LIKE <code>skill.proxy.lm06.%</code>) mit
               <code>tool_output.elapsed_ms</code>.
-              <br>Aktualisierung manuell via ↻. View definiert in Mig 129.
+              <br>Aktualisierung manuell via ↻. View definiert in Mig 132.
             </div>
           </div>
         </div>
@@ -4935,8 +4953,9 @@ const statusPill = st => {
 };
 
 const isTestData = row => {
+  if (row.project_id != null) return true; // Iter 57.A4: cross-scope-leak fix — PROJEKT-docs out of CORE views
   const fields = [row.provider, row.subject, row.drive_file_name, row.counterparty_raw, row.merchant_normalized];
-  return fields.some(f => f && f.includes('TEST_WF_B'));
+  return fields.some(f => f && (f.includes('TEST_WF_B') || f.includes('iter53lm02_rls_matrix_seed')));
 };
 
 const entityMatchesFilter = raw => {
@@ -5108,11 +5127,11 @@ const HELP_TOPICS = {
            <p><strong>NICHT verwechseln mit:</strong> Das sagt <em>nichts</em> darüber aus, was TGV inhaltlich über das Dokument weiß. „noch nicht gelaufen" heißt nicht „TGV fehlt Wissen" — es heißt nur „dieser Arbeitsschritt steht noch aus". Was TGV weiß, steht in den Doc-Feldern + der Doc-Sicherheit (📋).</p>`,
   },
   chat_api_key: {
-    title: '🔑 Warum braucht der Chat einen eigenen API-Key?',
-    body: `<p><strong>Warum:</strong> Der TGV-Chat spricht direkt mit Claude (Anthropic). Damit das Dashboard keine fremden Kosten verursacht, läuft der Chat über <strong>deinen persönlichen</strong> Anthropic-API-Key — nicht über einen geteilten System-Key.</p>
-           <p><strong>Wo bleibt der Key:</strong> Nur lokal in deinem Browser (<code>localStorage</code>). Er wird nicht an TGV-Server, n8n oder Supabase gesendet — nur an Anthropic, für deine Chat-Anfragen.</p>
-           <p><strong>Key holen:</strong> Unter <code>console.anthropic.com</code> → API Keys. Beginnt mit <code>sk-ant-</code>. Einmal über das 🔑-Symbol eintragen, dann gemerkt.</p>
-           <p><strong>Wichtig:</strong> Der Rest des Dashboards (Inbox, Triage, Monatsabschluss …) braucht <em>keinen</em> Key — nur der 💬 Chat.</p>`,
+    title: '🔑 Chat-Auth (Server-Side seit Iter 57.A1)',
+    body: `<p><strong>Neu:</strong> Der TGV-Chat braucht keinen eigenen API-Key mehr. Auth läuft jetzt server-side über den TGV-Proxy.</p>
+           <p><strong>Wie es funktioniert:</strong> Dashboard sendet einen geteilten Token (<code>x-tgv-proxy-auth</code>-Header) an den n8n-Proxy. Der Proxy ruft Anthropic mit dem zentralen <code>TGV_ANTHROPIC_API_KEY</code> (Server-Variable) auf. Du musst nichts konfigurieren.</p>
+           <p><strong>Cost-Schutz:</strong> Token-basierte Auth + Anthropic-API-Spend-Limit + n8n-Webhook-Quota. Token rotierbar via <code>$vars.TGV_PROXY_AUTH_KEY</code> + Dashboard re-deploy.</p>
+           <p><strong>Migration:</strong> Falls noch ein alter persönlicher Key in deinem Browser steht, wird er beim nächsten Laden automatisch entfernt.</p>`,
   },
   mail_rule_action: {
     title: '📬 Mail-Regel — Aktion (Weiterleiten / Blockieren)',
@@ -6149,7 +6168,7 @@ async function loadKPIs() {
 async function loadLetzteEingaenge() {
   const wrap = document.getElementById('letzte-eingang-wrap');
   try {
-    let q = `documents?select=id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
+    let q = `documents?select=id,project_id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
     const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
 
@@ -6205,7 +6224,7 @@ async function loadInbox() {
   const wrap = document.getElementById('inbox-content');
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Inbox…</div>`;
   try {
-    let q = `documents?select=id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
+    let q = `documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
     const data = await supa(q);
     gInboxRows = data.filter(r => !isTestData(r));
     renderInbox();
@@ -6657,7 +6676,7 @@ async function loadTxns() {
 
 async function loadDocsFin() {
   try {
-    const data = await supa(`documents?select=id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
+    const data = await supa(`documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,sender,subject,entity,doc_type,amount,currency,status,drive_file_id,drive_file_name,direct_download_url,txn_id&date_received=gte.2026-01-01T00:00:00Z&order=date_received.desc.nullslast,date_scanned.desc.nullslast&limit=5000`);
     gDocs = data.filter(r => !isTestData(r));
   } catch (e) {
     gDocs = [];
@@ -6703,7 +6722,7 @@ async function loadAbgleich() {
 
     const [txnData, docData] = await Promise.all([
       supa(`txn_master?select=id,booking_date,entity,amount,counterparty_raw,purpose,document_id&${txnFilter}`),
-      supa(`documents?select=id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
+      supa(`documents?select=id,project_id,invoice_date,entity,provider,amount,category,status,txn_id,skip_accountant,drive_file_id&${docFilter}`)
     ]);
 
     gAbgleichTxns = (txnData || []).filter(r => !isTestData(r));
@@ -11403,7 +11422,7 @@ async function loadTriage() {
     const search = (document.getElementById('triage-search').value || '').trim();
 
     // Build PostgREST query
-    const fields = 'id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
+    const fields = 'id,project_id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
     const filters = [];
     if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
     else if (status === 'inbox') filters.push('processing_state=eq.inbox');
@@ -11869,10 +11888,16 @@ async function deleteMailRule(id) {
 // ═══════════════════════════════════════════════════════
 //  MCP CHAT (Feature 2)
 // ═══════════════════════════════════════════════════════
-// API Key wird zur Laufzeit aus Supabase agent_config geladen (kein Hardcode im Repo)
-let CLAUDE_API_KEY = null;
-const CLAUDE_MODEL   = 'claude-haiku-4-5-20251001';
-const CLAUDE_PROXY   = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy';
+// Iter 57.A1 — Server-Side-Auth Option C. Frontend sendet shared bearer token (TGV_PROXY_AUTH_TOKEN),
+// n8n proxy WF (ceurPCxGciw1CN0v) validiert + nutzt $vars.TGV_ANTHROPIC_API_KEY server-side.
+// Token ist effectively public (in static HTML); echter Cost-Schutz via Anthropic-API-Side-Limit + n8n-Quota.
+// Token-Rotation: $vars.TGV_PROXY_AUTH_KEY in n8n updaten + diese Constant ersetzen + Dashboard re-deploy.
+let CLAUDE_API_KEY = 'server-side'; // legacy var kept truthy for backwards compat
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
+const CLAUDE_PROXY = 'https://jcbinetti.app.n8n.cloud/webhook/tgv-claude-proxy';
+const TGV_PROXY_AUTH_TOKEN = 'e74f624d5ac7b8b62d4b481ba2d3e7ea20c3004ad6a764ac6625a5257e987a9b';
+// One-time migration: clear legacy per-user key from localStorage
+try { localStorage.removeItem('tgv_claude_api_key'); } catch (e) { /* private mode */ }
 
 let chatHistory = []; // Session-only
 let chatOpen = false;
@@ -12395,15 +12420,7 @@ function clearChatImage() {
 }
 
 async function sendChat() {
-  // Auto-Prompt wenn noch kein Key gesetzt
-  const existingKey = await loadClaudeApiKey();
-  if (!existingKey) {
-    configureChatKey();
-    if (!CLAUDE_API_KEY) {
-      addChatBubble('error', '⚠️ Kein API-Key konfiguriert. Bitte 🔑 oben rechts klicken und deinen Anthropic API-Key (sk-ant-…) eingeben.');
-      return;
-    }
-  }
+  // Iter 57.A1: kein per-user Key mehr — Auth ist server-side
   //
   const input  = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
@@ -12446,41 +12463,21 @@ async function sendChat() {
   }
 }
 
+// Iter 57.A1 — Server-Side-Auth: no per-user key needed
 async function loadClaudeApiKey() {
-  if (CLAUDE_API_KEY) return CLAUDE_API_KEY;
-  // 1. localStorage (persistent, vom User einmalig gesetzt)
-  const lsKey = localStorage.getItem('tgv_claude_api_key');
-  if (lsKey) { CLAUDE_API_KEY = lsKey; updateChatKeyStatus(true); return lsKey; }
-  return null;
+  return CLAUDE_API_KEY; // 'server-side' marker
 }
 
-function updateChatKeyStatus(hasKey) {
+function updateChatKeyStatus(_hasKey) {
   const el = document.getElementById('chat-key-status');
   if (!el) return;
-  el.textContent = hasKey ? 'Claude Haiku — bereit ✅' : 'Kein API-Key — 🔑 klicken';
-  el.style.color = hasKey ? 'rgba(100,220,180,0.9)' : 'rgba(255,180,80,0.9)';
+  el.textContent = 'Claude Haiku — bereit ✅';
+  el.style.color = 'rgba(100,220,180,0.9)';
 }
 
 function configureChatKey() {
-  const current = localStorage.getItem('tgv_claude_api_key') || '';
-  const key = prompt(
-    'Anthropic API-Key eingeben (sk-ant-…)\nWird nur lokal im Browser gespeichert.',
-    current
-  );
-  if (key === null) return; // Abbrechen
-  if (key.trim().startsWith('sk-ant-') || key.trim().startsWith('sk-')) {
-    localStorage.setItem('tgv_claude_api_key', key.trim());
-    CLAUDE_API_KEY = key.trim();
-    updateChatKeyStatus(true);
-    toast('🔑 API-Key gespeichert');
-  } else if (key.trim() === '') {
-    localStorage.removeItem('tgv_claude_api_key');
-    CLAUDE_API_KEY = null;
-    updateChatKeyStatus(false);
-    toast('API-Key entfernt', 'err');
-  } else {
-    toast('Ungültiges Format — muss mit sk-ant- beginnen', 'err');
-  }
+  // Iter 57.A1: per-user key deprecated — auth läuft jetzt server-side via shared token.
+  toast('Auth läuft jetzt server-side — kein eigener Key mehr nötig ✅');
 }
 
 async function callClaude(messages) {
@@ -12495,9 +12492,12 @@ async function callClaude(messages) {
     messages: messages
   };
 
-  const res = await fetch(`${CLAUDE_PROXY}?key=${encodeURIComponent(apiKey)}`, {
+  const res = await fetch(CLAUDE_PROXY, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-tgv-proxy-auth': TGV_PROXY_AUTH_TOKEN,
+    },
     body: JSON.stringify(payload)
   });
 
@@ -13268,7 +13268,7 @@ async function loadAlleDocs() {
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>`;
   try {
     const q = (document.getElementById('alle-docs-q')?.value || '').trim();
-    const fields = 'id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
+    const fields = 'id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
     let path = `documents?select=${fields}&order=id.desc&limit=200`;
     if (q) {
       // PostgREST OR over provider/drive_file_name/subject — ilike
