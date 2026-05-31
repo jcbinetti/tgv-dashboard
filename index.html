@@ -1,3 +1,15 @@
+<!-- TGV Dashboard v11.88.0 — 2026-05-31 — Iter 66 Track A (CORE Banking Sichtbarkeit):
+     C1 Zeitraum-Filter dynamisch (Mai 26 + neue Monate erscheinen automatisch aus Daten/Kalender).
+     A1 Vorzeichen-Anzeige aus amount (SSOT) statt direction — c3-Gehalt jetzt korrekt −, Zeilen
+        ohne direction zeigen Vorzeichen. Betrifft Transaktionen-Tabelle + Drilldown-Detail + Cashflow.
+     C3 Cashflow-Aggregation aus amount-Vorzeichen → GESAMT konsistent mit Monatszeilen (C4-Apr real
+        −12.903,66 statt aufgeblähter −47k; das war Cross-Parser-Dubletten, in Iter 65 bereinigt).
+     C2 Cashflow-Spalten-Legende (Einnahmen/Ausgaben/Netto + Entitäts-Netto) + th-Tooltips.
+     E1 Transaktionen „Zweck"-Spalte zeigt vollen CSV-Text (kein 50-Zeichen-Cut, umbrechend).
+     F2 Triage-Navigation robust: ID-Suche (#id) holt Doc direkt per id (ignoriert Status-Filter),
+        alle Triage-Buttons nutzen kanonische gotoTriageDoc().
+     F3 Inbox Dateiname-Zelle: word-break/overflow-wrap → lange Dateinamen brechen um statt zu
+        überlappen.  (E4/F1 Doc-Link = Daten-Dubletten → Track C Dedup, kein Frontend-Bug.) -->
 <!-- TGV Dashboard v11.87.0 — 2026-05-29 — LM#08.E4 Gabriel-Kachel LIVE:
      PROJEKT-Sidebar "🚧 Coming Iter 22+" → aktiver Button "🌿 Gabriel — Mémoire de vie"
      öffnet gabriel.megabook.fr/gabriel.html (erstes TGV-PROJEKT-Cockpit) in neuem Tab. -->
@@ -72,8 +84,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.87.2">
-<title>TGV Dashboard v11.87.2 — Financial OS</title>
+<meta name="version" content="11.88.0">
+<title>TGV Dashboard v11.88.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2849,13 +2861,11 @@ body.chat-open #main-content {
         <button class="filter-btn entity-c3" data-entity="c3" onclick="setEntity('c3', this)">C3</button>
         <button class="filter-btn entity-c4" data-entity="c4" onclick="setEntity('c4', this)">C4</button>
       </div>
-      <div class="filter-group">
+      <div class="filter-group" id="period-filter-group">
         <span class="filter-label">Zeitraum</span>
         <button class="filter-btn active" data-period="all" onclick="setPeriod('all', this)">Alles</button>
-        <button class="filter-btn" data-period="2026-04" onclick="setPeriod('2026-04', this)">Apr 26</button>
-        <button class="filter-btn" data-period="2026-03" onclick="setPeriod('2026-03', this)">Mär 26</button>
-        <button class="filter-btn" data-period="2026-02" onclick="setPeriod('2026-02', this)">Feb 26</button>
-        <button class="filter-btn" data-period="2026-01" onclick="setPeriod('2026-01', this)">Jan 26</button>
+        <!-- C1 (Iter 66): Monats-Buttons werden dynamisch von buildPeriodFilter() erzeugt
+             (aus geladenen Daten + letzte Kalendermonate), damit neue Monate automatisch erscheinen. -->
       </div>
     </div>
     <!-- ═══════════════════════════════════════════════
@@ -4664,6 +4674,7 @@ async function authSetNewPassword() {
 function showDashboard() {
   document.getElementById('auth-gate').classList.remove('visible');
   document.getElementById('dashboard-wrapper').style.display = '';
+  buildPeriodFilter(); // C1: Monats-Buttons seeden (Failsafe-Monate, vor Daten-Load)
 }
 
 function isAllowedUser(user) {
@@ -5924,6 +5935,39 @@ function setPeriod(val, btn) {
   refreshCurrentPage();
 }
 
+// C1 (Iter 66): Zeitraum-Monats-Buttons dynamisch erzeugen statt hartkodiert.
+// Quelle: alle Monate aus geladenen Daten (gTxns/gDocs/gInboxRows) ∪ letzte 6 Kalendermonate
+// als Failsafe (falls Daten noch nicht geladen). So erscheinen neue Monate (z.B. Mai 26)
+// automatisch, ohne den Filter jährlich/monatlich von Hand zu pflegen.
+const PERIOD_MONTHS_DE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+function buildPeriodFilter() {
+  const grp = document.getElementById('period-filter-group');
+  if (!grp) return;
+  const months = new Set();
+  const addMo = v => { if (v) months.add(String(v).slice(0, 7)); };
+  (typeof gTxns !== 'undefined' ? gTxns : []).forEach(t => addMo(t && t.booking_date));
+  (typeof gDocs !== 'undefined' ? gDocs : []).forEach(d => addMo(d && (d.date_received || d.invoice_date || d.date_scanned)));
+  (typeof gInboxRows !== 'undefined' ? gInboxRows : []).forEach(r => addMo(r && (r.date_received || r.date_scanned)));
+  // Failsafe: letzte 6 Kalendermonate relativ zu heute (rollt automatisch weiter)
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const sorted = [...months].filter(m => /^\d{4}-\d{2}$/.test(m)).sort().reverse().slice(0, 12);
+  // bestehende Monats-Buttons entfernen (Alles-Button + Label bleiben)
+  grp.querySelectorAll('button[data-period]:not([data-period="all"])').forEach(b => b.remove());
+  const allBtn = grp.querySelector('button[data-period="all"]');
+  if (!allBtn) return;
+  allBtn.classList.toggle('active', gPeriod === 'all');
+  const html = sorted.map(m => {
+    const [y, mo] = m.split('-');
+    const label = `${PERIOD_MONTHS_DE[parseInt(mo, 10) - 1] || mo} ${y.slice(2)}`;
+    return `<button class="filter-btn${gPeriod === m ? ' active' : ''}" data-period="${m}" onclick="setPeriod('${m}', this)">${label}</button>`;
+  }).join('');
+  allBtn.insertAdjacentHTML('afterend', html);
+}
+
 function refreshCurrentPage() {
   const active = document.querySelector('.page.active');
   if (!active) return;
@@ -6256,6 +6300,7 @@ async function loadInbox() {
     let q = `documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
     const data = await supa(q);
     gInboxRows = data.filter(r => !isTestData(r));
+    buildPeriodFilter(); // C1: Inbox-Monate in Zeitraum-Filter aufnehmen
     renderInbox();
   } catch (e) {
     wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
@@ -6407,7 +6452,7 @@ function renderInbox() {
         ${fmtDate(displayDate)}
         ${isVorschuss ? '<br><span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;font-size:9px">Vorschuss</span>' : ''}
       </td>
-      <td data-label="Dateiname" style="max-width:220px"${nameTitle}>
+      <td data-label="Dateiname" style="max-width:220px;word-break:break-word;overflow-wrap:anywhere"${nameTitle}>
         <span style="font-weight:600">${fileName}</span>${driveLink}${dupBadge}${healBadge}
       </td>
       <td data-label="Anbieter" style="max-width:180px">
@@ -6696,6 +6741,7 @@ async function loadTxns() {
   try {
     const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,booking_text_raw,account_iban,account_name,recurring_flag,anna_relevant,household_flag,insurance_flag,document_id,review_status,confidence_score&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
     gTxns = data.filter(r => !isTestData(r));
+    buildPeriodFilter(); // C1: Monats-Buttons mit echten Daten-Monaten anreichern
   } catch (e) {
     document.getElementById('drilldown-wrap').innerHTML =
       `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
@@ -7013,8 +7059,9 @@ function renderDDDetail() {
   for (const t of txns) {
     const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
     const amt = parseFloat(t.amount) || 0;
-    const dir = (t.direction || '').toUpperCase();
-    const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
+    // A1 (Iter 66): Vorzeichen aus amount (SSOT), nicht aus direction (siehe renderTxnTable)
+    const amtCls = amt > 0 ? 'amt-in' : amt < 0 ? 'amt-out' : 'amt-neu';
+    const amtSign = amt > 0 ? '+' : amt < 0 ? '−' : '';
     const flags = [
       t.recurring_flag ? '🔁' : '',
       t.anna_relevant ? '👩' : '',
@@ -7026,7 +7073,7 @@ function renderDDDetail() {
       <td>${fmtDate(t.booking_date)}</td>
       <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(counterparty)}</td>
       <td>${entityBadge(t.entity)}</td>
-      <td class="${amtCls} num">${dir === 'OUT' ? '−' : '+'}${eur(Math.abs(amt))}</td>
+      <td class="${amtCls} num">${amtSign}${eur(Math.abs(amt))}</td>
       <td>${flags}</td>
     </tr>`;
   }
@@ -7056,14 +7103,15 @@ function renderCashflow() {
     if (!t.booking_date) continue;
     const mo = t.booking_date.substring(0, 7);
     if (!months[mo]) months[mo] = { IN: 0, OUT: 0, byEntity: {} };
-    const dir = (t.direction || '').toUpperCase();
-    const amt = Math.abs(parseFloat(t.amount) || 0);
-    if (dir === 'IN') months[mo].IN += amt;
-    if (dir === 'OUT') months[mo].OUT += amt;
+    // A1/C3 (Iter 66): IN/OUT + Entitäts-Netto aus dem Vorzeichen des Betrags (SSOT),
+    // nicht aus direction — so zählen auch Zeilen ohne direction korrekt und GESAMT bleibt konsistent.
+    const raw = parseFloat(t.amount) || 0;
+    if (raw > 0) months[mo].IN += raw;
+    else if (raw < 0) months[mo].OUT += Math.abs(raw);
     const ent = mapEntity(t.entity);
     entities.add(ent);
     if (!months[mo].byEntity[ent]) months[mo].byEntity[ent] = 0;
-    months[mo].byEntity[ent] += (dir === 'IN' ? amt : -amt);
+    months[mo].byEntity[ent] += raw;
   }
 
   const moKeys = Object.keys(months).sort();
@@ -7099,10 +7147,19 @@ function renderCashflow() {
 
   // Table
   const entCols = [...entities].sort();
-  let tableHtml = `<div class="card"><div class="card-head"><h2>📅 Cashflow Tabelle</h2></div><div class="tbl-wrap"><table>
+  // C2 (Iter 66): Spalten-Legende, damit die Cashflow-Zahlen erklärt sind (User-Vertrauen).
+  const cfLegend = `<div style="padding:8px 16px 2px;font-size:11px;color:var(--tx2);line-height:1.5">
+    <strong>Einnahmen</strong> = Summe der Eingänge (Betrag&nbsp;&gt;&nbsp;0) · <strong>Ausgaben</strong> = Summe der Abgänge (Betrag&nbsp;&lt;&nbsp;0) ·
+    <strong>Netto</strong>&nbsp;=&nbsp;Einnahmen&nbsp;−&nbsp;Ausgaben. Die Entitäts-Spalten (PRIV/C3/C4) zeigen das <strong>Netto pro Mandant</strong> im Monat
+    (<span style="color:var(--teal)">grün&nbsp;= Überschuss</span>, <span style="color:var(--red)">rot&nbsp;= Minus</span>).
+  </div>`;
+  let tableHtml = `<div class="card"><div class="card-head"><h2>📅 Cashflow Tabelle</h2></div>${cfLegend}<div class="tbl-wrap"><table>
     <thead><tr>
-      <th>Monat</th><th class="num">Einnahmen</th><th class="num">Ausgaben</th><th class="num">Netto</th>
-      ${entCols.map(e => `<th class="num">${e.toUpperCase()}</th>`).join('')}
+      <th>Monat</th>
+      <th class="num" title="Summe aller Eingänge (Betrag > 0) im Monat">Einnahmen</th>
+      <th class="num" title="Summe aller Abgänge (Betrag < 0) im Monat">Ausgaben</th>
+      <th class="num" title="Netto = Einnahmen − Ausgaben">Netto</th>
+      ${entCols.map(e => `<th class="num" title="Netto (Einnahmen − Ausgaben) für ${e.toUpperCase()} in diesem Monat">${e.toUpperCase()}</th>`).join('')}
     </tr></thead><tbody>`;
 
   let totIn = 0, totOut = 0;
@@ -7250,11 +7307,15 @@ function renderTxnTable() {
   for (const t of shown) {
     const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
     const amt = parseFloat(t.amount) || 0;
-    const dir = (t.direction || '').toUpperCase();
-    const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
+    // A1 (Iter 66): Vorzeichen aus dem gespeicherten Betrag (SSOT) ableiten, NICHT aus direction
+    // rekonstruieren. txn_master.amount trägt das korrekte Vorzeichen (Eingang +, Ausgang −);
+    // direction kann fehlen → sonst flippt/verschwindet das Vorzeichen in der Anzeige.
+    const amtCls = amt > 0 ? 'amt-in' : amt < 0 ? 'amt-out' : 'amt-neu';
+    const amtSign = amt > 0 ? '+' : amt < 0 ? '−' : '';
     const acctShort = t.account_iban ? t.account_iban.slice(-4) : '—';
     const acctLabel = t.account_name ? `${t.account_name} ···${acctShort}` : (t.account_iban ? `···${acctShort}` : '—');
-    const purposeShort = (t.purpose || '').slice(0, 50) + ((t.purpose || '').length > 50 ? '…' : '');
+    // E1 (Iter 66): voller Zweck-Text (CSV-Beleg), nicht mehr auf 50 Zeichen abgeschnitten.
+    const purposeFull = t.purpose || '—';
     const detailId = `txn-detail-${t.id}`;
     const reconcileCell = t.document_id
       ? `<span style="color:var(--grn);font-size:11px;font-weight:600" title="Dokument ${t.document_id} verknüpft">🔗 Doc</span>`
@@ -7276,11 +7337,11 @@ function renderTxnTable() {
       <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
       <td style="font-size:11px;white-space:nowrap;color:var(--tx2)">${escHtml(acctLabel)}</td>
         <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.counterparty_raw || '—')}</td>
-      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose || '')}">${escHtml(purposeShort)}</td>
+      <td style="max-width:340px;white-space:normal;word-break:break-word;font-size:11px;line-height:1.4" title="${escHtml(t.purpose || '')}">${escHtml(purposeFull)}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l1 || '—')}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l2 || '—')}</td>
       <td>${entityBadge(t.entity)}</td>
-      <td class="${amtCls} num" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
+      <td class="${amtCls} num" style="white-space:nowrap">${amtSign}${eur(Math.abs(amt))}</td>
       <td>${reconcileCell}</td>
     </tr>${detailRow}`;
   }
@@ -11453,15 +11514,23 @@ async function loadTriage() {
     // Build PostgREST query
     const fields = 'id,project_id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
     const filters = [];
-    if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
-    else if (status === 'inbox') filters.push('processing_state=eq.inbox');
-    else if (status === 'needs_review') filters.push('processing_state=eq.needs_review');
-    else if (status === 'source_lost') filters.push('processing_state=eq.source_lost');
-    else if (status === 'all_active') filters.push('processing_state=in.(inbox,needs_review,triaged,source_lost)');
+    // F2 (Iter 66): Eine ID-Suche (#7322 / 7322) holt das Doc DIREKT per id und ignoriert den
+    // Status-Filter — sonst landet die Triage-Navigation auf leer, wenn das Doc einen Status
+    // außerhalb des Default-Filters hat (z.B. triaged/approved) → „toter" Triage-Button.
+    const idSearchEarly = search.match(/^#?(\d+)$/);
+    if (idSearchEarly) {
+      filters.push(`id=eq.${Number(idSearchEarly[1])}`);
+    } else {
+      if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
+      else if (status === 'inbox') filters.push('processing_state=eq.inbox');
+      else if (status === 'needs_review') filters.push('processing_state=eq.needs_review');
+      else if (status === 'source_lost') filters.push('processing_state=eq.source_lost');
+      else if (status === 'all_active') filters.push('processing_state=in.(inbox,needs_review,triaged,source_lost)');
 
-    if (gTriageFilters.entity.length)   filters.push(`entity=in.(${gTriageFilters.entity.map(encodeURIComponent).join(',')})`);
-    if (gTriageFilters.provider.length) filters.push(`provider=in.(${gTriageFilters.provider.map(encodeURIComponent).join(',')})`);
-    if (gTriageFilters.doc_type.length) filters.push(`doc_type=in.(${gTriageFilters.doc_type.map(encodeURIComponent).join(',')})`);
+      if (gTriageFilters.entity.length)   filters.push(`entity=in.(${gTriageFilters.entity.map(encodeURIComponent).join(',')})`);
+      if (gTriageFilters.provider.length) filters.push(`provider=in.(${gTriageFilters.provider.map(encodeURIComponent).join(',')})`);
+      if (gTriageFilters.doc_type.length) filters.push(`doc_type=in.(${gTriageFilters.doc_type.map(encodeURIComponent).join(',')})`);
+    }
 
     const orderField = dateField === 'invoice_date' ? 'invoice_date.desc.nullslast' : 'date_received.desc.nullslast';
     const url = `documents?select=${fields}&${filters.join('&')}&order=${orderField}&limit=100`;
@@ -13374,7 +13443,9 @@ function renderAlleDocs(forceShowAll) {
     const driveOpen = r.drive_file_id
       ? `onclick="window.open('https://drive.google.com/file/d/${r.drive_file_id}/view','_blank')" style="cursor:pointer;"`
       : `style="cursor:default;"`;
-    const triageBtn = `<button class="btn-sm btn-secondary" onclick="event.stopPropagation();showPage('triage',document.querySelector('[onclick*=triage]'));setTimeout(()=>{const f=document.getElementById('triage-search');if(f){f.value='${r.id}';f.dispatchEvent(new Event('input'));}},300);" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:4px 8px;">🎯 Triage</button>`;
+    // F2 (Iter 66): kanonische gotoTriageDoc() nutzen (setzt '#'+id korrekt für die ID-Suche).
+    // Vorher: Inline-Handler ohne '#'-Präfix → Suche fand nichts → Button wirkte „tot".
+    const triageBtn = `<button class="btn-sm btn-secondary" onclick="event.stopPropagation();gotoTriageDoc(${r.id})" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:4px 8px;">🎯 Triage</button>`;
     const panelBtn = `<button class="btn-sm btn-neutral" onclick="event.stopPropagation();openSidePanelForDocId(${r.id});" title="Seitenpanel öffnen — Vorschau, Felder korrigieren, Re-Filing (Drive-Move)" style="font-size:10px;padding:4px 8px;">📋 Details</button>`;
     const partyBadge = partyRoleBadge(r.party_role);
     const stateHint = r.processing_state ? `<div style="font-size:10px;color:var(--tx2);margin-top:3px;">state=${escHtml(r.processing_state)}</div>` : '';
