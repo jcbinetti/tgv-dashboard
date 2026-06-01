@@ -1,3 +1,9 @@
+<!-- TGV Dashboard v11.88.1 — 2026-06-01 — Iter 66 Track C (Duplikat-Hygiene):
+     status=duplicate/archived werden aus den AKTIVEN Finanz-Listen ausgeblendet
+     (Finanzen→Dokumente, Abgleich, Monatsabschluss/Steuerberater-Paket, Letzte Eingänge).
+     Bleiben in „Alle Dokumente" sichtbar (Audit). Grund: 48 Duplikat-Docs verschmutzten
+     die Listen + verursachten falsche Beleg-Links (E2/E4). DB unverändert — die Docs sind
+     bereits korrekt 'duplicate' geflaggt (status ist Trigger-Spiegel von processing_state). -->
 <!-- TGV Dashboard v11.88.0 — 2026-05-31 — Iter 66 Track A (CORE Banking Sichtbarkeit):
      C1 Zeitraum-Filter dynamisch (Mai 26 + neue Monate erscheinen automatisch aus Daten/Kalender).
      A1 Vorzeichen-Anzeige aus amount (SSOT) statt direction — c3-Gehalt jetzt korrekt −, Zeilen
@@ -84,8 +90,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.88.0">
-<title>TGV Dashboard v11.88.0 — Financial OS</title>
+<meta name="version" content="11.88.1">
+<title>TGV Dashboard v11.88.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -6243,7 +6249,7 @@ async function loadLetzteEingaenge() {
   try {
     let q = `documents?select=id,project_id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
-    const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
+    const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected' && r.status !== 'duplicate' && r.status !== 'archived');
 
     if (!rows.length) {
       wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>Keine Dokumente gefunden</p></div>`;
@@ -6779,7 +6785,7 @@ async function loadAbgleich() {
   try {
     // Build filters
     let txnFilter = 'document_id=is.null&order=booking_date.desc&limit=2000';
-    let docFilter = 'txn_id=is.null&status=neq.rejected&order=invoice_date.desc.nullslast&limit=2000';
+    let docFilter = 'txn_id=is.null&status=not.in.(rejected,duplicate,archived)&order=invoice_date.desc.nullslast&limit=2000';
 
     if (entity !== 'all') {
       const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
@@ -7467,7 +7473,9 @@ function setDocFinFilter(key, val) {
 
 function renderDocsFinTable() {
   const wrap = document.getElementById('docs-fin-table-wrap');
-  let rows = filteredDocs().filter(r => r.status !== 'rejected');
+  // 66.C: Duplikate/archivierte raus aus der aktiven Finanz-Dokumentenliste (sie bleiben
+  // korrekt als 'duplicate' geflaggt und in „Alle Dokumente" sichtbar — nur nicht hier).
+  let rows = filteredDocs().filter(r => r.status !== 'rejected' && r.status !== 'duplicate' && r.status !== 'archived');
   const f = docFinFilter;
   if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
   if (f.doc_type) rows = rows.filter(r => (r.doc_type || '').toUpperCase() === f.doc_type);
@@ -7667,7 +7675,7 @@ async function loadVertraege() {
     // Letzte Belege laden (für "Letzter Beleg"-Spalte)
     let lastDocs = {};
     try {
-      const recentDocs = await supa(`documents?select=id,provider,drive_file_id,drive_file_name,invoice_date&status=neq.rejected&order=invoice_date.desc&limit=200`);
+      const recentDocs = await supa(`documents?select=id,provider,drive_file_id,drive_file_name,invoice_date&status=not.in.(rejected,duplicate,archived)&order=invoice_date.desc&limit=200`);
       for (const d of recentDocs) {
         const prov = (d.provider || '').toLowerCase().trim();
         if (prov && !lastDocs[prov]) lastDocs[prov] = d;
@@ -7967,7 +7975,7 @@ async function loadSteckbriefInvoices(c) {
     let invoices = [];
 
     if (provSearch.length >= 3) {
-      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(RECHNUNG,ZAHLUNGSBELEG)&status=neq.rejected&order=invoice_date.desc.nullslast&limit=24`);
+      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(RECHNUNG,ZAHLUNGSBELEG)&status=not.in.(rejected,duplicate,archived)&order=invoice_date.desc.nullslast&limit=24`);
     }
 
     if (!invoices || !invoices.length) {
@@ -10012,7 +10020,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
 
   try {
     // Dokumente des Monats laden (mit neuen Feldern)
-    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id,party_role&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
+    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id,party_role&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=not.in.(rejected,duplicate,archived)&order=entity,invoice_date`;
     let docs = await supa(q);
 
     // Entity-Filter
@@ -10196,7 +10204,7 @@ async function loadMaBlock2(monthStart, monthEnd) {
       contracts = contracts.filter(c => mapEntity(c.entity) === gEntity);
     }
 
-    const docs = await supa(`documents?select=id,provider,entity,invoice_date,drive_file_id,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
+    const docs = await supa(`documents?select=id,provider,entity,invoice_date,drive_file_id,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=not.in.(rejected,duplicate,archived)`);
 
     if (!contracts.length) {
       wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge gefunden</div>`;
@@ -10452,7 +10460,7 @@ async function _apLoadDocsAndMissing() {
 
   try {
     const { start, end } = _apMonthRange(_apState.year, _apState.month);
-    let q = `documents?select=id,provider,entity,invoice_date,doc_type,amount,currency,drive_file_name,sent_to_accountant_at,skip_accountant&invoice_date=gte.${start}&invoice_date=lt.${end}&status=neq.rejected&order=invoice_date`;
+    let q = `documents?select=id,provider,entity,invoice_date,doc_type,amount,currency,drive_file_name,sent_to_accountant_at,skip_accountant&invoice_date=gte.${start}&invoice_date=lt.${end}&status=not.in.(rejected,duplicate,archived)&order=invoice_date`;
     let docs = await supa(q);
     if (_apState.entity) docs = docs.filter(d => mapEntity(d.entity) === _apState.entity);
     docs = docs.filter(d => !d.skip_accountant);
