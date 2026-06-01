@@ -1,3 +1,6 @@
+<!-- TGV Dashboard v11.89.1 — 2026-06-01 — Iter 66 Fix: Regeln-Seite „# Tx" + Durchstich
+     jetzt ENTITÄTS-GENAU (eine C4-Regel zählt/zeigt nur C4-Buchungen, nicht entitäts-blind
+     auch C3). regelnShowTxns setzt globalen + Panel-Entitäts-Filter auf die Regel-Entität. -->
 <!-- TGV Dashboard v11.89.0 — 2026-06-01 — Iter 66: NEUE Seite „Regeln" (kb_suppliers-Werkbank):
      Zentrale Verwaltung der Kategorisierungs-Regeln (349). Durchsuchen/filtern (Pattern/Kategorie/
      Entität/Quelle/aktiv), CRUD (Neu/Bearbeiten/Deaktivieren/Löschen — wiederverwendet bestehende
@@ -97,8 +100,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.89.0">
-<title>TGV Dashboard v11.89.0 — Financial OS</title>
+<meta name="version" content="11.89.1">
+<title>TGV Dashboard v11.89.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14764,7 +14767,13 @@ function _regelnMatchText(rule, txt) {
 }
 function _regelnTxnCount(rule) {
   if (typeof gTxns === 'undefined' || !gTxns) return null;
-  let n = 0; for (const t of gTxns) if (_regelnMatchText(rule, (t.counterparty_raw || '') + ' ' + (t.purpose || ''))) n++;
+  // entitäts-genau: eine C4-Regel zählt NUR C4-Buchungen (sonst zählt „FINANZAMT" auch C3 mit).
+  const re = rule.entity ? mapEntity(rule.entity) : null;
+  let n = 0;
+  for (const t of gTxns) {
+    if (re && mapEntity(t.entity) !== re) continue;
+    if (_regelnMatchText(rule, (t.counterparty_raw || '') + ' ' + (t.purpose || ''))) n++;
+  }
   return n;
 }
 
@@ -14841,17 +14850,25 @@ async function regelnDelete(kbId) {
   } catch (e) { toast('Fehler: ' + e.message, 'err'); }
 }
 
-// „diese N Transaktionen anzeigen" → Finanzen→Transaktionen, Suche=Pattern (nutzt die bestehende Tabelle)
+// „diese N Transaktionen anzeigen" → Finanzen→Transaktionen, gefiltert auf Entität+Pattern der Regel
 function regelnShowTxns(kbId) {
   const r = gRegeln.find(x => x.id === kbId); if (!r) return;
+  const ent = r.entity ? mapEntity(r.entity) : 'all';            // 'priv'|'c3'|'c4'|'all'
+  const entOk = ['priv', 'c3', 'c4'].includes(ent);
   const finBtn = document.querySelector('.nav-item[onclick*="finanzen"]');
   if (finBtn) showPage('finanzen', finBtn);
+  // globalen Entitäts-Filter auf die Regel-Entität setzen (sonst überlagern sich global + Panel)
+  if (entOk) {
+    gEntity = ent;
+    document.querySelectorAll('[data-entity]').forEach(b => b.classList.toggle('active', b.getAttribute('data-entity') === ent));
+  }
   const txnTab = Array.from(document.querySelectorAll('.fin-tab')).find(b => (b.getAttribute('onclick') || '').includes('transaktionen'));
   if (txnTab) showFinTab('transaktionen', txnTab);
   setTimeout(() => {
-    txnFilterState = { entity: 'all', l1: '', l2: '', l3: '', flag: '', search: r.pattern || '' };
+    txnFilterState = { entity: entOk ? ent : 'all', l1: '', l2: '', l3: '', flag: '', search: r.pattern || '' };
     renderTxnFilters();
     const s = document.getElementById('txn-f-search'); if (s) s.value = r.pattern || '';
+    const eS = document.getElementById('txn-f-entity'); if (eS && entOk) eS.value = ent;
     renderTxnTable();
   }, 120);
 }
