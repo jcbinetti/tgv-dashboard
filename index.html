@@ -1,3 +1,10 @@
+<!-- TGV Dashboard v11.89.0 — 2026-06-01 — Iter 66: NEUE Seite „Regeln" (kb_suppliers-Werkbank):
+     Zentrale Verwaltung der Kategorisierungs-Regeln (349). Durchsuchen/filtern (Pattern/Kategorie/
+     Entität/Quelle/aktiv), CRUD (Neu/Bearbeiten/Deaktivieren/Löschen — wiederverwendet bestehende
+     _spKb*-CRUD + Audit-Log in agent_events), Konflikt-Erkennung (gleiche Gegenseite → versch.
+     Kategorie, gelb hervorgehoben, z.B. WBZ→Freizeit vs WBZ→Gehalt), „# betroffene Tx" + Klick →
+     Transaktionen gefiltert. Nav-Item 🧭 Regeln. Schließt die „ich kann die Regeln nirgends
+     nachvollziehen"-Lücke (JC 2026-06-01). -->
 <!-- TGV Dashboard v11.88.1 — 2026-06-01 — Iter 66 Track C (Duplikat-Hygiene):
      status=duplicate/archived werden aus den AKTIVEN Finanz-Listen ausgeblendet
      (Finanzen→Dokumente, Abgleich, Monatsabschluss/Steuerberater-Paket, Letzte Eingänge).
@@ -90,8 +97,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.88.1">
-<title>TGV Dashboard v11.88.1 — Financial OS</title>
+<meta name="version" content="11.89.0">
+<title>TGV Dashboard v11.89.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2782,6 +2789,11 @@ body.chat-open #main-content {
       <span class="nav-label">Mail Rules</span>
     </button>
 
+    <button class="nav-item" onclick="showPage('regeln', this)" title="kb_suppliers-Regeln: Gegenseite-Pattern → Kategorie/Entität. Quelle der Auto-Kategorisierung. Durchsuchen, prüfen, bearbeiten, neu, deaktivieren.">
+      <span class="nav-icon">🧭</span>
+      <span class="nav-label">Regeln</span>
+    </button>
+
     <button class="nav-item" onclick="showPage('linkrate', this)" title="KPI Doc↔Txn Verknüpfungs-Rate über Zeit. Aktuell ~53% (Iter 15 Decoupling).">
       <span class="nav-icon">🔗</span>
       <span class="nav-label">Linkrate</span>
@@ -3650,6 +3662,28 @@ body.chat-open #main-content {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         PAGE: REGELN (kb_suppliers-Werkbank, Iter 66)
+    ════════════════════════════════════════════════ -->
+    <div class="page" id="page-regeln">
+      <div class="page-header">
+        <h1>🧭 Regeln <span style="font-size:13px;color:var(--tx2);font-weight:400;">— kb_suppliers (Kategorisierungs-Regeln)</span></h1>
+        <p>„Wenn Gegenseite <em>X</em> → Kategorie <em>Y</em>, Entität <em>Z</em>." Diese Regeln steuern die <strong>Auto-Kategorisierung</strong> von Transaktionen &amp; Dokumenten — deterministisch, <em>vor</em> dem LLM-Fallback. Hier durchsuchst, prüfst und änderst du sie zentral. Änderungen werden in <code>agent_events</code> protokolliert.</p>
+      </div>
+      <div id="regeln-stats" class="kpi-grid" style="margin-bottom:14px;"></div>
+      <div class="card">
+        <div class="card-head" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="search" id="regeln-search" placeholder="🔍 Pattern, Kategorie, Entität…" oninput="renderRegeln()" style="flex:1;min-width:220px;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 11px;border-radius:4px;font-size:13px;">
+          <select id="regeln-f-entity" onchange="renderRegeln()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;"><option value="">Alle Entitäten</option></select>
+          <select id="regeln-f-source" onchange="renderRegeln()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;"><option value="">Alle Quellen</option></select>
+          <select id="regeln-f-active" onchange="renderRegeln()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;"><option value="active">nur aktive</option><option value="">alle</option><option value="inactive">nur inaktive</option></select>
+          <label style="font-size:12px;color:var(--tx1);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="regeln-f-conflicts" onchange="renderRegeln()"> ⚠️ nur Konflikte</label>
+          <button class="btn-sm btn-primary" onclick="regelnAddOpen()" style="padding:6px 14px;">+ Neue Regel</button>
+        </div>
+        <div id="regeln-table-wrap"><div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div></div>
       </div>
     </div>
 
@@ -5375,6 +5409,7 @@ function showPage(pageId, btn) {
   if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
   if (pageId === 'mailrules') loadMailRules();
+  if (pageId === 'regeln') loadRegeln();
   if (pageId === 'entitaeten') loadEntitaeten();
   if (pageId === 'mailoutbox') loadMailOutbox();
   if (pageId === 'linkrate') loadLinkrate();
@@ -14621,7 +14656,7 @@ async function _spKbSave() {
     }
     await _spKbAuditLog(state.mode, resultId, state.before, body, doc?.id ?? null);
     status.innerHTML = `✅ ${state.mode === 'edit' ? 'aktualisiert' : 'angelegt'} (kb_suppliers #${resultId ?? '?'}) + Audit-Log.`;
-    setTimeout(() => { _spKbModalClose(); _spKbRefreshList(); }, 700);
+    setTimeout(() => { _spKbModalClose(); _spKbRefreshList(); if (document.getElementById('page-regeln')?.classList.contains('active')) loadRegeln(); }, 700);
   } catch (e) {
     status.textContent = `❌ ${e.message}`;
     btn.disabled = false;
@@ -14644,6 +14679,7 @@ async function _spKbToggleActive(kbId, isInactive) {
     await _spKbAuditLog(target ? 'activate' : 'deactivate', kbId, before, { active: target }, _sidePanelCurrentDoc?.id ?? null);
     if (typeof showToast === 'function') showToast('success', `Pattern #${kbId} ${target ? 'aktiviert' : 'deaktiviert'}.`);
     _spKbRefreshList();
+    if (document.getElementById('page-regeln')?.classList.contains('active')) loadRegeln();
   } catch (e) {
     if (typeof showToast === 'function') showToast('error', `Fehler: ${e.message}`); else alert(`Fehler: ${e.message}`);
   }
@@ -14671,6 +14707,153 @@ async function _spKbRefreshList() {
   const cont = document.getElementById('sp-supplier-content');
   if (cont) cont.innerHTML = '<div style="font-size:11px;color:var(--tx2);">…aktualisiere Supplier-Wissen</div>';
   await _spRefreshSupplierSection(doc);
+}
+
+// ═══════════════════════════════════════════════════════
+//  REGELN — kb_suppliers-Werkbank (Iter 66)
+//  Zentrale Verwaltung der Kategorisierungs-Regeln. Wiederverwendet die
+//  bestehende CRUD (_spKbEditOpen / _spKbSave / _spKbToggleActive + Audit-Log).
+// ═══════════════════════════════════════════════════════
+let gRegeln = [];
+
+async function loadRegeln() {
+  const wrap = document.getElementById('regeln-table-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div>';
+  try {
+    const data = await supa('kb_suppliers?select=id,pattern,match_type,name_normalized,category_l1,category_l2,category_l3,entity,source,active,confidence,verification_count,conflict_count,times_seen,last_seen,sends_pdf_invoices,recurring,notes&order=name_normalized.asc.nullslast,id.asc&limit=2000');
+    gRegeln = data || [];
+    const entSel = document.getElementById('regeln-f-entity');
+    const srcSel = document.getElementById('regeln-f-source');
+    const ents = [...new Set(gRegeln.map(r => r.entity).filter(Boolean))].sort();
+    const srcs = [...new Set(gRegeln.map(r => r.source).filter(Boolean))].sort();
+    if (entSel) entSel.innerHTML = '<option value="">Alle Entitäten</option>' + ents.map(e => `<option value="${escHtml(e)}">${escHtml(e)}</option>`).join('');
+    if (srcSel) srcSel.innerHTML = '<option value="">Alle Quellen</option>' + srcs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+    if (typeof gTxns === 'undefined' || !gTxns || !gTxns.length) { loadTxns().then(() => renderRegeln()).catch(() => {}); }
+    renderRegeln();
+  } catch (e) {
+    wrap.innerHTML = `<div class="alert alert-err">⚠️ Konnte Regeln nicht laden: ${escHtml(e.message)}</div>`;
+  }
+}
+
+const _regelnNorm = s => (s || '').trim().toUpperCase();
+
+// Konflikt: ≥2 AKTIVE Regeln, gleiche Gegenseite (name_normalized/pattern), versch. Kategorie (L1/L2)
+function _regelnConflictIds() {
+  const groups = {};
+  for (const r of gRegeln) {
+    if (r.active === false) continue;
+    const key = _regelnNorm(r.name_normalized || r.pattern);
+    if (key) (groups[key] = groups[key] || []).push(r);
+  }
+  const ids = new Set();
+  for (const k in groups) {
+    const grp = groups[k];
+    if (grp.length < 2) continue;
+    if (new Set(grp.map(r => `${r.category_l1 || ''}/${r.category_l2 || ''}`)).size > 1) grp.forEach(r => ids.add(r.id));
+  }
+  return ids;
+}
+
+function _regelnMatchText(rule, txt) {
+  const pat = (rule.pattern || '').trim(); if (!pat) return false;
+  if (rule.match_type === 'contains') return _regelnNorm(txt).includes(_regelnNorm(pat));
+  if (rule.match_type === 'exact') return _regelnNorm(txt) === _regelnNorm(pat);
+  if (rule.match_type === 'regex') { try { return new RegExp(pat, 'i').test(txt || ''); } catch (e) { return false; } }
+  return false;
+}
+function _regelnTxnCount(rule) {
+  if (typeof gTxns === 'undefined' || !gTxns) return null;
+  let n = 0; for (const t of gTxns) if (_regelnMatchText(rule, (t.counterparty_raw || '') + ' ' + (t.purpose || ''))) n++;
+  return n;
+}
+
+function renderRegeln() {
+  const wrap = document.getElementById('regeln-table-wrap');
+  if (!wrap) return;
+  const q = (document.getElementById('regeln-search')?.value || '').toLowerCase().trim();
+  const fEnt = document.getElementById('regeln-f-entity')?.value || '';
+  const fSrc = document.getElementById('regeln-f-source')?.value || '';
+  const fAct = document.getElementById('regeln-f-active')?.value || '';
+  const onlyConf = document.getElementById('regeln-f-conflicts')?.checked;
+  const conflicts = _regelnConflictIds();
+
+  let rows = gRegeln.slice();
+  if (fAct === 'active') rows = rows.filter(r => r.active !== false);
+  else if (fAct === 'inactive') rows = rows.filter(r => r.active === false);
+  if (fEnt) rows = rows.filter(r => r.entity === fEnt);
+  if (fSrc) rows = rows.filter(r => r.source === fSrc);
+  if (onlyConf) rows = rows.filter(r => conflicts.has(r.id));
+  if (q) rows = rows.filter(r => [r.pattern, r.name_normalized, r.category_l1, r.category_l2, r.category_l3, r.entity, r.source].some(v => (v || '').toLowerCase().includes(q)));
+
+  const total = gRegeln.length, act = gRegeln.filter(r => r.active !== false).length;
+  const stats = [['Regeln gesamt', total, 'kb_suppliers'], ['aktiv', act, 'im Match-Pool'], ['inaktiv', total - act, 'deaktiviert'], ['⚠️ Konflikte', conflicts.size, 'gleiche Gegenseite, versch. Kategorie'], ['gefiltert', rows.length, 'aktuelle Ansicht']];
+  const statsEl = document.getElementById('regeln-stats');
+  if (statsEl) statsEl.innerHTML = stats.map(([l, v, s]) => `<div style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:11px 14px;"><div style="font-size:22px;font-weight:700;color:var(--tx0)">${v}</div><div style="font-size:12px;color:var(--tx1);font-weight:600">${l}</div><div style="font-size:10px;color:var(--tx2)">${s}</div></div>`).join('');
+
+  if (!rows.length) { wrap.innerHTML = '<div class="alert alert-info" style="margin:12px">Keine Regeln für diesen Filter.</div>'; return; }
+
+  let html = '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Pattern</th><th>Match</th><th>→ Kategorie (L1/L2/L3)</th><th>Entität</th><th>Quelle</th><th class="num" title="Bestätigungen / Konflikte">✓/✗</th><th class="num" title="passende Transaktionen im geladenen Fenster">Tx</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>';
+  for (const r of rows.slice(0, 800)) {
+    const isConf = conflicts.has(r.id);
+    const cat = [r.category_l1, r.category_l2, r.category_l3].filter(Boolean).join(' / ') || '<span style="color:var(--tx2)">—</span>';
+    const txc = _regelnTxnCount(r);
+    const txCell = txc == null ? '<span style="color:var(--tx2)">…</span>' : (txc > 0 ? `<button class="btn-sm" onclick="regelnShowTxns(${r.id})" title="diese ${txc} Transaktionen anzeigen" style="font-size:11px;padding:2px 8px;color:var(--blu)">${txc}</button>` : '0');
+    html += `<tr${isConf ? ' style="background:rgba(245,158,11,0.10)"' : ''}>`
+      + `<td style="color:var(--tx2);font-size:11px">${r.id}</td>`
+      + `<td style="max-width:240px;word-break:break-word"><strong>${escHtml(r.pattern || '—')}</strong>${isConf ? ' <span title="Konflikt: dieselbe Gegenseite in mehreren aktiven Regeln mit unterschiedlicher Kategorie" style="font-size:10px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;padding:1px 5px;border-radius:3px">⚠️ Konflikt</span>' : ''}${r.name_normalized && r.name_normalized !== r.pattern ? `<br><span style="font-size:10px;color:var(--tx2)">${escHtml(r.name_normalized)}</span>` : ''}</td>`
+      + `<td style="font-size:11px;color:var(--tx2)">${escHtml(r.match_type || '—')}</td>`
+      + `<td style="font-size:12px">${cat}</td>`
+      + `<td>${entityBadge(r.entity)}</td>`
+      + `<td style="font-size:11px;color:var(--tx2)">${escHtml(r.source || '—')}</td>`
+      + `<td class="num" style="font-size:11px">${r.verification_count ?? 0}/${r.conflict_count ?? 0}</td>`
+      + `<td class="num">${txCell}</td>`
+      + `<td>${r.active === false ? '<span class="pill" style="background:#e5e7eb;color:#6b7280">inaktiv</span>' : '<span class="pill pill-approved">aktiv</span>'}</td>`
+      + `<td style="white-space:nowrap"><button class="btn-sm" onclick="_spKbEditOpen(${r.id})" title="bearbeiten" style="font-size:11px;padding:2px 7px">✏️</button>`
+      + ` <button class="btn-sm" onclick="_spKbToggleActive(${r.id}, ${r.active === false})" title="${r.active === false ? 'aktivieren' : 'deaktivieren'}" style="font-size:11px;padding:2px 7px">${r.active === false ? '↑' : '⏸'}</button>`
+      + ` <button class="btn-sm btn-danger" onclick="regelnDelete(${r.id})" title="löschen (endgültig)" style="font-size:11px;padding:2px 7px">🗑</button></td>`
+      + '</tr>';
+  }
+  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Regeln${rows.length > 800 ? ' (erste 800)' : ''}</span><span style="color:var(--tx2);font-size:11px">„Tx" zählt im geladenen Transaktions-Fenster (ab 2026-01)</span></div>`;
+  wrap.innerHTML = html;
+}
+
+function regelnAddOpen() {
+  if (typeof _spKbModalState === 'undefined') { toast('Modal nicht bereit', 'err'); return; }
+  _spKbModalState = { mode: 'add', kbId: null, before: null };
+  document.getElementById('kb-modal-title').textContent = 'Neue Regel (kb_suppliers)';
+  document.getElementById('kb-modal-subtitle').textContent = 'Pattern + Kategorie + Entität. Nach Save: 1× verified → sofort im Match-Pool.';
+  _spKbFormFill({ pattern: '', name_normalized: '', entity: '', category_l1: '', category_l2: '', category_l3: '', recurring: false, active: true });
+  _spKbModalShow();
+}
+
+async function regelnDelete(kbId) {
+  const r = gRegeln.find(x => x.id === kbId);
+  if (!confirm(`Regel #${kbId} (${r?.pattern || ''}) WIRKLICH löschen?\n\nTipp: „Deaktivieren" (⏸) ist meist besser — die Regel bleibt erhalten, wird aber nicht mehr angewendet. Löschen ist endgültig.`)) return;
+  try {
+    const before = await _spFetchKbById(kbId);
+    const headers = await _supaAuthHeaders({ Prefer: 'return=minimal' });
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kb_suppliers?id=eq.${+kbId}`, { method: 'DELETE', headers });
+    if (!res.ok) throw new Error(`DELETE ${res.status}`);
+    await _spKbAuditLog('delete', kbId, before, null, null);
+    toast(`Regel #${kbId} gelöscht`);
+    loadRegeln();
+  } catch (e) { toast('Fehler: ' + e.message, 'err'); }
+}
+
+// „diese N Transaktionen anzeigen" → Finanzen→Transaktionen, Suche=Pattern (nutzt die bestehende Tabelle)
+function regelnShowTxns(kbId) {
+  const r = gRegeln.find(x => x.id === kbId); if (!r) return;
+  const finBtn = document.querySelector('.nav-item[onclick*="finanzen"]');
+  if (finBtn) showPage('finanzen', finBtn);
+  const txnTab = Array.from(document.querySelectorAll('.fin-tab')).find(b => (b.getAttribute('onclick') || '').includes('transaktionen'));
+  if (txnTab) showFinTab('transaktionen', txnTab);
+  setTimeout(() => {
+    txnFilterState = { entity: 'all', l1: '', l2: '', l3: '', flag: '', search: r.pattern || '' };
+    renderTxnFilters();
+    const s = document.getElementById('txn-f-search'); if (s) s.value = r.pattern || '';
+    renderTxnTable();
+  }, 120);
 }
 
 async function _spRefreshSupplierSection(doc) {
