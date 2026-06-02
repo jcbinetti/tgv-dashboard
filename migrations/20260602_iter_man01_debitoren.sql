@@ -62,7 +62,7 @@ create table if not exists public.debtor_invoices (
   expected_payment_amount numeric(12,2),
   payment_status text not null default 'open' check (payment_status in ('draft','open','partial','paid','overdue','cancelled','credited')),
   paid_at date,
-  linked_txn_id uuid references public.txn_master(id) on delete set null,
+  linked_txn_id bigint references public.txn_master(id) on delete set null,
   source_document_id bigint references public.documents(id) on delete set null,
   drive_file_id text,
   notes text,
