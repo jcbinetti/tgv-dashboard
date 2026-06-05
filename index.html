@@ -1,31 +1,4 @@
-<!-- TGV Dashboard v11.89.1 — 2026-06-01 — Iter 66 Fix: Regeln-Seite „# Tx" + Durchstich
-     jetzt ENTITÄTS-GENAU (eine C4-Regel zählt/zeigt nur C4-Buchungen, nicht entitäts-blind
-     auch C3). regelnShowTxns setzt globalen + Panel-Entitäts-Filter auf die Regel-Entität. -->
-<!-- TGV Dashboard v11.89.0 — 2026-06-01 — Iter 66: NEUE Seite „Regeln" (kb_suppliers-Werkbank):
-     Zentrale Verwaltung der Kategorisierungs-Regeln (349). Durchsuchen/filtern (Pattern/Kategorie/
-     Entität/Quelle/aktiv), CRUD (Neu/Bearbeiten/Deaktivieren/Löschen — wiederverwendet bestehende
-     _spKb*-CRUD + Audit-Log in agent_events), Konflikt-Erkennung (gleiche Gegenseite → versch.
-     Kategorie, gelb hervorgehoben, z.B. WBZ→Freizeit vs WBZ→Gehalt), „# betroffene Tx" + Klick →
-     Transaktionen gefiltert. Nav-Item 🧭 Regeln. Schließt die „ich kann die Regeln nirgends
-     nachvollziehen"-Lücke (JC 2026-06-01). -->
-<!-- TGV Dashboard v11.88.1 — 2026-06-01 — Iter 66 Track C (Duplikat-Hygiene):
-     status=duplicate/archived werden aus den AKTIVEN Finanz-Listen ausgeblendet
-     (Finanzen→Dokumente, Abgleich, Monatsabschluss/Steuerberater-Paket, Letzte Eingänge).
-     Bleiben in „Alle Dokumente" sichtbar (Audit). Grund: 48 Duplikat-Docs verschmutzten
-     die Listen + verursachten falsche Beleg-Links (E2/E4). DB unverändert — die Docs sind
-     bereits korrekt 'duplicate' geflaggt (status ist Trigger-Spiegel von processing_state). -->
-<!-- TGV Dashboard v11.88.0 — 2026-05-31 — Iter 66 Track A (CORE Banking Sichtbarkeit):
-     C1 Zeitraum-Filter dynamisch (Mai 26 + neue Monate erscheinen automatisch aus Daten/Kalender).
-     A1 Vorzeichen-Anzeige aus amount (SSOT) statt direction — c3-Gehalt jetzt korrekt −, Zeilen
-        ohne direction zeigen Vorzeichen. Betrifft Transaktionen-Tabelle + Drilldown-Detail + Cashflow.
-     C3 Cashflow-Aggregation aus amount-Vorzeichen → GESAMT konsistent mit Monatszeilen (C4-Apr real
-        −12.903,66 statt aufgeblähter −47k; das war Cross-Parser-Dubletten, in Iter 65 bereinigt).
-     C2 Cashflow-Spalten-Legende (Einnahmen/Ausgaben/Netto + Entitäts-Netto) + th-Tooltips.
-     E1 Transaktionen „Zweck"-Spalte zeigt vollen CSV-Text (kein 50-Zeichen-Cut, umbrechend).
-     F2 Triage-Navigation robust: ID-Suche (#id) holt Doc direkt per id (ignoriert Status-Filter),
-        alle Triage-Buttons nutzen kanonische gotoTriageDoc().
-     F3 Inbox Dateiname-Zelle: word-break/overflow-wrap → lange Dateinamen brechen um statt zu
-        überlappen.  (E4/F1 Doc-Link = Daten-Dubletten → Track C Dedup, kein Frontend-Bug.) -->
+<!-- TGV Dashboard v11.87.1 — 2026-06-05 — Iter 68.2: Alle-Docs duplicate/rejected Chips + Paginierung (limit 200→50 + prev/next + server-side status filter) -->
 <!-- TGV Dashboard v11.87.0 — 2026-05-29 — LM#08.E4 Gabriel-Kachel LIVE:
      PROJEKT-Sidebar "🚧 Coming Iter 22+" → aktiver Button "🌿 Gabriel — Mémoire de vie"
      öffnet gabriel.megabook.fr/gabriel.html (erstes TGV-PROJEKT-Cockpit) in neuem Tab. -->
@@ -100,8 +73,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="v11.58-MAN01">
-<title>TGV Dashboard v11.89.1 — Financial OS</title>
+<meta name="version" content="11.87.1">
+<title>TGV Dashboard v11.87.1 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2792,11 +2765,6 @@ body.chat-open #main-content {
       <span class="nav-label">Mail Rules</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('regeln', this)" title="kb_suppliers-Regeln: Gegenseite-Pattern → Kategorie/Entität. Quelle der Auto-Kategorisierung. Durchsuchen, prüfen, bearbeiten, neu, deaktivieren.">
-      <span class="nav-icon">🧭</span>
-      <span class="nav-label">Regeln</span>
-    </button>
-
     <button class="nav-item" onclick="showPage('linkrate', this)" title="KPI Doc↔Txn Verknüpfungs-Rate über Zeit. Aktuell ~53% (Iter 15 Decoupling).">
       <span class="nav-icon">🔗</span>
       <span class="nav-label">Linkrate</span>
@@ -2882,11 +2850,13 @@ body.chat-open #main-content {
         <button class="filter-btn entity-c3" data-entity="c3" onclick="setEntity('c3', this)">C3</button>
         <button class="filter-btn entity-c4" data-entity="c4" onclick="setEntity('c4', this)">C4</button>
       </div>
-      <div class="filter-group" id="period-filter-group">
+      <div class="filter-group">
         <span class="filter-label">Zeitraum</span>
         <button class="filter-btn active" data-period="all" onclick="setPeriod('all', this)">Alles</button>
-        <!-- C1 (Iter 66): Monats-Buttons werden dynamisch von buildPeriodFilter() erzeugt
-             (aus geladenen Daten + letzte Kalendermonate), damit neue Monate automatisch erscheinen. -->
+        <button class="filter-btn" data-period="2026-04" onclick="setPeriod('2026-04', this)">Apr 26</button>
+        <button class="filter-btn" data-period="2026-03" onclick="setPeriod('2026-03', this)">Mär 26</button>
+        <button class="filter-btn" data-period="2026-02" onclick="setPeriod('2026-02', this)">Feb 26</button>
+        <button class="filter-btn" data-period="2026-01" onclick="setPeriod('2026-01', this)">Jan 26</button>
       </div>
     </div>
     <!-- ═══════════════════════════════════════════════
@@ -3227,7 +3197,6 @@ body.chat-open #main-content {
         <button class="fin-tab active" onclick="showFinTab('drilldown', this)">L1 / L2 / L3 Kategorien</button>
         <button class="fin-tab" onclick="showFinTab('cashflow', this)">Cashflow</button>
         <button class="fin-tab" onclick="showFinTab('transaktionen', this)">Transaktionen</button>
-        <button class="fin-tab" onclick="showFinTab('debitoren', this)">Debitoren</button>
         <button class="fin-tab" onclick="showFinTab('dokumente-fin', this)">Dokumente</button>
         <button class="fin-tab" onclick="showFinTab('abgleich', this)" id="fin-tab-abgleich">🔗 Abgleich <span id="abgleich-badge" style="display:none;background:var(--red);color:#fff;border-radius:9999px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">0</span></button>
       </div>
@@ -3255,33 +3224,6 @@ body.chat-open #main-content {
           <div class="card-body no-pad">
             <div id="txn-table-wrap">
               <div class="spinner-wrap"><div class="spinner"></div> Lade Transaktionen…</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- DEBITOREN -->
-      <div class="fin-panel" id="fin-debitoren">
-        <div class="card">
-          <div class="card-head">
-            <h2>🧾 Debitoren-Rechnungen</h2>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <button class="btn-sm btn-open" onclick="loadDebitoren(true)">🔄 Aktualisieren</button>
-              <button class="btn-sm" onclick="toggleDebitorForm()">+ Rechnung/Gutschrift</button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="alert alert-info" style="margin-bottom:12px">
-              <strong>ITER MAN#01:</strong> Manuelle Pflege der Ausgangsrechnungen für C3, C4 und PRIV. Rechnungsnummernlogik bleibt <strong>Entität–Jahr–ID–Text/Projekt</strong>; automatische Rechnungserstellung folgt erst in späteren Iterationen.
-            </div>
-            <div id="debitor-kpis" class="kpi-grid"></div>
-            <div id="debitor-seq-wrap" style="margin:12px 0"></div>
-            <div id="debitor-form-wrap" style="display:none;margin:12px 0"></div>
-          </div>
-          <div id="debitor-filter-row" class="filter-row"></div>
-          <div class="card-body no-pad">
-            <div id="debitor-table-wrap">
-              <div class="spinner-wrap"><div class="spinner"></div> Lade Debitoren…</div>
             </div>
           </div>
         </div>
@@ -3696,28 +3638,6 @@ body.chat-open #main-content {
       </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════
-         PAGE: REGELN (kb_suppliers-Werkbank, Iter 66)
-    ════════════════════════════════════════════════ -->
-    <div class="page" id="page-regeln">
-      <div class="page-header">
-        <h1>🧭 Regeln <span style="font-size:13px;color:var(--tx2);font-weight:400;">— kb_suppliers (Kategorisierungs-Regeln)</span></h1>
-        <p>„Wenn Gegenseite <em>X</em> → Kategorie <em>Y</em>, Entität <em>Z</em>." Diese Regeln steuern die <strong>Auto-Kategorisierung</strong> von Transaktionen &amp; Dokumenten — deterministisch, <em>vor</em> dem LLM-Fallback. Hier durchsuchst, prüfst und änderst du sie zentral. Änderungen werden in <code>agent_events</code> protokolliert.</p>
-      </div>
-      <div id="regeln-stats" class="kpi-grid" style="margin-bottom:14px;"></div>
-      <div class="card">
-        <div class="card-head" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input type="search" id="regeln-search" placeholder="🔍 Pattern, Kategorie, Entität…" oninput="renderRegeln()" style="flex:1;min-width:220px;background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:6px 11px;border-radius:4px;font-size:13px;">
-          <select id="regeln-f-entity" onchange="renderRegeln()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;"><option value="">Alle Entitäten</option></select>
-          <select id="regeln-f-source" onchange="renderRegeln()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;"><option value="">Alle Quellen</option></select>
-          <select id="regeln-f-active" onchange="renderRegeln()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;"><option value="active">nur aktive</option><option value="">alle</option><option value="inactive">nur inaktive</option></select>
-          <label style="font-size:12px;color:var(--tx1);display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="regeln-f-conflicts" onchange="renderRegeln()"> ⚠️ nur Konflikte</label>
-          <button class="btn-sm btn-primary" onclick="regelnAddOpen()" style="padding:6px 14px;">+ Neue Regel</button>
-        </div>
-        <div id="regeln-table-wrap"><div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div></div>
-      </div>
-    </div>
-
     <div class="page" id="page-mailrules">
       <div class="page-header">
         <h1>📬 Mail Rules</h1>
@@ -3956,35 +3876,6 @@ body.chat-open #main-content {
               <span style="background:#1e3a5f;color:#fff;padding:4px 10px;border-radius:4px">4 Skill Router</span>
               <span style="color:var(--tx2)">→</span>
               <span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:4px">5 Skills</span>
-            </div>
-          </div>
-          <div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:14px">
-            <div style="font-size:12px;color:var(--tx2);font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px">📚 Dokumentation</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <a href="https://github.com/jcbinetti/TGV/blob/master/00_LEITDOKUMENT/TGV_AI_TOOLKIT_OVERVIEW.md"
-                 target="_blank" rel="noopener"
-                 style="display:inline-flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:9px 14px;font-size:13px;color:var(--navy);text-decoration:none;font-weight:500;transition:box-shadow .15s"
-                 onmouseover="this.style.boxShadow='0 2px 8px rgba(30,58,95,.15)'" onmouseout="this.style.boxShadow=''">
-                🧰 AI-Toolkit Übersicht
-                <span style="font-size:11px;color:var(--tx3);font-weight:400">Skills · MCP · Workflows · Core vs Life Memory</span>
-                <span style="color:var(--tx3);font-size:11px">↗</span>
-              </a>
-              <a href="https://github.com/jcbinetti/TGV/blob/master/00_LEITDOKUMENT/TGV_CORE_V1_ARCHITECTURE_CURRENT.md"
-                 target="_blank" rel="noopener"
-                 style="display:inline-flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:9px 14px;font-size:13px;color:var(--navy);text-decoration:none;font-weight:500;transition:box-shadow .15s"
-                 onmouseover="this.style.boxShadow='0 2px 8px rgba(30,58,95,.15)'" onmouseout="this.style.boxShadow=''">
-                🏗️ Architektur (technisch)
-                <span style="font-size:11px;color:var(--tx3);font-weight:400">n8n · Supabase · Hetzner · Flows</span>
-                <span style="color:var(--tx3);font-size:11px">↗</span>
-              </a>
-              <a href="https://claude.ai/code/routines/trig_017ox8VchVScUV2AgTi5r9e8"
-                 target="_blank" rel="noopener"
-                 style="display:inline-flex;align-items:center;gap:7px;background:#fdf4ff;border:1px solid #e9d5ff;border-radius:7px;padding:9px 14px;font-size:13px;color:#6b21a8;text-decoration:none;font-weight:500;transition:box-shadow .15s"
-                 onmouseover="this.style.boxShadow='0 2px 8px rgba(107,33,168,.15)'" onmouseout="this.style.boxShadow=''">
-                🔄 Toolkit-Review (wöchentlich)
-                <span style="font-size:11px;color:#9333ea;font-weight:400">jeden Montag 9:00 · on-demand triggern</span>
-                <span style="color:#c084fc;font-size:11px">↗</span>
-              </a>
             </div>
           </div>
         </div>
@@ -4399,6 +4290,8 @@ body.chat-open #main-content {
           <button class="inbox-chip"        data-alle-filter="status" data-alle-value="needs_review" onclick="setAlleDocsChip('status','needs_review',this)">🔍 Review</button>
           <button class="inbox-chip"        data-alle-filter="status" data-alle-value="approved"     onclick="setAlleDocsChip('status','approved',this)">✅ Approved</button>
           <button class="inbox-chip"        data-alle-filter="status" data-alle-value="done"         onclick="setAlleDocsChip('status','done',this)">✓ Done</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="rejected"      onclick="setAlleDocsChip('status','rejected',this)">🗑️ Rejected</button>
+          <button class="inbox-chip"        data-alle-filter="status" data-alle-value="duplicate"     onclick="setAlleDocsChip('status','duplicate',this)">♻️ Duplikat</button>
           <span style="margin:0 6px;color:var(--tx2);">|</span>
           <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:1px;">Typ</span>
           <button class="inbox-chip active" data-alle-filter="doctype" data-alle-value="all"        onclick="setAlleDocsChip('doctype','all',this)">Alle</button>
@@ -4745,7 +4638,6 @@ async function authSetNewPassword() {
 function showDashboard() {
   document.getElementById('auth-gate').classList.remove('visible');
   document.getElementById('dashboard-wrapper').style.display = '';
-  buildPeriodFilter(); // C1: Monats-Buttons seeden (Failsafe-Monate, vor Daten-Load)
 }
 
 function isAllowedUser(user) {
@@ -4889,10 +4781,6 @@ let gEntity = 'all';
 let gPeriod = 'all';
 let gTxns = [];
 let gDocs = [];
-let gDebitorInvoices = [];
-let gDebitorSequences = [];
-let gDebitorCustomers = [];
-let gDebitorSchemaMissing = false;
 let gFinLoaded = false;
 let gInboxFilter = 'all'; // 'all' | 'inbox' | 'pending_review' | 'haengend' | 'bestand_heal'
 let gInboxRows = [];   // gecachte Inbox-Daten für client-seitigen Filter
@@ -4903,8 +4791,6 @@ let currentLernenTab = 'docs';
 // Sort state for tables
 let txnSort = { col: 'booking_date', dir: 'desc' };
 let docSort = { col: 'date_received', dir: 'desc' };
-let debitorSort = { col: 'invoice_date', dir: 'desc' };
-let debitorFilter = { entity: 'all', year: '2026', status: 'all', kind: 'all', project: 'all' };
 
 // Drilldown state
 let ddL1 = null, ddL2 = null, ddL3 = null;
@@ -5002,7 +4888,7 @@ const DASHBOARD_PAGE_META = {
 };
 const DASHBOARD_SUBTAB_META = {
   inbox: { docs: 'Dokumente', txn: 'Transaktionen', routed: 'Routed History' },
-  finanzen: { drilldown: 'Kategorien', cashflow: 'Cashflow', transaktionen: 'Transaktionen', debitoren: 'Debitoren', 'dokumente-fin': 'Dokumente', abgleich: 'Abgleich' },
+  finanzen: { drilldown: 'Kategorien', cashflow: 'Cashflow', transaktionen: 'Transaktionen', 'dokumente-fin': 'Dokumente', abgleich: 'Abgleich' },
   system: { main: 'System', costs: 'Costs', patterns: 'Pattern Health' },
   lernen: { docs: 'Pipeline-Dokus', topology: 'System-Karte' },
 };
@@ -5446,7 +5332,6 @@ function showPage(pageId, btn) {
   if (pageId === 'monatsabschluss') loadMonatsabschluss();
   if (pageId === 'system') loadSystem();
   if (pageId === 'mailrules') loadMailRules();
-  if (pageId === 'regeln') loadRegeln();
   if (pageId === 'entitaeten') loadEntitaeten();
   if (pageId === 'mailoutbox') loadMailOutbox();
   if (pageId === 'linkrate') loadLinkrate();
@@ -6013,39 +5898,6 @@ function setPeriod(val, btn) {
   refreshCurrentPage();
 }
 
-// C1 (Iter 66): Zeitraum-Monats-Buttons dynamisch erzeugen statt hartkodiert.
-// Quelle: alle Monate aus geladenen Daten (gTxns/gDocs/gInboxRows) ∪ letzte 6 Kalendermonate
-// als Failsafe (falls Daten noch nicht geladen). So erscheinen neue Monate (z.B. Mai 26)
-// automatisch, ohne den Filter jährlich/monatlich von Hand zu pflegen.
-const PERIOD_MONTHS_DE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-function buildPeriodFilter() {
-  const grp = document.getElementById('period-filter-group');
-  if (!grp) return;
-  const months = new Set();
-  const addMo = v => { if (v) months.add(String(v).slice(0, 7)); };
-  (typeof gTxns !== 'undefined' ? gTxns : []).forEach(t => addMo(t && t.booking_date));
-  (typeof gDocs !== 'undefined' ? gDocs : []).forEach(d => addMo(d && (d.date_received || d.invoice_date || d.date_scanned)));
-  (typeof gInboxRows !== 'undefined' ? gInboxRows : []).forEach(r => addMo(r && (r.date_received || r.date_scanned)));
-  // Failsafe: letzte 6 Kalendermonate relativ zu heute (rollt automatisch weiter)
-  const now = new Date();
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-  const sorted = [...months].filter(m => /^\d{4}-\d{2}$/.test(m)).sort().reverse().slice(0, 12);
-  // bestehende Monats-Buttons entfernen (Alles-Button + Label bleiben)
-  grp.querySelectorAll('button[data-period]:not([data-period="all"])').forEach(b => b.remove());
-  const allBtn = grp.querySelector('button[data-period="all"]');
-  if (!allBtn) return;
-  allBtn.classList.toggle('active', gPeriod === 'all');
-  const html = sorted.map(m => {
-    const [y, mo] = m.split('-');
-    const label = `${PERIOD_MONTHS_DE[parseInt(mo, 10) - 1] || mo} ${y.slice(2)}`;
-    return `<button class="filter-btn${gPeriod === m ? ' active' : ''}" data-period="${m}" onclick="setPeriod('${m}', this)">${label}</button>`;
-  }).join('');
-  allBtn.insertAdjacentHTML('afterend', html);
-}
-
 function refreshCurrentPage() {
   const active = document.querySelector('.page.active');
   if (!active) return;
@@ -6074,7 +5926,6 @@ function showFinTab(tabId, btn) {
   document.getElementById('fin-' + tabId).classList.add('active');
   if (tabId === 'transaktionen') renderTxnTable();
   if (tabId === 'dokumente-fin') renderDocsFinTable();
-  if (tabId === 'debitoren') renderDebitoren();
   if (tabId === 'drilldown') renderDrilldown();
   if (tabId === 'cashflow') renderCashflow();
   if (tabId === 'abgleich') loadAbgleich();
@@ -6322,7 +6173,7 @@ async function loadLetzteEingaenge() {
   try {
     let q = `documents?select=id,project_id,date_received,date_scanned,provider,subject,entity,status,processing_state,doc_type,drive_file_name&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=10`;
     const data = await supa(q);
-    const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected' && r.status !== 'duplicate' && r.status !== 'archived');
+    const rows = data.filter(r => !isTestData(r) && r.status !== 'rejected');
 
     if (!rows.length) {
       wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>Keine Dokumente gefunden</p></div>`;
@@ -6379,7 +6230,6 @@ async function loadInbox() {
     let q = `documents?select=id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,tags,accounting_status,ai_suggestion,routing_reason,recipient,party_role,counterparty_entity&status=in.(inbox,pending_review,needs_review)&or=(drive_file_id.not.is.null,drive_file_name.not.is.null)&order=date_scanned.desc.nullslast,date_received.desc.nullslast&limit=100`;
     const data = await supa(q);
     gInboxRows = data.filter(r => !isTestData(r));
-    buildPeriodFilter(); // C1: Inbox-Monate in Zeitraum-Filter aufnehmen
     renderInbox();
   } catch (e) {
     wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
@@ -6513,7 +6363,7 @@ function renderInbox() {
         : `<span style="color:var(--tx2)">—</span>`;
 
     const dateCell = r.invoice_date
-      ? fmtDateOnly(r.invoice_date)
+      ? fmtDate(r.invoice_date)
       : isRechnung
         ? `<span style="color:#f59e0b;font-size:11px" title="Wird durch Invoice-Skill extrahiert">&#x23F3;</span>`
         : `<span style="color:var(--tx2)">—</span>`;
@@ -6531,7 +6381,7 @@ function renderInbox() {
         ${fmtDate(displayDate)}
         ${isVorschuss ? '<br><span class="pill" style="background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;font-size:9px">Vorschuss</span>' : ''}
       </td>
-      <td data-label="Dateiname" style="max-width:220px;word-break:break-word;overflow-wrap:anywhere"${nameTitle}>
+      <td data-label="Dateiname" style="max-width:220px"${nameTitle}>
         <span style="font-weight:600">${fileName}</span>${driveLink}${dupBadge}${healBadge}
       </td>
       <td data-label="Anbieter" style="max-width:180px">
@@ -6795,12 +6645,11 @@ async function sendToBuchhalter(id, btn) {
 // ═══════════════════════════════════════════════════════
 async function loadFinanzen() {
   if (!gFinLoaded) {
-    await Promise.all([loadTxns(), loadDocsFin(), loadDebitoren(false)]);
+    await Promise.all([loadTxns(), loadDocsFin()]);
     gFinLoaded = true;
     renderDrilldown();
     renderTxnFilters();
     renderDocsFinFilters();
-    renderDebitoren();
   } else {
     refreshFinanzen();
   }
@@ -6814,7 +6663,6 @@ function refreshFinanzen() {
   if (id === 'cashflow') renderCashflow();
   if (id === 'transaktionen') renderTxnTable();
   if (id === 'dokumente-fin') renderDocsFinTable();
-  if (id === 'debitoren') renderDebitoren();
 }
 
 async function loadTxns() {
@@ -6822,7 +6670,6 @@ async function loadTxns() {
   try {
     const data = await supa(`txn_master?select=id,booking_date,entity,category_l1,category_l2,category_l3,amount,direction,counterparty_raw,merchant_normalized,purpose,booking_text_raw,account_iban,account_name,recurring_flag,anna_relevant,household_flag,insurance_flag,document_id,review_status,confidence_score&booking_date=gte.2026-01-01&order=booking_date.desc&limit=20000`);
     gTxns = data.filter(r => !isTestData(r));
-    buildPeriodFilter(); // C1: Monats-Buttons mit echten Daten-Monaten anreichern
   } catch (e) {
     document.getElementById('drilldown-wrap').innerHTML =
       `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen — Daten nicht verfügbar<br><small>${e.message}</small></div>`;
@@ -6837,347 +6684,6 @@ async function loadDocsFin() {
   } catch (e) {
     gDocs = [];
   }
-}
-
-
-// ═══════════════════════════════════════════════════════
-//  ITER MAN#01 — DEBITOREN-RECHNUNGEN
-// ═══════════════════════════════════════════════════════
-function debitorEntityLabel(e) {
-  return ({ c3: 'C3', c4: 'C4', priv: 'PRIV', privat: 'PRIV', 'c3-convis-gmbh': 'C3', 'c4-convis-sarl': 'C4' }[String(e || '').toLowerCase()] || (e || '—')).toUpperCase();
-}
-function debitorKindLabel(k) {
-  return ({ invoice: 'Rechnung', credit_note: 'Gutschrift', storno: 'Storno', reservation: 'Reservierung' }[k] || k || 'Rechnung');
-}
-function debitorStatusPill(s) {
-  const map = {
-    draft: ['Entwurf', 'var(--tx2)'], open: ['Offen', 'var(--amb)'], partial: ['Teilzahlung', 'var(--blu)'],
-    paid: ['Bezahlt', 'var(--grn)'], overdue: ['Überfällig', 'var(--red)'], cancelled: ['Storniert', 'var(--tx2)'], credited: ['Gutgeschrieben', 'var(--pur)']
-  };
-  const [label, col] = map[s] || [s || 'Offen', 'var(--tx2)'];
-  return `<span class="pill" style="background:${col}22;color:${col};border:1px solid ${col}55">${escHtml(label)}</span>`;
-}
-function debitorCurrentYear() {
-  if (/^\d{4}-\d{2}$/.test(gPeriod || '')) return parseInt(gPeriod.slice(0, 4), 10);
-  return 2026;
-}
-function nextInvoiceHint(entity, kind='invoice') {
-  const year = debitorCurrentYear();
-  const seq = gDebitorSequences.find(s => s.entity === entity && +s.fiscal_year === year && (s.document_kind || 'invoice') === kind);
-  if (!seq) {
-    if (entity === 'c3' && kind === 'invoice' && year === 2026) return 'C3-26-014';
-    if (entity === 'c4' && kind === 'invoice' && year === 2026) return 'C4-26-1216';
-    if (entity === 'priv' && kind === 'invoice' && year === 2026) return 'JC-26-001';
-    return '—';
-  }
-  const n = parseInt(seq.next_sequence_no || 1, 10);
-  const pad = parseInt(seq.padding || 0, 10);
-  const body = pad > 0 ? String(n).padStart(pad, '0') : String(n);
-  return seq.prefix ? `${seq.prefix}-${body}` : body;
-}
-function debitorReviewSeedData() {
-  const c3 = [
-    ['c3',2025,23,'C3-25-023','eWerk','Seminar März 2026',1660.00,19,'2025-12-18','2026-03-01','2026-03-31','paid'],
-    ['c3',2026,1,'C3-26-001','ZfAM','Plan ZfAM 3Q und 4Q 2025 PM',10218.70,19,'2026-01-12','2025-07-01','2025-12-31','paid','3-24-007-PM'],
-    ['c3',2026,2,'C3-26-002','ZfAM','Plan ZfAM 3Q und 4Q 2025 ÖA',7271.48,19,'2026-01-12','2025-07-01','2025-12-31','paid','3-24-007-ÖA'],
-    ['c3',2026,3,'C3-26-003','convis GmbH','Pauschalleistungen Januar',6819.75,19,'2026-02-02','2026-01-01','2026-01-31','paid','00 convis-MKT'],
-    ['c3',2026,4,'C3-26-004','EA','Leistungen extern',544.17,19,'2026-02-09','2025-01-01','2025-12-31','paid','3-25-014 EA ÖA'],
-    ['c3',2026,5,'C3-26-005','convis GmbH','Pauschalleistungen Februar',6666.67,19,'2026-03-03','2026-02-01','2026-02-28','paid','00 convis-MKT'],
-    ['c3',2026,6,'C3-26-006','ZfAM','Plan ZfAM 1Q 2026 PM',5024.35,19,'2026-04-01','2026-01-01','2026-03-31','open','3-24-007-PM'],
-    ['c3',2026,7,'C3-26-007','ZfAM','Plan ZfAM 1Q 2026 ÖA',3981.10,19,'2026-04-01','2026-01-01','2026-03-31','open','3-24-007-ÖA'],
-    ['c3',2026,8,'C3-26-008','convis GmbH','Pauschalleistungen März',6666.67,19,'2026-04-01','2026-03-01','2026-03-31','paid','00 convis-MKT'],
-    ['c3',2026,9,'C3-26-009','EA','ÖA Leistungen 1Q26',10323.04,19,'2026-04-03','2026-01-01','2026-03-31','paid','3-25-014 EA ÖA'],
-    ['c3',2026,10,'C3-26-010','EA','Chatbot Betrieb März 2026',1269.38,19,'2026-05-08','2026-03-01','2026-03-31','paid','3-21-013 EA CB'],
-    ['c3',2026,11,'C3-26-011','convis GmbH','Pauschalleistungen April',6666.67,19,'2026-05-04','2026-04-01','2026-04-30','open','00 convis-MKT'],
-    ['c3',2026,12,'C3-26-012','EA','Chatbot Betrieb April 2026',8072.02,19,'2026-05-20','2026-04-01','2026-04-30','open','3-21-013 EA CB'],
-    ['c3',2026,13,'C3-26-013','convis GmbH','Pauschalleistungen Mai',6666.67,19,'2026-06-02','2026-05-01','2026-05-31','open','00 convis-MKT']
-  ];
-  const c4 = [
-    [1205,'Berthon','Conseil mop apporteur affaire',607.50,'2025-01-02',null,null,'paid','2025-02-06','RATP MOP direct'],
-    [1206,'Le Moal','Veille reglementaire',2550.00,'2025-02-12',null,null,'paid','2025-12-01','SODEXO'],
-    [1207,'RATP CAP','SMI RATP CAP 21.2.2025',900.00,'2025-03-05',null,null,'paid','2025-04-10','RATP CAP'],
-    [1208,'DQS','DQS Loyer 2T25 1.04.2025 - 30.06.2025',7988.70,'2025-04-01','2025-04-01','2025-06-30','paid','2025-04-08','4-16-DQS-Loyer'],
-    [1209,'RATP CAP','SMI RATP CAP 17.4.25',900.00,'2025-04-17',null,null,'paid','2025-07-31','RATP CAP'],
-    [1210,'RATP CAP','SMI RATP CAP 26.5.25',900.00,'2025-05-26',null,null,'paid','2025-06-26','RATP CAP'],
-    [1211,'RATP CAP','SMI RATP CAP 25.7.25',900.00,'2025-09-02',null,null,'paid','2025-10-15','RATP CAP'],
-    [1212,'DQS','DQS Loyer 3T25 1.07.F52825 - 30.09.2025',7988.70,'2025-10-23','2025-07-01','2025-09-30','paid','2026-01-12','4-16-DQS-Loyer'],
-    [1213,'RATP CAP','SMI RATP CAP 26.5.2531.10.25',900.00,'2025-11-12',null,null,'paid','2025-12-15','RATP CAP'],
-    [1214,'RATP MOP','Audit interne MOP',15750.00,'2025-12-31',null,null,'open',null,'4-25-002'],
-    [1215,'RATP CAP','SMI RATP CAP 5.12.25',900.00,'2025-12-31',null,null,'paid','2026-01-30','RATP CAP']
-  ].map(x => ['c4',2025,x[0],String(x[0]),x[1],x[2],x[3],20,x[4],x[5],x[6],x[7],x[9],x[8]]);
-  const invoices = [...c3, ...c4].map((x, i) => {
-    const [entity, fiscal_year, running_no, nr, customer, title, net, vat, invoice_date, sp_start, sp_end, status, project_ref, paid_at] = x;
-    const gross = Math.round((net * (1 + vat/100)) * 100) / 100;
-    return { id: `seed-${i}`, entity, fiscal_year, document_kind:'invoice', running_no, invoice_number_full:nr, project_ref:project_ref||null, customer_name:customer, title, service_period_start:sp_start||null, service_period_end:sp_end||null, recognition_year:fiscal_year, invoice_date, net_amount:net, vat_rate:vat, gross_amount:gross, expected_payment_amount:gross, payment_status:status, paid_at:paid_at||null, notes:'Review-Seed MAN#01 aus vorhandenen C3/C4-Tabellen; wird durch Live-Supabase-Daten ersetzt.' };
-  });
-  const sequences = [
-    {entity:'c3', fiscal_year:2026, document_kind:'invoice', prefix:'C3-26', next_sequence_no:14, padding:3},
-    {entity:'c4', fiscal_year:2026, document_kind:'invoice', prefix:'C4-26', next_sequence_no:1216, padding:0},
-    {entity:'priv', fiscal_year:2026, document_kind:'invoice', prefix:'JC-26', next_sequence_no:1, padding:3},
-    {entity:'c3', fiscal_year:2026, document_kind:'credit_note', prefix:'C3-GS-26', next_sequence_no:1, padding:3},
-    {entity:'c4', fiscal_year:2026, document_kind:'credit_note', prefix:'C4-GS-26', next_sequence_no:1, padding:0},
-    {entity:'priv', fiscal_year:2026, document_kind:'credit_note', prefix:'JC-GS-26', next_sequence_no:1, padding:3}
-  ];
-  const customers = [...new Set(invoices.map(r => `${r.entity}|${r.customer_name}`))].map((k, i) => { const [entity, customer_name] = k.split('|'); return { id:`seed-cust-${i}`, entity, customer_name, active:true }; });
-  return { invoices, sequences, customers };
-}
-function useDebitorReviewSeed() {
-  const seed = debitorReviewSeedData();
-  gDebitorInvoices = seed.invoices;
-  gDebitorSequences = seed.sequences;
-  gDebitorCustomers = seed.customers;
-}
-async function loadDebitoren(force=false) {
-  if (!force && (gDebitorInvoices.length || gDebitorSchemaMissing)) return;
-  gDebitorSchemaMissing = false;
-  try {
-    const [invoices, seqs, customers] = await Promise.all([
-      supa('debtor_invoices?select=id,entity,fiscal_year,document_kind,running_no,invoice_number_full,project_ref,project_no,customer_name,title,service_period_start,service_period_end,recognition_year,invoice_date,due_date,expected_payment_date,net_amount,vat_rate,gross_amount,discount_rate,discount_amount,discount_due_date,expected_payment_amount,payment_status,paid_at,linked_txn_id,source_document_id,drive_file_id,notes&order=fiscal_year.desc,invoice_date.desc.nullslast,running_no.desc&limit=2000'),
-      supa('invoice_number_sequences?select=entity,fiscal_year,document_kind,prefix,next_sequence_no,padding,format_hint,notes&order=entity.asc,fiscal_year.desc,document_kind.asc'),
-      supa('debtor_customers?select=id,entity,customer_name,customer_code,payment_terms_days,active&active=eq.true&order=customer_name.asc&limit=1000')
-    ]);
-    gDebitorInvoices = (invoices || []).filter(r => !isTestData(r));
-    gDebitorSequences = seqs || [];
-    gDebitorCustomers = customers || [];
-  } catch (e) {
-    gDebitorInvoices = [];
-    gDebitorSequences = [];
-    gDebitorCustomers = [];
-    if (String(e.message || '').includes('404') || String(e.message || '').includes('PGRST205')) {
-      gDebitorSchemaMissing = true;
-      useDebitorReviewSeed();
-    }
-    console.warn('loadDebitoren failed', e);
-  }
-  renderDebitoren();
-}
-function renderDebitoren() {
-  renderDebitorFilters();
-  renderDebitorKpis();
-  renderDebitorSequences();
-  renderDebitorForm();
-  renderDebitorTable();
-}
-function debitorGlobalPeriodLabel() {
-  if (gPeriod === 'all') return 'Alle Zeiträume';
-  if (/^\d{4}-\d{2}$/.test(gPeriod)) {
-    const [y, m] = gPeriod.split('-');
-    return `${PERIOD_MONTHS_DE[parseInt(m, 10) - 1] || m} ${String(y).slice(2)}`;
-  }
-  return gPeriod;
-}
-function debitorMatchesGlobalPeriod(r) {
-  if (gPeriod === 'all') return true;
-  if (!/^\d{4}-\d{2}$/.test(gPeriod)) return true;
-  const start = `${gPeriod}-01`;
-  const d = new Date(parseInt(gPeriod.slice(0,4), 10), parseInt(gPeriod.slice(5,7), 10), 0);
-  const end = d.toISOString().slice(0, 10);
-  const inv = r.invoice_date || '';
-  const spStart = r.service_period_start || inv;
-  const spEnd = r.service_period_end || inv;
-  return (inv >= start && inv <= end) || (spStart <= end && spEnd >= start);
-}
-function debitorProjectValue(r) {
-  return String(r.project_no || r.project_ref || '').trim();
-}
-function debitorProjectOptions() {
-  const base = filteredDebitorsForContext(true)
-    .filter(r => debitorFilter.kind === 'all' || (r.document_kind || 'invoice') === debitorFilter.kind)
-    .filter(r => debitorFilter.status === 'all' || r.payment_status === debitorFilter.status);
-  return [...new Set(base.map(debitorProjectValue).filter(Boolean))].sort((a,b)=>a.localeCompare(b, 'de', {numeric:true, sensitivity:'base'}));
-}
-function debitorMatchesProject(r) {
-  if (!debitorFilter.project || debitorFilter.project === 'all') return true;
-  return debitorProjectValue(r) === debitorFilter.project;
-}
-function filteredDebitors() {
-  let rows = [...gDebitorInvoices];
-  const f = debitorFilter;
-  if (gEntity !== 'all') rows = rows.filter(r => r.entity === gEntity);
-  rows = rows.filter(debitorMatchesGlobalPeriod);
-  if (f.status !== 'all') rows = rows.filter(r => r.payment_status === f.status);
-  if (f.kind !== 'all') rows = rows.filter(r => (r.document_kind || 'invoice') === f.kind);
-  rows = rows.filter(debitorMatchesProject);
-  rows.sort((a,b) => {
-    let va = a[debitorSort.col], vb = b[debitorSort.col];
-    if (debitorSort.col.includes('amount')) { va = parseFloat(va || 0); vb = parseFloat(vb || 0); }
-    if (va == null) va = ''; if (vb == null) vb = '';
-    if (String(va) < String(vb)) return debitorSort.dir === 'asc' ? -1 : 1;
-    if (String(va) > String(vb)) return debitorSort.dir === 'asc' ? 1 : -1;
-    return 0;
-  });
-  return rows;
-}
-function renderDebitorFilters() {
-  const row = document.getElementById('debitor-filter-row');
-  if (!row) return;
-  const projects = debitorProjectOptions();
-  if (debitorFilter.project !== 'all' && !projects.includes(debitorFilter.project)) debitorFilter.project = 'all';
-  row.innerHTML = `
-    <span class="filter-label">Kontext</span>
-    <span class="pill" title="Kommt aus der oberen Entität-Auswahl">Entität: ${gEntity === 'all' ? 'Alle' : debitorEntityLabel(gEntity)}</span>
-    <span class="pill" title="Kommt aus der oberen Zeitraum-Auswahl">Zeitraum: ${escHtml(debitorGlobalPeriodLabel())}</span>
-    <span class="filter-label" style="margin-left:12px">Detailfilter</span>
-    <select onchange="debitorFilter.kind=this.value;renderDebitoren()">
-      <option value="all" ${debitorFilter.kind==='all'?'selected':''}>Alle Arten</option><option value="invoice" ${debitorFilter.kind==='invoice'?'selected':''}>Rechnung</option><option value="credit_note" ${debitorFilter.kind==='credit_note'?'selected':''}>Gutschrift</option><option value="storno" ${debitorFilter.kind==='storno'?'selected':''}>Storno</option><option value="reservation" ${debitorFilter.kind==='reservation'?'selected':''}>Reservierung</option>
-    </select>
-    <select onchange="debitorFilter.status=this.value;renderDebitoren()" title="Im Review-Seed stammt der Status aus der Ausgangsliste; Live-Reconciliation nutzt später linked_txn_id.">
-      <option value="all" ${debitorFilter.status==='all'?'selected':''}>Alle Status</option><option value="draft" ${debitorFilter.status==='draft'?'selected':''}>Entwurf</option><option value="open" ${debitorFilter.status==='open'?'selected':''}>Offen</option><option value="partial" ${debitorFilter.status==='partial'?'selected':''}>Teilzahlung</option><option value="paid" ${debitorFilter.status==='paid'?'selected':''}>Bezahlt</option><option value="overdue" ${debitorFilter.status==='overdue'?'selected':''}>Überfällig</option><option value="credited" ${debitorFilter.status==='credited'?'selected':''}>Gutgeschrieben</option>
-    </select>
-    <select onchange="debitorFilter.project=this.value;renderDebitoren()" title="Filtert nach project_no oder project_ref.">
-      <option value="all" ${debitorFilter.project==='all'?'selected':''}>Alle Projekte</option>${projects.map(p=>`<option value="${escHtml(p)}" ${debitorFilter.project===p?'selected':''}>${escHtml(p)}</option>`).join('')}
-    </select>`;
-}
-function debitorSelectedRecognitionYear() {
-  if (/^\d{4}-\d{2}$/.test(gPeriod || '')) return parseInt(gPeriod.slice(0,4), 10);
-  const years = filteredDebitorsForContext(false).map(r => parseInt(r.recognition_year || String(r.invoice_date || '').slice(0,4), 10)).filter(Boolean);
-  return years.length ? Math.max(...years) : new Date().getFullYear();
-}
-function debitorDateOnly(d) {
-  if (!d) return null;
-  const dt = new Date(`${String(d).slice(0,10)}T00:00:00Z`);
-  return Number.isNaN(dt.getTime()) ? null : dt;
-}
-function debitorDaysInclusive(a, b) {
-  if (!a || !b || b < a) return 0;
-  return Math.round((b - a) / 86400000) + 1;
-}
-function debitorSignedNet(r) {
-  const sign = ['credit_note','storno'].includes(r.document_kind) ? -1 : 1;
-  return sign * (parseFloat(r.net_amount) || 0);
-}
-function debitorRecognizedNetForYear(r, year) {
-  const net = debitorSignedNet(r);
-  const inv = debitorDateOnly(r.invoice_date);
-  const start = debitorDateOnly(r.service_period_start) || inv;
-  const end = debitorDateOnly(r.service_period_end) || start;
-  if (!start || !end) return (parseInt(r.recognition_year || 0, 10) === year) ? net : 0;
-  const yStart = new Date(Date.UTC(year, 0, 1));
-  const yEnd = new Date(Date.UTC(year, 11, 31));
-  const totalDays = debitorDaysInclusive(start, end);
-  const overlapStart = start > yStart ? start : yStart;
-  const overlapEnd = end < yEnd ? end : yEnd;
-  const overlapDays = debitorDaysInclusive(overlapStart, overlapEnd);
-  if (!totalDays || !overlapDays) return 0;
-  return net * overlapDays / totalDays;
-}
-function filteredDebitorsForContext(applyPeriod=true) {
-  let rows = [...gDebitorInvoices];
-  if (gEntity !== 'all') rows = rows.filter(r => r.entity === gEntity);
-  if (applyPeriod) rows = rows.filter(debitorMatchesGlobalPeriod);
-  return rows;
-}
-function renderDebitorKpis() {
-  const el = document.getElementById('debitor-kpis');
-  if (!el) return;
-  const rows = filteredDebitors();
-  const contextRows = filteredDebitorsForContext(false)
-    .filter(r => (debitorFilter.kind === 'all' || (r.document_kind || 'invoice') === debitorFilter.kind))
-    .filter(debitorMatchesProject);
-  const open = rows.filter(r => ['open','partial','overdue'].includes(r.payment_status));
-  const net = rows.reduce((s,r)=>s+debitorSignedNet(r),0);
-  const gross = rows.reduce((s,r)=>s+(parseFloat(r.gross_amount)||0),0);
-  const openGross = open.reduce((s,r)=>s+(parseFloat(r.expected_payment_amount || r.gross_amount)||0),0);
-  const recognitionYear = debitorSelectedRecognitionYear();
-  const recognizedNet = contextRows.reduce((s,r)=>s+debitorRecognizedNetForYear(r, recognitionYear),0);
-  el.innerHTML = `
-    <div class="kpi-card"><div class="kpi-label">Rechnungen/Gutschriften</div><div class="kpi-value">${rows.length}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Netto im Filter</div><div class="kpi-value">${eur(net)}</div></div>
-    <div class="kpi-card"><div class="kpi-label">Umsatz Leistungsjahr ${recognitionYear}</div><div class="kpi-value">${eur(recognizedNet)}</div><div style="font-size:11px;color:var(--tx2);margin-top:4px">anteilig nach Leistungszeitraum</div></div>
-    <div class="kpi-card"><div class="kpi-label">Offen erwartet</div><div class="kpi-value">${eur(openGross)}</div></div>`;
-}
-function renderDebitorSequences() {
-  const el = document.getElementById('debitor-seq-wrap');
-  if (!el) return;
-  const warn = gDebitorSchemaMissing ? `<div class="alert alert-warn"><strong>Review-Seed aktiv.</strong> Die Tabelle zeigt die bisher bekannten C3-/C4-Rechnungen aus den Arbeitslisten. Für Live-Speichern muss <code>migrations/20260602_iter_man01_debitoren.sql</code> noch in Supabase angewendet werden.</div>` : '';
-  el.innerHTML = `${warn}<div class="tbl-wrap"><table><thead><tr><th>Entität</th><th>Nächste Rechnung</th><th>Nächste Gutschrift</th><th>Hinweis</th></tr></thead><tbody>
-    ${['c3','c4','priv'].map(e => `<tr><td>${entityBadge(e)}</td><td><strong>${escHtml(nextInvoiceHint(e,'invoice'))}</strong></td><td>${escHtml(nextInvoiceHint(e,'credit_note'))}</td><td style="color:var(--tx2);font-size:12px">Laufende Nummer wird historisch fortgeführt; vor Speichern gegen Alt-Tabelle prüfen.</td></tr>`).join('')}
-  </tbody></table></div>`;
-}
-function renderDebitorTable() {
-  const wrap = document.getElementById('debitor-table-wrap');
-  if (!wrap) return;
-  if (gDebitorSchemaMissing && !gDebitorInvoices.length) {
-    wrap.innerHTML = `<div class="empty-state">Noch keine Live-Tabelle. Nach Freigabe Migration ausführen, dann erscheinen hier Debitoren-Rechnungen.</div>`;
-    return;
-  }
-  const rows = filteredDebitors();
-  let html = `<div class="tbl-wrap"><table><thead><tr>
-    <th onclick="sortDebitor('invoice_number_full')">Nr.</th><th>Art</th><th onclick="sortDebitor('invoice_date')">Datum</th><th>Leistungszeitraum</th><th>Kunde</th><th>Projekt</th><th>Titel</th><th class="num" onclick="sortDebitor('net_amount')">Netto</th><th class="num">Brutto/Skonto</th><th>Zahlung</th><th>Txn</th>
-  </tr></thead><tbody>`;
-  if (!rows.length) html += `<tr><td colspan="11" class="empty-state">Keine Debitoren-Rechnungen im aktuellen Filter.</td></tr>`;
-  for (const r of rows) {
-    const period = [fmtDateOnly(r.service_period_start), fmtDateOnly(r.service_period_end)].filter(x=>x && x !== '—').join(' – ') || (r.recognition_year || '—');
-    const skonto = r.discount_amount ? `<div style="font-size:11px;color:var(--amb)">Skonto ${eur(r.discount_amount)}${r.discount_due_date ? ' bis ' + fmtDateOnly(r.discount_due_date) : ''}</div>` : '';
-    const txn = r.linked_txn_id ? `<button class="ma-action-btn" onclick="openLinkedTxn('${r.linked_txn_id}')">🔗 Verknüpft</button>` : `<span style="color:var(--tx2);font-size:11px">offen</span>`;
-    html += `<tr>
-      <td><strong>${escHtml(r.invoice_number_full || '—')}</strong><div style="font-size:11px;color:var(--tx2)">${entityBadge(r.entity)}</div></td>
-      <td>${debitorKindLabel(r.document_kind)}</td><td>${fmtDateOnly(r.invoice_date)}</td><td>${escHtml(period)}</td><td>${escHtml(r.customer_name || '—')}</td><td>${escHtml(r.project_no || r.project_ref || '—')}</td><td style="max-width:220px">${escHtml(r.title || '—')}</td><td class="num">${eur(r.net_amount)}</td><td class="num">${eur(r.expected_payment_amount || r.gross_amount)}${skonto}</td><td>${debitorStatusPill(r.payment_status)}</td><td>${txn}</td>
-    </tr>`;
-  }
-  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Einträge</span><span>Bezahlung wird über Transaktionslink statt Checkbox geführt.</span></div>`;
-  wrap.innerHTML = html;
-}
-function sortDebitor(col) {
-  if (debitorSort.col === col) debitorSort.dir = debitorSort.dir === 'asc' ? 'desc' : 'asc'; else debitorSort = { col, dir: 'asc' };
-  renderDebitorTable();
-}
-function toggleDebitorForm() {
-  const el = document.getElementById('debitor-form-wrap');
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-  renderDebitorForm();
-}
-function renderDebitorForm() {
-  const el = document.getElementById('debitor-form-wrap');
-  if (!el || el.style.display === 'none') return;
-  el.innerHTML = `<div class="card" style="border:1px solid var(--bd)"><div class="card-body">
-    <div class="form-grid">
-      <label>Entität<input id="deb-entity" value="${escHtml(gEntity === 'all' ? 'c3' : gEntity)}" readonly title="Aus oberer Entität-Auswahl abgeleitet; bei Alle wird C3 als Eingabe-Default genutzt."></label>
-      <label>Art<select id="deb-kind" onchange="document.getElementById('deb-number').value=nextInvoiceHint(document.getElementById('deb-entity').value, this.value)"><option value="invoice">Rechnung</option><option value="credit_note">Gutschrift</option><option value="storno">Storno</option><option value="reservation">Reservierung</option></select></label>
-      <label>Rechnungsnummer<input id="deb-number" value="${escHtml(nextInvoiceHint(gEntity === 'all' ? 'c3' : gEntity,'invoice'))}" placeholder="C3-26-014 / C4-26-1216 / JC-26-001"></label>
-      <label>Datum<input id="deb-date" type="date"></label>
-      <label>Kunde<input id="deb-customer" list="deb-customers" placeholder="Kunde"></label>
-      <datalist id="deb-customers">${gDebitorCustomers.map(c=>`<option value="${escHtml(c.customer_name)}">`).join('')}</datalist>
-      <label>Projekt/Text<input id="deb-project" placeholder="Projekt-Nr. oder Text"></label>
-      <label>Leistung von<input id="deb-period-start" type="date"></label><label>Leistung bis<input id="deb-period-end" type="date"></label>
-      <label>Netto<input id="deb-net" type="number" step="0.01" placeholder="0.00"></label><label>USt %<input id="deb-vat" type="number" step="0.01" value="19"></label>
-      <label>Skonto Betrag<input id="deb-discount" type="number" step="0.01"></label><label>Skonto bis<input id="deb-discount-date" type="date"></label>
-      <label>Titel<input id="deb-title" placeholder="Bezeichnung"></label><label>Status<select id="deb-status"><option value="draft">Entwurf</option><option value="open">Offen</option><option value="paid">Bezahlt</option></select></label>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:8px"><button class="btn-sm btn-open" onclick="saveDebitorInvoice()">Speichern</button><span style="font-size:12px;color:var(--tx2)">Speichert nur Stammdaten; Rechnungserstellung bleibt außerhalb von MAN#01.</span></div>
-  </div></div>`;
-}
-async function saveDebitorInvoice() {
-  if (gDebitorSchemaMissing) { toast('Migration fehlt — Speichern noch nicht möglich', 'err'); return; }
-  const entity = document.getElementById('deb-entity').value;
-  const kind = document.getElementById('deb-kind').value;
-  const nr = document.getElementById('deb-number').value.trim();
-  const runMatch = nr.match(/(\d+)(?!.*\d)/);
-  const runningNo = runMatch ? parseInt(runMatch[1], 10) : null;
-  const fiscalYear = (document.getElementById('deb-date').value || new Date().toISOString().slice(0,10)).slice(0,4);
-  const net = document.getElementById('deb-net').value;
-  const vat = document.getElementById('deb-vat').value || 19;
-  const discount = document.getElementById('deb-discount').value;
-  const gross = net ? (parseFloat(net) * (1 + parseFloat(vat)/100)) : null;
-  const expected = gross != null ? gross - (parseFloat(discount || 0)) : null;
-  const body = {
-    entity, document_kind: kind, running_no: runningNo, invoice_number_full: nr,
-    fiscal_year: parseInt(fiscalYear, 10), invoice_date: document.getElementById('deb-date').value || null,
-    customer_name: document.getElementById('deb-customer').value.trim() || '—', project_ref: document.getElementById('deb-project').value.trim() || null,
-    title: document.getElementById('deb-title').value.trim() || null, service_period_start: document.getElementById('deb-period-start').value || null,
-    service_period_end: document.getElementById('deb-period-end').value || null, net_amount: net ? parseFloat(net) : null,
-    vat_rate: vat ? parseFloat(vat) : null, discount_amount: discount ? parseFloat(discount) : null,
-    discount_due_date: document.getElementById('deb-discount-date').value || null, expected_payment_amount: expected,
-    payment_status: document.getElementById('deb-status').value
-  };
-  if (!body.invoice_number_full || !body.running_no) { toast('Rechnungsnummer mit laufender Nummer erforderlich', 'err'); return; }
-  const headers = await _supaAuthHeaders({ 'Content-Type': 'application/json', Prefer: 'return=representation' });
-  const res = await fetch(`${SUPA_REST}/debtor_invoices`, { method: 'POST', headers, body: JSON.stringify(body) });
-  if (!res.ok) { const txt = await res.text(); toast('Speichern fehlgeschlagen: ' + txt.slice(0,120), 'err'); return; }
-  toast('Debitoren-Rechnung gespeichert', 'ok');
-  document.getElementById('debitor-form-wrap').style.display = 'none';
-  await loadDebitoren(true);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7201,7 +6707,7 @@ async function loadAbgleich() {
   try {
     // Build filters
     let txnFilter = 'document_id=is.null&order=booking_date.desc&limit=2000';
-    let docFilter = 'txn_id=is.null&status=not.in.(rejected,duplicate,archived)&order=invoice_date.desc.nullslast&limit=2000';
+    let docFilter = 'txn_id=is.null&status=neq.rejected&order=invoice_date.desc.nullslast&limit=2000';
 
     if (entity !== 'all') {
       const entityMap = { priv: 'privat', c3: 'c3-convis-gmbh', c4: 'c4-convis-sarl' };
@@ -7481,9 +6987,8 @@ function renderDDDetail() {
   for (const t of txns) {
     const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
     const amt = parseFloat(t.amount) || 0;
-    // A1 (Iter 66): Vorzeichen aus amount (SSOT), nicht aus direction (siehe renderTxnTable)
-    const amtCls = amt > 0 ? 'amt-in' : amt < 0 ? 'amt-out' : 'amt-neu';
-    const amtSign = amt > 0 ? '+' : amt < 0 ? '−' : '';
+    const dir = (t.direction || '').toUpperCase();
+    const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
     const flags = [
       t.recurring_flag ? '🔁' : '',
       t.anna_relevant ? '👩' : '',
@@ -7495,7 +7000,7 @@ function renderDDDetail() {
       <td>${fmtDate(t.booking_date)}</td>
       <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(counterparty)}</td>
       <td>${entityBadge(t.entity)}</td>
-      <td class="${amtCls} num">${amtSign}${eur(Math.abs(amt))}</td>
+      <td class="${amtCls} num">${dir === 'OUT' ? '−' : '+'}${eur(Math.abs(amt))}</td>
       <td>${flags}</td>
     </tr>`;
   }
@@ -7525,15 +7030,14 @@ function renderCashflow() {
     if (!t.booking_date) continue;
     const mo = t.booking_date.substring(0, 7);
     if (!months[mo]) months[mo] = { IN: 0, OUT: 0, byEntity: {} };
-    // A1/C3 (Iter 66): IN/OUT + Entitäts-Netto aus dem Vorzeichen des Betrags (SSOT),
-    // nicht aus direction — so zählen auch Zeilen ohne direction korrekt und GESAMT bleibt konsistent.
-    const raw = parseFloat(t.amount) || 0;
-    if (raw > 0) months[mo].IN += raw;
-    else if (raw < 0) months[mo].OUT += Math.abs(raw);
+    const dir = (t.direction || '').toUpperCase();
+    const amt = Math.abs(parseFloat(t.amount) || 0);
+    if (dir === 'IN') months[mo].IN += amt;
+    if (dir === 'OUT') months[mo].OUT += amt;
     const ent = mapEntity(t.entity);
     entities.add(ent);
     if (!months[mo].byEntity[ent]) months[mo].byEntity[ent] = 0;
-    months[mo].byEntity[ent] += raw;
+    months[mo].byEntity[ent] += (dir === 'IN' ? amt : -amt);
   }
 
   const moKeys = Object.keys(months).sort();
@@ -7569,19 +7073,10 @@ function renderCashflow() {
 
   // Table
   const entCols = [...entities].sort();
-  // C2 (Iter 66): Spalten-Legende, damit die Cashflow-Zahlen erklärt sind (User-Vertrauen).
-  const cfLegend = `<div style="padding:8px 16px 2px;font-size:11px;color:var(--tx2);line-height:1.5">
-    <strong>Einnahmen</strong> = Summe der Eingänge (Betrag&nbsp;&gt;&nbsp;0) · <strong>Ausgaben</strong> = Summe der Abgänge (Betrag&nbsp;&lt;&nbsp;0) ·
-    <strong>Netto</strong>&nbsp;=&nbsp;Einnahmen&nbsp;−&nbsp;Ausgaben. Die Entitäts-Spalten (PRIV/C3/C4) zeigen das <strong>Netto pro Mandant</strong> im Monat
-    (<span style="color:var(--teal)">grün&nbsp;= Überschuss</span>, <span style="color:var(--red)">rot&nbsp;= Minus</span>).
-  </div>`;
-  let tableHtml = `<div class="card"><div class="card-head"><h2>📅 Cashflow Tabelle</h2></div>${cfLegend}<div class="tbl-wrap"><table>
+  let tableHtml = `<div class="card"><div class="card-head"><h2>📅 Cashflow Tabelle</h2></div><div class="tbl-wrap"><table>
     <thead><tr>
-      <th>Monat</th>
-      <th class="num" title="Summe aller Eingänge (Betrag > 0) im Monat">Einnahmen</th>
-      <th class="num" title="Summe aller Abgänge (Betrag < 0) im Monat">Ausgaben</th>
-      <th class="num" title="Netto = Einnahmen − Ausgaben">Netto</th>
-      ${entCols.map(e => `<th class="num" title="Netto (Einnahmen − Ausgaben) für ${e.toUpperCase()} in diesem Monat">${e.toUpperCase()}</th>`).join('')}
+      <th>Monat</th><th class="num">Einnahmen</th><th class="num">Ausgaben</th><th class="num">Netto</th>
+      ${entCols.map(e => `<th class="num">${e.toUpperCase()}</th>`).join('')}
     </tr></thead><tbody>`;
 
   let totIn = 0, totOut = 0;
@@ -7729,15 +7224,11 @@ function renderTxnTable() {
   for (const t of shown) {
     const counterparty = t.merchant_normalized || t.counterparty_raw || '—';
     const amt = parseFloat(t.amount) || 0;
-    // A1 (Iter 66): Vorzeichen aus dem gespeicherten Betrag (SSOT) ableiten, NICHT aus direction
-    // rekonstruieren. txn_master.amount trägt das korrekte Vorzeichen (Eingang +, Ausgang −);
-    // direction kann fehlen → sonst flippt/verschwindet das Vorzeichen in der Anzeige.
-    const amtCls = amt > 0 ? 'amt-in' : amt < 0 ? 'amt-out' : 'amt-neu';
-    const amtSign = amt > 0 ? '+' : amt < 0 ? '−' : '';
+    const dir = (t.direction || '').toUpperCase();
+    const amtCls = dir === 'IN' ? 'amt-in' : dir === 'OUT' ? 'amt-out' : 'amt-neu';
     const acctShort = t.account_iban ? t.account_iban.slice(-4) : '—';
     const acctLabel = t.account_name ? `${t.account_name} ···${acctShort}` : (t.account_iban ? `···${acctShort}` : '—');
-    // E1 (Iter 66): voller Zweck-Text (CSV-Beleg), nicht mehr auf 50 Zeichen abgeschnitten.
-    const purposeFull = t.purpose || '—';
+    const purposeShort = (t.purpose || '').slice(0, 50) + ((t.purpose || '').length > 50 ? '…' : '');
     const detailId = `txn-detail-${t.id}`;
     const reconcileCell = t.document_id
       ? `<span style="color:var(--grn);font-size:11px;font-weight:600" title="Dokument ${t.document_id} verknüpft">🔗 Doc</span>`
@@ -7759,11 +7250,11 @@ function renderTxnTable() {
       <td style="white-space:nowrap">${fmtDate(t.booking_date)}</td>
       <td style="font-size:11px;white-space:nowrap;color:var(--tx2)">${escHtml(acctLabel)}</td>
         <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.counterparty_raw || '—')}</td>
-      <td style="max-width:340px;white-space:normal;word-break:break-word;font-size:11px;line-height:1.4" title="${escHtml(t.purpose || '')}">${escHtml(purposeFull)}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(t.purpose || '')}">${escHtml(purposeShort)}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l1 || '—')}</td>
       <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${escHtml(t.category_l2 || '—')}</td>
       <td>${entityBadge(t.entity)}</td>
-      <td class="${amtCls} num" style="white-space:nowrap">${amtSign}${eur(Math.abs(amt))}</td>
+      <td class="${amtCls} num" style="white-space:nowrap">${dir === 'OUT' ? '−' : dir === 'IN' ? '+' : ''}${eur(Math.abs(amt))}</td>
       <td>${reconcileCell}</td>
     </tr>${detailRow}`;
   }
@@ -7889,9 +7380,7 @@ function setDocFinFilter(key, val) {
 
 function renderDocsFinTable() {
   const wrap = document.getElementById('docs-fin-table-wrap');
-  // 66.C: Duplikate/archivierte raus aus der aktiven Finanz-Dokumentenliste (sie bleiben
-  // korrekt als 'duplicate' geflaggt und in „Alle Dokumente" sichtbar — nur nicht hier).
-  let rows = filteredDocs().filter(r => r.status !== 'rejected' && r.status !== 'duplicate' && r.status !== 'archived');
+  let rows = filteredDocs().filter(r => r.status !== 'rejected');
   const f = docFinFilter;
   if (f.entity) rows = rows.filter(r => mapEntity(r.entity) === f.entity);
   if (f.doc_type) rows = rows.filter(r => (r.doc_type || '').toUpperCase() === f.doc_type);
@@ -8091,7 +7580,7 @@ async function loadVertraege() {
     // Letzte Belege laden (für "Letzter Beleg"-Spalte)
     let lastDocs = {};
     try {
-      const recentDocs = await supa(`documents?select=id,provider,drive_file_id,drive_file_name,invoice_date&status=not.in.(rejected,duplicate,archived)&order=invoice_date.desc&limit=200`);
+      const recentDocs = await supa(`documents?select=id,provider,drive_file_id,drive_file_name,invoice_date&status=neq.rejected&order=invoice_date.desc&limit=200`);
       for (const d of recentDocs) {
         const prov = (d.provider || '').toLowerCase().trim();
         if (prov && !lastDocs[prov]) lastDocs[prov] = d;
@@ -8391,7 +7880,7 @@ async function loadSteckbriefInvoices(c) {
     let invoices = [];
 
     if (provSearch.length >= 3) {
-      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(RECHNUNG,ZAHLUNGSBELEG)&status=not.in.(rejected,duplicate,archived)&order=invoice_date.desc.nullslast&limit=24`);
+      invoices = await supa(`documents?select=id,provider,doc_type,drive_file_id,drive_file_name,invoice_date,amount,currency,entity,status&provider=ilike.*${provSearch}*&doc_type=in.(RECHNUNG,ZAHLUNGSBELEG)&status=neq.rejected&order=invoice_date.desc.nullslast&limit=24`);
     }
 
     if (!invoices || !invoices.length) {
@@ -10436,7 +9925,7 @@ async function loadMaBlock1(monthStart, monthEnd, selMonth) {
 
   try {
     // Dokumente des Monats laden (mit neuen Feldern)
-    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id,party_role&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=not.in.(rejected,duplicate,archived)&order=entity,invoice_date`;
+    let q = `documents?select=id,provider,entity,invoice_date,date_received,doc_type,amount,currency,status,drive_file_id,drive_file_name,source,sent_to_accountant_at,sent_mail_link,skip_accountant,txn_id,party_role&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected&order=entity,invoice_date`;
     let docs = await supa(q);
 
     // Entity-Filter
@@ -10620,7 +10109,7 @@ async function loadMaBlock2(monthStart, monthEnd) {
       contracts = contracts.filter(c => mapEntity(c.entity) === gEntity);
     }
 
-    const docs = await supa(`documents?select=id,provider,entity,invoice_date,drive_file_id,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=not.in.(rejected,duplicate,archived)`);
+    const docs = await supa(`documents?select=id,provider,entity,invoice_date,drive_file_id,drive_file_name&invoice_date=gte.${monthStart}&invoice_date=lt.${monthEnd}&status=neq.rejected`);
 
     if (!contracts.length) {
       wrap.innerHTML = `<div class="alert alert-info">📄 Keine aktiven Verträge gefunden</div>`;
@@ -10876,7 +10365,7 @@ async function _apLoadDocsAndMissing() {
 
   try {
     const { start, end } = _apMonthRange(_apState.year, _apState.month);
-    let q = `documents?select=id,provider,entity,invoice_date,doc_type,amount,currency,drive_file_name,sent_to_accountant_at,skip_accountant&invoice_date=gte.${start}&invoice_date=lt.${end}&status=not.in.(rejected,duplicate,archived)&order=invoice_date`;
+    let q = `documents?select=id,provider,entity,invoice_date,doc_type,amount,currency,drive_file_name,sent_to_accountant_at,skip_accountant&invoice_date=gte.${start}&invoice_date=lt.${end}&status=neq.rejected&order=invoice_date`;
     let docs = await supa(q);
     if (_apState.entity) docs = docs.filter(d => mapEntity(d.entity) === _apState.entity);
     docs = docs.filter(d => !d.skip_accountant);
@@ -11938,23 +11427,15 @@ async function loadTriage() {
     // Build PostgREST query
     const fields = 'id,project_id,doc_type,target_stream,provider,entity,counterparty_entity,recipient,party_role,amount,currency,invoice_date,date_received,processing_state,status,drive_file_id,drive_file_name,skills_done_versions,subject,mail_subject,routing_reason,confidence_score';
     const filters = [];
-    // F2 (Iter 66): Eine ID-Suche (#7322 / 7322) holt das Doc DIREKT per id und ignoriert den
-    // Status-Filter — sonst landet die Triage-Navigation auf leer, wenn das Doc einen Status
-    // außerhalb des Default-Filters hat (z.B. triaged/approved) → „toter" Triage-Button.
-    const idSearchEarly = search.match(/^#?(\d+)$/);
-    if (idSearchEarly) {
-      filters.push(`id=eq.${Number(idSearchEarly[1])}`);
-    } else {
-      if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
-      else if (status === 'inbox') filters.push('processing_state=eq.inbox');
-      else if (status === 'needs_review') filters.push('processing_state=eq.needs_review');
-      else if (status === 'source_lost') filters.push('processing_state=eq.source_lost');
-      else if (status === 'all_active') filters.push('processing_state=in.(inbox,needs_review,triaged,source_lost)');
+    if (status === 'action_needed') filters.push('processing_state=in.(inbox,needs_review,source_lost)');
+    else if (status === 'inbox') filters.push('processing_state=eq.inbox');
+    else if (status === 'needs_review') filters.push('processing_state=eq.needs_review');
+    else if (status === 'source_lost') filters.push('processing_state=eq.source_lost');
+    else if (status === 'all_active') filters.push('processing_state=in.(inbox,needs_review,triaged,source_lost)');
 
-      if (gTriageFilters.entity.length)   filters.push(`entity=in.(${gTriageFilters.entity.map(encodeURIComponent).join(',')})`);
-      if (gTriageFilters.provider.length) filters.push(`provider=in.(${gTriageFilters.provider.map(encodeURIComponent).join(',')})`);
-      if (gTriageFilters.doc_type.length) filters.push(`doc_type=in.(${gTriageFilters.doc_type.map(encodeURIComponent).join(',')})`);
-    }
+    if (gTriageFilters.entity.length)   filters.push(`entity=in.(${gTriageFilters.entity.map(encodeURIComponent).join(',')})`);
+    if (gTriageFilters.provider.length) filters.push(`provider=in.(${gTriageFilters.provider.map(encodeURIComponent).join(',')})`);
+    if (gTriageFilters.doc_type.length) filters.push(`doc_type=in.(${gTriageFilters.doc_type.map(encodeURIComponent).join(',')})`);
 
     const orderField = dateField === 'invoice_date' ? 'invoice_date.desc.nullslast' : 'date_received.desc.nullslast';
     const url = `documents?select=${fields}&${filters.join('&')}&order=${orderField}&limit=100`;
@@ -13739,6 +13220,9 @@ const ACTION_GROUPS = [
 let gAlleDocsRows = [];
 let gAlleDocsFilters = { status: 'all', doctype: 'all', party: 'all' };
 let gAlleDocsQDebounce = null;
+let gAlleDocsOffset = 0;
+let gAlleDocsHasMore = false;
+const ALLE_DOCS_PAGE = 50;
 
 function alleDocsQDebounce() {
   if (gAlleDocsQDebounce) clearTimeout(gAlleDocsQDebounce);
@@ -13749,17 +13233,22 @@ function setAlleDocsChip(group, value, btn) {
   gAlleDocsFilters[group] = value;
   document.querySelectorAll(`[data-alle-filter="${group}"]`).forEach(c => c.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  renderAlleDocs();
+  if (group === 'status') {
+    loadAlleDocs();  // server-side status filter — new fetch, resets offset
+  } else {
+    renderAlleDocs();
+  }
 }
 
 function resetAlleDocs() {
   gAlleDocsFilters = { status: 'all', doctype: 'all', party: 'all' };
+  gAlleDocsOffset = 0;
   const q = document.getElementById('alle-docs-q'); if (q) q.value = '';
   const id = document.getElementById('alle-docs-id'); if (id) id.value = '';
   document.querySelectorAll('[data-alle-filter]').forEach(c => {
     c.classList.toggle('active', c.dataset.alleValue === 'all');
   });
-  loadAlleDocs();
+  loadAlleDocs(false);
 }
 
 function jumpToDocId() {
@@ -13784,25 +13273,39 @@ function jumpToDocId() {
     });
 }
 
-async function loadAlleDocs() {
+async function loadAlleDocs(resetOffset) {
+  if (resetOffset !== false) gAlleDocsOffset = 0;
   const wrap = document.getElementById('alle-docs-content');
   if (!wrap) return;
   wrap.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div> Lade Dokumente…</div>`;
   try {
     const q = (document.getElementById('alle-docs-q')?.value || '').trim();
     const fields = 'id,project_id,date_received,date_scanned,invoice_date,provider,subject,entity,recipient,doc_type,amount,currency,status,processing_state,target_stream,drive_file_id,drive_file_name,party_role,routing_reason,counterparty_entity,contract_id,supplier_id';
-    let path = `documents?select=${fields}&order=id.desc&limit=200`;
+    let path = `documents?select=${fields}&order=id.desc&limit=${ALLE_DOCS_PAGE}&offset=${gAlleDocsOffset}`;
+    // Status server-side wenn spezifisch gesetzt (deckt duplicate/rejected ab die client-seitig nie ankämen)
+    if (gAlleDocsFilters.status !== 'all') {
+      path += `&status=eq.${encodeURIComponent(gAlleDocsFilters.status)}`;
+    }
     if (q) {
-      // PostgREST OR over provider/drive_file_name/subject — ilike
       const esc = encodeURIComponent(`*${q}*`);
       path += `&or=(provider.ilike.${esc},drive_file_name.ilike.${esc},subject.ilike.${esc})`;
     }
-    const data = await supa(path);
-    gAlleDocsRows = data.filter(r => !isTestData(r));
+    const rawData = await supa(path);
+    gAlleDocsHasMore = rawData.length === ALLE_DOCS_PAGE;
+    gAlleDocsRows = rawData.filter(r => !isTestData(r));
     renderAlleDocs();
   } catch (e) {
     wrap.innerHTML = `<div class="alert alert-err">⚠️ Verbindung fehlgeschlagen<br><small>${escHtml(e.message)}</small></div>`;
   }
+}
+
+function alleDocsPrev() {
+  gAlleDocsOffset = Math.max(0, gAlleDocsOffset - ALLE_DOCS_PAGE);
+  loadAlleDocs(false);
+}
+function alleDocsNext() {
+  gAlleDocsOffset += ALLE_DOCS_PAGE;
+  loadAlleDocs(false);
 }
 
 function renderAlleDocs(forceShowAll) {
@@ -13842,7 +13345,7 @@ function renderAlleDocs(forceShowAll) {
 
   let html = `
     <div style="font-size:11px;color:var(--tx2);margin-bottom:8px;display:flex;justify-content:space-between;">
-      <span>${shown} von ${total} geladene Docs · max 200 pro Query</span>
+      <span>${shown} Docs · Seite ${Math.floor(gAlleDocsOffset / ALLE_DOCS_PAGE) + 1} (Offset ${gAlleDocsOffset}${gAlleDocsHasMore ? ', mehr vorhanden' : ''})</span>
       <span>Klick auf Zeile = Drive-PDF (neuer Tab) · 📋 = Seitenpanel · 🎯 = Triage öffnen</span>
     </div>
     <div class="card"><div class="inbox-table-wrap mobile-table-cards">
@@ -13867,9 +13370,7 @@ function renderAlleDocs(forceShowAll) {
     const driveOpen = r.drive_file_id
       ? `onclick="window.open('https://drive.google.com/file/d/${r.drive_file_id}/view','_blank')" style="cursor:pointer;"`
       : `style="cursor:default;"`;
-    // F2 (Iter 66): kanonische gotoTriageDoc() nutzen (setzt '#'+id korrekt für die ID-Suche).
-    // Vorher: Inline-Handler ohne '#'-Präfix → Suche fand nichts → Button wirkte „tot".
-    const triageBtn = `<button class="btn-sm btn-secondary" onclick="event.stopPropagation();gotoTriageDoc(${r.id})" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:4px 8px;">🎯 Triage</button>`;
+    const triageBtn = `<button class="btn-sm btn-secondary" onclick="event.stopPropagation();showPage('triage',document.querySelector('[onclick*=triage]'));setTimeout(()=>{const f=document.getElementById('triage-search');if(f){f.value='${r.id}';f.dispatchEvent(new Event('input'));}},300);" title="Im Triage-Tab nach dieser ID filtern" style="font-size:10px;padding:4px 8px;">🎯 Triage</button>`;
     const panelBtn = `<button class="btn-sm btn-neutral" onclick="event.stopPropagation();openSidePanelForDocId(${r.id});" title="Seitenpanel öffnen — Vorschau, Felder korrigieren, Re-Filing (Drive-Move)" style="font-size:10px;padding:4px 8px;">📋 Details</button>`;
     const partyBadge = partyRoleBadge(r.party_role);
     const stateHint = r.processing_state ? `<div style="font-size:10px;color:var(--tx2);margin-top:3px;">state=${escHtml(r.processing_state)}</div>` : '';
@@ -13890,6 +13391,27 @@ function renderAlleDocs(forceShowAll) {
 
   html += `</tbody></table></div></div>`;
   wrap.innerHTML = html;
+
+  // Pagination-Footer
+  if (gAlleDocsOffset > 0 || gAlleDocsHasMore) {
+    const pg = document.createElement('div');
+    pg.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:8px;';
+    if (gAlleDocsOffset > 0) {
+      const b = document.createElement('button');
+      b.className = 'btn-sm';
+      b.textContent = '← Vorherige 50';
+      b.onclick = alleDocsPrev;
+      pg.appendChild(b);
+    }
+    if (gAlleDocsHasMore) {
+      const b = document.createElement('button');
+      b.className = 'btn-sm';
+      b.textContent = 'Nächste 50 →';
+      b.onclick = alleDocsNext;
+      pg.appendChild(b);
+    }
+    wrap.appendChild(pg);
+  }
 }
 
 function loadActions() {
@@ -15037,7 +14559,7 @@ async function _spKbSave() {
     }
     await _spKbAuditLog(state.mode, resultId, state.before, body, doc?.id ?? null);
     status.innerHTML = `✅ ${state.mode === 'edit' ? 'aktualisiert' : 'angelegt'} (kb_suppliers #${resultId ?? '?'}) + Audit-Log.`;
-    setTimeout(() => { _spKbModalClose(); _spKbRefreshList(); if (document.getElementById('page-regeln')?.classList.contains('active')) loadRegeln(); }, 700);
+    setTimeout(() => { _spKbModalClose(); _spKbRefreshList(); }, 700);
   } catch (e) {
     status.textContent = `❌ ${e.message}`;
     btn.disabled = false;
@@ -15060,7 +14582,6 @@ async function _spKbToggleActive(kbId, isInactive) {
     await _spKbAuditLog(target ? 'activate' : 'deactivate', kbId, before, { active: target }, _sidePanelCurrentDoc?.id ?? null);
     if (typeof showToast === 'function') showToast('success', `Pattern #${kbId} ${target ? 'aktiviert' : 'deaktiviert'}.`);
     _spKbRefreshList();
-    if (document.getElementById('page-regeln')?.classList.contains('active')) loadRegeln();
   } catch (e) {
     if (typeof showToast === 'function') showToast('error', `Fehler: ${e.message}`); else alert(`Fehler: ${e.message}`);
   }
@@ -15088,167 +14609,6 @@ async function _spKbRefreshList() {
   const cont = document.getElementById('sp-supplier-content');
   if (cont) cont.innerHTML = '<div style="font-size:11px;color:var(--tx2);">…aktualisiere Supplier-Wissen</div>';
   await _spRefreshSupplierSection(doc);
-}
-
-// ═══════════════════════════════════════════════════════
-//  REGELN — kb_suppliers-Werkbank (Iter 66)
-//  Zentrale Verwaltung der Kategorisierungs-Regeln. Wiederverwendet die
-//  bestehende CRUD (_spKbEditOpen / _spKbSave / _spKbToggleActive + Audit-Log).
-// ═══════════════════════════════════════════════════════
-let gRegeln = [];
-
-async function loadRegeln() {
-  const wrap = document.getElementById('regeln-table-wrap');
-  if (!wrap) return;
-  wrap.innerHTML = '<div class="spinner-wrap"><div class="spinner"></div> Lade Regeln…</div>';
-  try {
-    const data = await supa('kb_suppliers?select=id,pattern,match_type,name_normalized,category_l1,category_l2,category_l3,entity,source,active,confidence,verification_count,conflict_count,times_seen,last_seen,sends_pdf_invoices,recurring,notes&order=name_normalized.asc.nullslast,id.asc&limit=2000');
-    gRegeln = data || [];
-    const entSel = document.getElementById('regeln-f-entity');
-    const srcSel = document.getElementById('regeln-f-source');
-    const ents = [...new Set(gRegeln.map(r => r.entity).filter(Boolean))].sort();
-    const srcs = [...new Set(gRegeln.map(r => r.source).filter(Boolean))].sort();
-    if (entSel) entSel.innerHTML = '<option value="">Alle Entitäten</option>' + ents.map(e => `<option value="${escHtml(e)}">${escHtml(e)}</option>`).join('');
-    if (srcSel) srcSel.innerHTML = '<option value="">Alle Quellen</option>' + srcs.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
-    if (typeof gTxns === 'undefined' || !gTxns || !gTxns.length) { loadTxns().then(() => renderRegeln()).catch(() => {}); }
-    renderRegeln();
-  } catch (e) {
-    wrap.innerHTML = `<div class="alert alert-err">⚠️ Konnte Regeln nicht laden: ${escHtml(e.message)}</div>`;
-  }
-}
-
-const _regelnNorm = s => (s || '').trim().toUpperCase();
-
-// Konflikt: ≥2 AKTIVE Regeln, gleiche Gegenseite (name_normalized/pattern), versch. Kategorie (L1/L2)
-function _regelnConflictIds() {
-  const groups = {};
-  for (const r of gRegeln) {
-    if (r.active === false) continue;
-    const key = _regelnNorm(r.name_normalized || r.pattern);
-    if (key) (groups[key] = groups[key] || []).push(r);
-  }
-  const ids = new Set();
-  for (const k in groups) {
-    const grp = groups[k];
-    if (grp.length < 2) continue;
-    if (new Set(grp.map(r => `${r.category_l1 || ''}/${r.category_l2 || ''}`)).size > 1) grp.forEach(r => ids.add(r.id));
-  }
-  return ids;
-}
-
-function _regelnMatchText(rule, txt) {
-  const pat = (rule.pattern || '').trim(); if (!pat) return false;
-  if (rule.match_type === 'contains') return _regelnNorm(txt).includes(_regelnNorm(pat));
-  if (rule.match_type === 'exact') return _regelnNorm(txt) === _regelnNorm(pat);
-  if (rule.match_type === 'regex') { try { return new RegExp(pat, 'i').test(txt || ''); } catch (e) { return false; } }
-  return false;
-}
-function _regelnTxnCount(rule) {
-  if (typeof gTxns === 'undefined' || !gTxns) return null;
-  // entitäts-genau: eine C4-Regel zählt NUR C4-Buchungen (sonst zählt „FINANZAMT" auch C3 mit).
-  const re = rule.entity ? mapEntity(rule.entity) : null;
-  let n = 0;
-  for (const t of gTxns) {
-    if (re && mapEntity(t.entity) !== re) continue;
-    if (_regelnMatchText(rule, (t.counterparty_raw || '') + ' ' + (t.purpose || ''))) n++;
-  }
-  return n;
-}
-
-function renderRegeln() {
-  const wrap = document.getElementById('regeln-table-wrap');
-  if (!wrap) return;
-  const q = (document.getElementById('regeln-search')?.value || '').toLowerCase().trim();
-  const fEnt = document.getElementById('regeln-f-entity')?.value || '';
-  const fSrc = document.getElementById('regeln-f-source')?.value || '';
-  const fAct = document.getElementById('regeln-f-active')?.value || '';
-  const onlyConf = document.getElementById('regeln-f-conflicts')?.checked;
-  const conflicts = _regelnConflictIds();
-
-  let rows = gRegeln.slice();
-  if (fAct === 'active') rows = rows.filter(r => r.active !== false);
-  else if (fAct === 'inactive') rows = rows.filter(r => r.active === false);
-  if (fEnt) rows = rows.filter(r => r.entity === fEnt);
-  if (fSrc) rows = rows.filter(r => r.source === fSrc);
-  if (onlyConf) rows = rows.filter(r => conflicts.has(r.id));
-  if (q) rows = rows.filter(r => [r.pattern, r.name_normalized, r.category_l1, r.category_l2, r.category_l3, r.entity, r.source].some(v => (v || '').toLowerCase().includes(q)));
-
-  const total = gRegeln.length, act = gRegeln.filter(r => r.active !== false).length;
-  const stats = [['Regeln gesamt', total, 'kb_suppliers'], ['aktiv', act, 'im Match-Pool'], ['inaktiv', total - act, 'deaktiviert'], ['⚠️ Konflikte', conflicts.size, 'gleiche Gegenseite, versch. Kategorie'], ['gefiltert', rows.length, 'aktuelle Ansicht']];
-  const statsEl = document.getElementById('regeln-stats');
-  if (statsEl) statsEl.innerHTML = stats.map(([l, v, s]) => `<div style="background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:11px 14px;"><div style="font-size:22px;font-weight:700;color:var(--tx0)">${v}</div><div style="font-size:12px;color:var(--tx1);font-weight:600">${l}</div><div style="font-size:10px;color:var(--tx2)">${s}</div></div>`).join('');
-
-  if (!rows.length) { wrap.innerHTML = '<div class="alert alert-info" style="margin:12px">Keine Regeln für diesen Filter.</div>'; return; }
-
-  let html = '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Pattern</th><th>Match</th><th>→ Kategorie (L1/L2/L3)</th><th>Entität</th><th>Quelle</th><th class="num" title="Bestätigungen / Konflikte">✓/✗</th><th class="num" title="passende Transaktionen im geladenen Fenster">Tx</th><th>Status</th><th>Aktionen</th></tr></thead><tbody>';
-  for (const r of rows.slice(0, 800)) {
-    const isConf = conflicts.has(r.id);
-    const cat = [r.category_l1, r.category_l2, r.category_l3].filter(Boolean).join(' / ') || '<span style="color:var(--tx2)">—</span>';
-    const txc = _regelnTxnCount(r);
-    const txCell = txc == null ? '<span style="color:var(--tx2)">…</span>' : (txc > 0 ? `<button class="btn-sm" onclick="regelnShowTxns(${r.id})" title="diese ${txc} Transaktionen anzeigen" style="font-size:11px;padding:2px 8px;color:var(--blu)">${txc}</button>` : '0');
-    html += `<tr${isConf ? ' style="background:rgba(245,158,11,0.10)"' : ''}>`
-      + `<td style="color:var(--tx2);font-size:11px">${r.id}</td>`
-      + `<td style="max-width:240px;word-break:break-word"><strong>${escHtml(r.pattern || '—')}</strong>${isConf ? ' <span title="Konflikt: dieselbe Gegenseite in mehreren aktiven Regeln mit unterschiedlicher Kategorie" style="font-size:10px;background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;padding:1px 5px;border-radius:3px">⚠️ Konflikt</span>' : ''}${r.name_normalized && r.name_normalized !== r.pattern ? `<br><span style="font-size:10px;color:var(--tx2)">${escHtml(r.name_normalized)}</span>` : ''}</td>`
-      + `<td style="font-size:11px;color:var(--tx2)">${escHtml(r.match_type || '—')}</td>`
-      + `<td style="font-size:12px">${cat}</td>`
-      + `<td>${entityBadge(r.entity)}</td>`
-      + `<td style="font-size:11px;color:var(--tx2)">${escHtml(r.source || '—')}</td>`
-      + `<td class="num" style="font-size:11px">${r.verification_count ?? 0}/${r.conflict_count ?? 0}</td>`
-      + `<td class="num">${txCell}</td>`
-      + `<td>${r.active === false ? '<span class="pill" style="background:#e5e7eb;color:#6b7280">inaktiv</span>' : '<span class="pill pill-approved">aktiv</span>'}</td>`
-      + `<td style="white-space:nowrap"><button class="btn-sm" onclick="_spKbEditOpen(${r.id})" title="bearbeiten" style="font-size:11px;padding:2px 7px">✏️</button>`
-      + ` <button class="btn-sm" onclick="_spKbToggleActive(${r.id}, ${r.active === false})" title="${r.active === false ? 'aktivieren' : 'deaktivieren'}" style="font-size:11px;padding:2px 7px">${r.active === false ? '↑' : '⏸'}</button>`
-      + ` <button class="btn-sm btn-danger" onclick="regelnDelete(${r.id})" title="löschen (endgültig)" style="font-size:11px;padding:2px 7px">🗑</button></td>`
-      + '</tr>';
-  }
-  html += `</tbody></table></div><div class="tbl-footer"><span>${rows.length} Regeln${rows.length > 800 ? ' (erste 800)' : ''}</span><span style="color:var(--tx2);font-size:11px">„Tx" zählt im geladenen Transaktions-Fenster (ab 2026-01)</span></div>`;
-  wrap.innerHTML = html;
-}
-
-function regelnAddOpen() {
-  if (typeof _spKbModalState === 'undefined') { toast('Modal nicht bereit', 'err'); return; }
-  _spKbModalState = { mode: 'add', kbId: null, before: null };
-  document.getElementById('kb-modal-title').textContent = 'Neue Regel (kb_suppliers)';
-  document.getElementById('kb-modal-subtitle').textContent = 'Pattern + Kategorie + Entität. Nach Save: 1× verified → sofort im Match-Pool.';
-  _spKbFormFill({ pattern: '', name_normalized: '', entity: '', category_l1: '', category_l2: '', category_l3: '', recurring: false, active: true });
-  _spKbModalShow();
-}
-
-async function regelnDelete(kbId) {
-  const r = gRegeln.find(x => x.id === kbId);
-  if (!confirm(`Regel #${kbId} (${r?.pattern || ''}) WIRKLICH löschen?\n\nTipp: „Deaktivieren" (⏸) ist meist besser — die Regel bleibt erhalten, wird aber nicht mehr angewendet. Löschen ist endgültig.`)) return;
-  try {
-    const before = await _spFetchKbById(kbId);
-    const headers = await _supaAuthHeaders({ Prefer: 'return=minimal' });
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/kb_suppliers?id=eq.${+kbId}`, { method: 'DELETE', headers });
-    if (!res.ok) throw new Error(`DELETE ${res.status}`);
-    await _spKbAuditLog('delete', kbId, before, null, null);
-    toast(`Regel #${kbId} gelöscht`);
-    loadRegeln();
-  } catch (e) { toast('Fehler: ' + e.message, 'err'); }
-}
-
-// „diese N Transaktionen anzeigen" → Finanzen→Transaktionen, gefiltert auf Entität+Pattern der Regel
-function regelnShowTxns(kbId) {
-  const r = gRegeln.find(x => x.id === kbId); if (!r) return;
-  const ent = r.entity ? mapEntity(r.entity) : 'all';            // 'priv'|'c3'|'c4'|'all'
-  const entOk = ['priv', 'c3', 'c4'].includes(ent);
-  const finBtn = document.querySelector('.nav-item[onclick*="finanzen"]');
-  if (finBtn) showPage('finanzen', finBtn);
-  // globalen Entitäts-Filter auf die Regel-Entität setzen (sonst überlagern sich global + Panel)
-  if (entOk) {
-    gEntity = ent;
-    document.querySelectorAll('[data-entity]').forEach(b => b.classList.toggle('active', b.getAttribute('data-entity') === ent));
-  }
-  const txnTab = Array.from(document.querySelectorAll('.fin-tab')).find(b => (b.getAttribute('onclick') || '').includes('transaktionen'));
-  if (txnTab) showFinTab('transaktionen', txnTab);
-  setTimeout(() => {
-    txnFilterState = { entity: entOk ? ent : 'all', l1: '', l2: '', l3: '', flag: '', search: r.pattern || '' };
-    renderTxnFilters();
-    const s = document.getElementById('txn-f-search'); if (s) s.value = r.pattern || '';
-    const eS = document.getElementById('txn-f-entity'); if (eS && entOk) eS.value = ent;
-    renderTxnTable();
-  }, 120);
 }
 
 async function _spRefreshSupplierSection(doc) {
