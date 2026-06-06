@@ -1,3 +1,4 @@
+<!-- TGV Dashboard v11.90.0 — 2026-06-06 — Iter 70.3: Login-Gate rollenbasiert (isAllowedUser prüft auth_allowed_users.role='admin' statt UUID-Hardcode; JC_USER_ID = Failsafe-Fallback). DB erzwingt Admin-only seit Mig 157-160. -->
 <!-- TGV Dashboard v11.89.2 — 2026-06-05 — Iter 68.2: Alle-Docs duplicate/rejected Chips + Paginierung (limit 200→50 + prev/next + server-side status filter) -->
 <!-- TGV Dashboard v11.89.1 — 2026-06-01 — Iter 66 Fix: Regeln-Seite „# Tx" + Durchstich
      jetzt ENTITÄTS-GENAU (eine C4-Regel zählt/zeigt nur C4-Buchungen, nicht entitäts-blind
@@ -101,8 +102,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.89.2">
-<title>TGV Dashboard v11.89.2 — Financial OS</title>
+<meta name="version" content="11.90.0">
+<title>TGV Dashboard v11.90.0 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -4723,8 +4724,23 @@ function showDashboard() {
   buildPeriodFilter(); // C1: Monats-Buttons seeden (Failsafe-Monate, vor Daten-Load)
 }
 
-function isAllowedUser(user) {
-  return user && user.id === JC_USER_ID;
+// Iter 70.3: rollenbasiert statt UUID-Hardcode — prüft auth_allowed_users.role='admin'
+// (RLS self_read erlaubt dem User seine eigene Zeile). JC_USER_ID bleibt als
+// Failsafe-Fallback gegen Lockout, falls die Allowlist-Abfrage mal scheitert.
+async function isAllowedUser(user) {
+  if (!user) return false;
+  if (user.id === JC_USER_ID) return true;
+  try {
+    const { data, error } = await _supaClient
+      .from('auth_allowed_users')
+      .select('role, active')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error || !data) return false;
+    return data.active === true && data.role === 'admin';
+  } catch (e) {
+    return false;
+  }
 }
 
 async function authLogin() {
@@ -4738,7 +4754,7 @@ async function authLogin() {
   try {
     const { data, error } = await _supaClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    if (!isAllowedUser(data.user)) {
+    if (!(await isAllowedUser(data.user))) {
       await _supaClient.auth.signOut();
       showAuthGate('denied');
     } else {
@@ -4815,13 +4831,16 @@ async function initAuth() {
 
   showAuthGate('login');
   const { data: { session } } = await _supaClient.auth.getSession();
-  if (session && isAllowedUser(session.user)) {
-    showDashboard();
-    loadUebersicht();
-    loadMdCategories();
-  } else if (session && !isAllowedUser(session.user)) {
-    await _supaClient.auth.signOut();
-    showAuthGate('denied');
+  if (session) {
+    const allowed = await isAllowedUser(session.user);
+    if (allowed) {
+      showDashboard();
+      loadUebersicht();
+      loadMdCategories();
+    } else {
+      await _supaClient.auth.signOut();
+      showAuthGate('denied');
+    }
   }
 }
 
