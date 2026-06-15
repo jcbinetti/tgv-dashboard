@@ -1,4 +1,9 @@
-<!-- TGV Dashboard v11.90.0 — 2026-06-06 — Iter 70.3: Login-Gate rollenbasiert (isAllowedUser prüft auth_allowed_users.role='admin' statt UUID-Hardcode; JC_USER_ID = Failsafe-Fallback). DB erzwingt Admin-only seit Mig 157-160. -->
+<!-- TGV Dashboard v11.89.3 — 2026-06-15 — CORE-Dashboard-Cleanup (Verständlichkeit, Quick-Wins, NUR Text/additiv):
+     tote Iter-Hinweise raus (Projekte „Iter 22+", Linkrate „~53% Iter 15", Mail-Rules „CRUD geplant Iter 20", „Iter 29.C2");
+     Skript-/Tabellennamen aus sichtbarem Text in title=-Tooltips (topology.json, prf_contracts, kb_suppliers, agent_events,
+     outbound_mails, entity_signatures, USER_DOCS-Pfade, Cytoscape, KONZEPT_v2); Kern-Abkürzungen 1× inline erklärt
+     (Triage→Dokumente prüfen, Reconcile→Bank-Abgleich, Linkrate→Beleg-zu-Buchung-Quote, Txn→Buchung, Conf→KI-Sicherheit,
+     L1/L2→Haupt-/Unterkategorie). KEINE Strukturänderung (kommt mit PLAT#03). Worklist: 01_ITERATIONS/AUDIT_2026-06-14/DASHBOARD_CLEANUP_WORKLIST.md -->
 <!-- TGV Dashboard v11.89.2 — 2026-06-05 — Iter 68.2: Alle-Docs duplicate/rejected Chips + Paginierung (limit 200→50 + prev/next + server-side status filter) -->
 <!-- TGV Dashboard v11.89.1 — 2026-06-01 — Iter 66 Fix: Regeln-Seite „# Tx" + Durchstich
      jetzt ENTITÄTS-GENAU (eine C4-Regel zählt/zeigt nur C4-Buchungen, nicht entitäts-blind
@@ -102,8 +107,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="version" content="11.90.0">
-<title>TGV Dashboard v11.90.0 — Financial OS</title>
+<meta name="version" content="11.89.2">
+<title>TGV Dashboard v11.89.2 — Financial OS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2763,63 +2768,63 @@ body.chat-open #main-content {
       <span class="nav-badge" id="inbox-badge" style="display:none">0</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('triage', this)" title="Skill-driven Multi-Select pro Doc (UI-C, Iter 15.2). Korrigiere doc_type, Entity, Provider und triggere Skills.">
+    <button class="nav-item" onclick="showPage('triage', this)" title="Einzelne Dokumente prüfen, korrigieren (Typ, Entität, Anbieter) und die passende Verarbeitung starten.">
       <span class="nav-icon">🎯</span>
       <span class="nav-label">Triage</span>
       <span class="nav-badge" id="triage-badge" style="display:none;background:var(--blu)">0</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('finanzen', this)" title="L1/L2/L3 Drilldown, Cashflow, Transaktionen, Doc-Liste, Reconcile-Abgleich">
+    <button class="nav-item" onclick="showPage('finanzen', this)" title="Kategorien (Ebenen L1/L2/L3), Cashflow, Transaktionen, Dokument-Liste, Bank-Abgleich">
       <span class="nav-icon">💶</span>
       <span class="nav-label">Finanzen</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('vertraege', this)" title="prf_contracts Master + Renewal-Reminder (notice_deadline)">
+    <button class="nav-item" onclick="showPage('vertraege', this)" title="Vertrags-Übersicht mit Kündigungs-Erinnerung (Fristen).">
       <span class="nav-icon">📄</span>
       <span class="nav-label">Verträge</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('projekte', this)" title="prf_projects (heute 3 Projekte). Ab Iter 22+ wird das zur PROJEKT-Domain umstrukturiert.">
+    <button class="nav-item" onclick="showPage('projekte', this)" title="Projekt-Übersicht. Der projektgetriebene Ausbau folgt in einer späteren Phase.">
       <span class="nav-icon">📋</span>
       <span class="nav-label">Projekte</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('monatsabschluss', this)" title="Buchhalter-Versand pro Monat + Entity (WF E)">
+    <button class="nav-item" onclick="showPage('monatsabschluss', this)" title="Buchhalter-Versand pro Monat und Entität.">
       <span class="nav-icon">📅</span>
       <span class="nav-label">Monatsabschluss</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('mailrules', this)" title="Mail-Routing-Regeln (54 IMAP-Filter-Regeln). CRUD geplant Iter 20.">
+    <button class="nav-item" onclick="showPage('mailrules', this)" title="Regeln, die festlegen, welche E-Mails TGV verarbeitet. Ansehen, anlegen, bearbeiten, testen.">
       <span class="nav-icon">📬</span>
       <span class="nav-label">Mail Rules</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('regeln', this)" title="kb_suppliers-Regeln: Gegenseite-Pattern → Kategorie/Entität. Quelle der Auto-Kategorisierung. Durchsuchen, prüfen, bearbeiten, neu, deaktivieren.">
+    <button class="nav-item" onclick="showPage('regeln', this)" title="Auto-Kategorisierung: Wer-zahlt-wem → welche Kategorie/Entität. Durchsuchen, prüfen, bearbeiten, neu, deaktivieren.">
       <span class="nav-icon">🧭</span>
       <span class="nav-label">Regeln</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('linkrate', this)" title="KPI Doc↔Txn Verknüpfungs-Rate über Zeit. Aktuell ~53% (Iter 15 Decoupling).">
+    <button class="nav-item" onclick="showPage('linkrate', this)" title="Beleg-zu-Buchung-Quote über die Zeit: wie viele Rechnungen schon mit der Bank-Zahlung verknüpft sind.">
       <span class="nav-icon">🔗</span>
       <span class="nav-label">Linkrate</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('alle-docs', this)" title="Universale Doc-Sicht: ID-Suche + Volltext + Filter über ALLE Documents (Iter 29.C2). Wenn die anderen Tabs nicht den passenden Filter haben, ist das hier dein Anker.">
+    <button class="nav-item" onclick="showPage('alle-docs', this)" title="Universale Dokument-Sicht: ID-Suche + Volltext + Filter über ALLE Dokumente. Wenn die anderen Tabs nicht den passenden Filter haben, ist das hier dein Anker.">
       <span class="nav-icon">📑</span>
       <span class="nav-label">Alle Docs</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('actions', this)" title="MCP-Tool-Hub: alle 22 TGV-Tools als klickbare Karten (Lesen, Aktionen, Suche, Skill-Steuerung, Workflow, Audit). Ergänzung zum 💬 Chat — gezielt klicken statt fragen. Iter 20.2 Block B.">
+    <button class="nav-item" onclick="showPage('actions', this)" title="Die TGV-Werkzeuge als klickbare Karten (Lesen, Aktionen, Suche, Skill-Steuerung, Workflow, Audit). Ergänzung zum 💬 Chat — gezielt klicken statt fragen.">
       <span class="nav-icon">🤖</span>
       <span class="nav-label">Aktionen</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('lernen', this)" title="Lernen-Tab (Iter 26): Pipeline-Dokus (5 Pipelines + README aus 00_LEITDOKUMENT/USER_DOCS) und Live-System-Karte (Cytoscape, Block B). Single Source of Truth für No-Coder-Erklärungen.">
+    <button class="nav-item" onclick="showPage('lernen', this)" title="Pipeline-Erklärungen (5 Pipelines + README) und Live-System-Karte. Zentrale Quelle der No-Coder-Erklärungen.">
       <span class="nav-icon">📚</span>
       <span class="nav-label">Lernen</span>
     </button>
 
-    <div class="sidebar-section-label" title="TGV PROJEKT — projektgetriebene Arbeit pro Entity (consulting, IT, Marketing, ai-healthy-ship, ...). Eigene Skills + Rechte + Theme. Phase 2 ab Iter 22+.">
+    <div class="sidebar-section-label" title="TGV PROJEKT — projektgetriebene Arbeit pro Entität (consulting, IT, Marketing, ai-healthy-ship, ...). Eigene Skills + Rechte + Theme. Ausbau in einer späteren Phase.">
       <span class="sidebar-section-title">PROJEKT · Workspace</span>
       <span class="sidebar-section-sub">Späterer Ausbau für projektgetriebene Skills und eigene Workspace-Ansichten</span>
     </div>
@@ -2839,17 +2844,17 @@ body.chat-open #main-content {
       <span class="nav-label">System</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('entitaeten', this)" title="Entity-Steckbriefe (entity_signatures): Legal-Daten, Logo, Bank, Mail-Absender pro Entitaet. KIVISAI erbt den Legal-Footer von C3. Hier editierbar ohne SQL.">
+    <button class="nav-item" onclick="showPage('entitaeten', this)" title="Steckbriefe je Firma/Entität: Legal-Daten, Logo, Bank, Mail-Absender. KIVISAI erbt den Legal-Footer von C3. Hier direkt editierbar.">
       <span class="nav-icon">&#127970;</span>
       <span class="nav-label">Entit&auml;ten</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('mailoutbox', this)" title="Mail-Outbox (outbound_mails): jede ausgehende Mail mit Status, Use-Case, Bounce-Tracking. Detail-Ansicht + Retry fuer fehlgeschlagene Mails.">
+    <button class="nav-item" onclick="showPage('mailoutbox', this)" title="Mail-Outbox: jede ausgehende Mail mit Status, Anwendungsfall, Unzustellbarkeit. Detail-Ansicht + erneuter Versand für fehlgeschlagene Mails.">
       <span class="nav-icon">&#128228;</span>
       <span class="nav-label">Mail-Outbox</span>
     </button>
 
-    <button class="nav-item" onclick="showPage('architektur', this)" title="TGV 7-Layer-Architektur als Cytoscape-Graph (3 Modi: Erklären/Lehren/Live). Quelle: KONZEPT_v2 §2.">
+    <button class="nav-item" onclick="showPage('architektur', this)" title="TGV 7-Schichten-Architektur als interaktiver Graph (3 Modi: Erklären/Lehren/Live).">
       <span class="nav-icon">🏗</span>
       <span class="nav-label">Architektur</span>
     </button>
@@ -2915,9 +2920,9 @@ body.chat-open #main-content {
           <div id="pipeline-health-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
             <div class="spinner-wrap"><div class="spinner"></div> Lade Pipeline-Status…</div>
           </div>
-          <div style="margin-top:10px;font-size:11px;color:var(--tx2);">
-            Quelle: <code>06_DASHBOARD/topology.json</code> (Live-Enrichment via <code>poll_wf_status.py</code> + <code>extract_system_topology.py --with-live</code>).
-            Pipeline-Mapping siehe <a href="#lernen" onclick="event.preventDefault(); showPage('lernen', document.querySelector('button.nav-item[onclick*=\'lernen\']'));" style="color:var(--blu);cursor:pointer;">📚 Lernen-Tab</a>.
+          <div style="margin-top:10px;font-size:11px;color:var(--tx2);" title="Quelle: 06_DASHBOARD/topology.json (Live-Enrichment via poll_wf_status.py + extract_system_topology.py --with-live).">
+            Live-Status aus der System-Topologie.
+            Pipeline-Erklärung siehe <a href="#lernen" onclick="event.preventDefault(); showPage('lernen', document.querySelector('button.nav-item[onclick*=\'lernen\']'));" style="color:var(--blu);cursor:pointer;">📚 Lernen-Tab</a>.
           </div>
         </div>
       </div>
@@ -3103,15 +3108,15 @@ body.chat-open #main-content {
 
           <!-- Info-Banner -->
           <div style="background:#EFF6FF;border-left:4px solid #3B82F6;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1E40AF">
-            <strong>Wie funktioniert der Review?</strong> L1/L2/Entity anpassen und ✅ OK klicken zum Bestätigen. <strong>Conf ≥85%</strong> = KI sehr sicher, direkt bestätigen. <strong>L2 → + Neu…</strong> = neue Unterkategorie anlegen.
+            <strong>Wie funktioniert der Review?</strong> Haupt-/Unterkategorie (L1/L2) und Entität anpassen und ✅ OK klicken zum Bestätigen. <strong>KI-Sicherheit ≥85%</strong> (Conf) = KI sehr sicher, direkt bestätigen. <strong>L2 → + Neu…</strong> = neue Unterkategorie anlegen.
           </div>
 
           <!-- Aktions-Buttons -->
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
             <span id="review-progress-text" style="font-size:11px;color:#6B7280"></span>
             <button class="btn-sm btn-approve" onclick="loadReview()" style="padding:6px 14px">&#x21BA; Neu laden</button>
-            <button class="btn-sm btn-approve" id="btn-show-confirmed" onclick="loadReview('confirmed')" title="Auto-bestätigte Transaktionen prüfen">&#x1F441; Confirmed prüfen</button>
-            <button class="btn-sm btn-bulk-approve" id="btn-confirm-all" onclick="confirmAll()" disabled style="padding:6px 14px">✅ Alle bestätigen (Conf ≥85)</button>
+            <button class="btn-sm btn-approve" id="btn-show-confirmed" onclick="loadReview('confirmed')" title="Auto-bestätigte Transaktionen prüfen">&#x1F441; Bestätigte prüfen</button>
+            <button class="btn-sm btn-bulk-approve" id="btn-confirm-all" onclick="confirmAll()" disabled style="padding:6px 14px">✅ Alle bestätigen (KI-Sicherheit ≥85%)</button>
           </div>
 
           <!-- Filter-Chips -->
@@ -3120,8 +3125,8 @@ body.chat-open #main-content {
             <button class="fb" onclick="filterReview('privat',this)">Privat</button>
             <button class="fb" onclick="filterReview('c3-convis-gmbh',this)">C3 GmbH</button>
             <button class="fb" onclick="filterReview('c4-convis-sarl',this)">C4 SARL</button>
-            <button class="fb" onclick="filterReview('high',this)">Conf ≥85 ✅</button>
-            <button class="fb" onclick="filterReview('low',this)">Conf &lt;85 ⚠️</button>
+            <button class="fb" onclick="filterReview('high',this)" title="Conf = KI-Sicherheit">Sicher ≥85% ✅</button>
+            <button class="fb" onclick="filterReview('low',this)" title="Conf = KI-Sicherheit">Unsicher &lt;85% ⚠️</button>
           </div>
 
           <!-- Stats-Bar -->
@@ -3226,7 +3231,7 @@ body.chat-open #main-content {
       </div>
 
       <div class="fin-tabs">
-        <button class="fin-tab active" onclick="showFinTab('drilldown', this)">L1 / L2 / L3 Kategorien</button>
+        <button class="fin-tab active" onclick="showFinTab('drilldown', this)" title="L1/L2/L3 = Kategorie-Ebenen (Haupt → Unter → Detail)">Kategorien (Ebenen L1/L2/L3)</button>
         <button class="fin-tab" onclick="showFinTab('cashflow', this)">Cashflow</button>
         <button class="fin-tab" onclick="showFinTab('transaktionen', this)">Transaktionen</button>
         <button class="fin-tab" onclick="showFinTab('dokumente-fin', this)">Dokumente</button>
@@ -3299,19 +3304,19 @@ body.chat-open #main-content {
         <!-- KPI-Zeile -->
         <div class="abgleich-kpi-row" id="abgleich-kpi-row">
           <div class="abgleich-kpi warn">
-            <div class="ak-lbl">Txn ohne Rechnung</div>
+            <div class="ak-lbl">Buchungen ohne Rechnung</div>
             <div class="ak-val" id="ak-txn-count">—</div>
             <div class="ak-sub">Transaktionen unverknüpft</div>
           </div>
           <div class="abgleich-kpi err">
-            <div class="ak-lbl">Rechnungen ohne Txn</div>
+            <div class="ak-lbl">Rechnungen ohne Buchung</div>
             <div class="ak-val" id="ak-doc-count">—</div>
             <div class="ak-sub">Dokumente unverknüpft</div>
           </div>
           <div class="abgleich-kpi ok">
             <div class="ak-lbl">Verknüpfte Paare</div>
             <div class="ak-val" id="ak-linked-count">—</div>
-            <div class="ak-sub">Txn + Rechnung verbunden</div>
+            <div class="ak-sub">Buchung + Rechnung verbunden</div>
           </div>
         </div>
         <!-- Zwei-Spalten-Ansicht -->
@@ -3522,11 +3527,11 @@ body.chat-open #main-content {
         <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;font-size:13px;">
           <label style="color:var(--tx2);">Status:</label>
           <select id="triage-status-filter" onchange="loadTriage()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
-            <option value="action_needed">action-needed (default)</option>
-            <option value="inbox">nur „neu" (DB-Status inbox)</option>
-            <option value="needs_review">nur „prüfen" (needs_review)</option>
-            <option value="source_lost">nur „source_lost"</option>
-            <option value="all_active">action-needed + triaged/source_lost</option>
+            <option value="action_needed">Zu erledigen (Standard)</option>
+            <option value="inbox">Nur neu</option>
+            <option value="needs_review">Nur prüfen</option>
+            <option value="source_lost">Nur „Quelle verloren"</option>
+            <option value="all_active">Zu erledigen + bereits erledigt</option>
           </select>
           <label style="color:var(--tx2);margin-left:10px;">Datum:</label>
           <select id="triage-date-field" onchange="loadTriage()" style="background:var(--bg1);color:var(--tx);border:1px solid var(--bdr);padding:5px 9px;border-radius:4px;">
@@ -3675,8 +3680,8 @@ body.chat-open #main-content {
     ════════════════════════════════════════════════ -->
     <div class="page" id="page-regeln">
       <div class="page-header">
-        <h1>🧭 Regeln <span style="font-size:13px;color:var(--tx2);font-weight:400;">— kb_suppliers (Kategorisierungs-Regeln)</span></h1>
-        <p>„Wenn Gegenseite <em>X</em> → Kategorie <em>Y</em>, Entität <em>Z</em>." Diese Regeln steuern die <strong>Auto-Kategorisierung</strong> von Transaktionen &amp; Dokumenten — deterministisch, <em>vor</em> dem LLM-Fallback. Hier durchsuchst, prüfst und änderst du sie zentral. Änderungen werden in <code>agent_events</code> protokolliert.</p>
+        <h1>🧭 Regeln <span style="font-size:13px;color:var(--tx2);font-weight:400;" title="Datenquelle: kb_suppliers">— Kategorisierungs-Regeln</span></h1>
+        <p>„Wenn Gegenseite <em>X</em> → Kategorie <em>Y</em>, Entität <em>Z</em>." Diese Regeln steuern die <strong>Auto-Kategorisierung</strong> von Transaktionen &amp; Dokumenten — deterministisch, <em>vor</em> dem LLM-Fallback. Hier durchsuchst, prüfst und änderst du sie zentral. Jede Änderung wird protokolliert.</p>
       </div>
       <div id="regeln-stats" class="kpi-grid" style="margin-bottom:14px;"></div>
       <div class="card">
@@ -4253,10 +4258,10 @@ body.chat-open #main-content {
     <div class="page" id="page-mailoutbox">
       <div class="page-header" style="margin-bottom:14px">
         <h1>&#128228; Mail-Outbox</h1>
-        <p style="font-size:12px;color:var(--tx2);margin-top:4px;max-width:780px">
-          Alle ausgehenden Mails (<code>outbound_mails</code>) &mdash; Status, Use-Case,
-          Bounce-Tracking. Zeile anklicken f&uuml;r Details; fehlgeschlagene Mails k&ouml;nnen
-          erneut versendet werden. Quelle: <code>tgv-skill-send-mail</code>.
+        <p style="font-size:12px;color:var(--tx2);margin-top:4px;max-width:780px" title="Datenquelle: Tabelle outbound_mails · Skill tgv-skill-send-mail">
+          Alle ausgehenden Mails &mdash; Status, Anwendungsfall,
+          Unzustellbarkeit. Zeile anklicken f&uuml;r Details; fehlgeschlagene Mails k&ouml;nnen
+          erneut versendet werden.
         </p>
       </div>
       <div id="mailoutbox-content">
@@ -4344,7 +4349,7 @@ body.chat-open #main-content {
     ════════════════════════════════════════════════ -->
     <div class="page" id="page-alle-docs">
       <div class="page-header">
-        <h1>📑 Alle Docs <span style="font-size:11px;color:var(--tx2);font-weight:400;margin-left:8px;">universale Sicht — Iter 29.C2</span></h1>
+        <h1>📑 Alle Docs <span style="font-size:11px;color:var(--tx2);font-weight:400;margin-left:8px;">— universale Sicht</span></h1>
         <p>Wenn die anderen Tabs den passenden Filter nicht haben: such hier. ID-Direktzugriff oder Volltext über Provider/Filename/Subject.</p>
       </div>
 
@@ -4406,7 +4411,7 @@ body.chat-open #main-content {
     <div class="page" id="page-lernen">
       <div class="page-header">
         <h1>📚 Lernen</h1>
-        <p>Pipeline-Dokus + Live-System-Karte. Single Source of Truth aus <code>00_LEITDOKUMENT/USER_DOCS/</code>.</p>
+        <p title="Quelle: 00_LEITDOKUMENT/USER_DOCS/">Pipeline-Dokus + Live-System-Karte. Zentrale Quelle der System-Erklärungen.</p>
       </div>
 
       <!-- LERNEN SUB-TABS -->
@@ -4724,23 +4729,8 @@ function showDashboard() {
   buildPeriodFilter(); // C1: Monats-Buttons seeden (Failsafe-Monate, vor Daten-Load)
 }
 
-// Iter 70.3: rollenbasiert statt UUID-Hardcode — prüft auth_allowed_users.role='admin'
-// (RLS self_read erlaubt dem User seine eigene Zeile). JC_USER_ID bleibt als
-// Failsafe-Fallback gegen Lockout, falls die Allowlist-Abfrage mal scheitert.
-async function isAllowedUser(user) {
-  if (!user) return false;
-  if (user.id === JC_USER_ID) return true;
-  try {
-    const { data, error } = await _supaClient
-      .from('auth_allowed_users')
-      .select('role, active')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (error || !data) return false;
-    return data.active === true && data.role === 'admin';
-  } catch (e) {
-    return false;
-  }
+function isAllowedUser(user) {
+  return user && user.id === JC_USER_ID;
 }
 
 async function authLogin() {
@@ -4754,7 +4744,7 @@ async function authLogin() {
   try {
     const { data, error } = await _supaClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    if (!(await isAllowedUser(data.user))) {
+    if (!isAllowedUser(data.user)) {
       await _supaClient.auth.signOut();
       showAuthGate('denied');
     } else {
@@ -4831,16 +4821,13 @@ async function initAuth() {
 
   showAuthGate('login');
   const { data: { session } } = await _supaClient.auth.getSession();
-  if (session) {
-    const allowed = await isAllowedUser(session.user);
-    if (allowed) {
-      showDashboard();
-      loadUebersicht();
-      loadMdCategories();
-    } else {
-      await _supaClient.auth.signOut();
-      showAuthGate('denied');
-    }
+  if (session && isAllowedUser(session.user)) {
+    showDashboard();
+    loadUebersicht();
+    loadMdCategories();
+  } else if (session && !isAllowedUser(session.user)) {
+    await _supaClient.auth.signOut();
+    showAuthGate('denied');
   }
 }
 
@@ -9717,7 +9704,7 @@ async function loadReview(mode) {
   const btnConfirmed = document.getElementById('btn-show-confirmed');
   if (btnConfirmed) {
     btnConfirmed.style.background = isConfirmedMode ? 'var(--amb)' : '';
-    btnConfirmed.textContent = isConfirmedMode ? '← Zurück zu Pending' : '👁 Confirmed prüfen';
+    btnConfirmed.textContent = isConfirmedMode ? '← Zurück zu Offen' : '👁 Bestätigte prüfen';
     btnConfirmed.onclick = isConfirmedMode ? () => loadReview('pending_review') : () => loadReview('confirmed');
   }
 
@@ -10012,7 +9999,7 @@ async function confirmAll() {
     toast(`${done} ok, ${errors} Fehler`, 'err');
   }
   btn.disabled = false;
-  btn.textContent = '✅ Alle bestätigen (Conf ≥85)';
+  btn.textContent = '✅ Alle bestätigen (KI-Sicherheit ≥85%)';
 }
 
 // md_categories aus Supabase laden und L2_OPTS erweitern
